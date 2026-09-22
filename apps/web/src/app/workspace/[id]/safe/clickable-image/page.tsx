@@ -2,6 +2,7 @@
 
 import React, { useState } from "react"
 import { useRouter, useParams } from "next/navigation"
+import { useAssetLibrary } from "../../../../../hooks/useAssetLibrary"
 
 export default function SafeClickableImagePage() {
   const router = useRouter()
@@ -13,13 +14,28 @@ export default function SafeClickableImagePage() {
   const [cardTitle, setCardTitle] = useState("Eid Mega Sale 2026 - Up to 50% Off!")
   const [generatedCardUrl, setGeneratedCardUrl] = useState<string | null>(null)
 
+  const { addAsset } = useAssetLibrary()
+  const [savedSuccess, setSavedSuccess] = useState(false)
+
   const handleGenerateClickableCard = () => {
     const slug = cardTitle.toLowerCase().replace(/[^a-z0-9]+/g, "-")
     setGeneratedCardUrl(`https://bmt.cards/${slug}`)
   }
 
   const handleSaveToLibrary = () => {
-    alert("✓ Saved Clickable Image Card to SHOPE Asset Library!")
+    addAsset({
+      title: cardTitle || "Custom Clickable Card",
+      type: "Link",
+      folder: "Link Cards",
+      url: imageUrl,
+      targetUrl: generatedCardUrl || targetLink,
+      tags: ["clickable-card", "facebook", "redirect"],
+      size: "1.8 MB",
+    })
+    setSavedSuccess(true)
+    setTimeout(() => {
+      router.push(`/workspace/${workspaceId}/safe/library`)
+    }, 1200)
   }
 
   return (

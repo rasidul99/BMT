@@ -2,6 +2,7 @@
 
 import React, { useState } from "react"
 import { useRouter, useParams } from "next/navigation"
+import { useAssetLibrary } from "../../../../../hooks/useAssetLibrary"
 
 interface DownloadedMediaResult {
   id: string
@@ -46,8 +47,19 @@ export default function SafeDownloaderPage() {
     }, 1200)
   }
 
+  const { addAsset } = useAssetLibrary()
+
   const handleSaveDirectlyToLibrary = () => {
-    alert("✓ Saved extracted media directly to SHOPE Asset Library!")
+    if (downloadedResult) {
+      addAsset({
+        title: downloadedResult.title,
+        type: downloadedResult.format.includes("Audio") ? "Text" : "Video",
+        folder: "Videos & Reels",
+        url: downloadedResult.previewUrl,
+        tags: ["downloaded", downloadedResult.platform.toLowerCase(), "media"],
+        size: downloadedResult.fileSize,
+      })
+    }
     router.push(`/workspace/${workspaceId}/safe/library`)
   }
 

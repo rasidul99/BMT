@@ -2,324 +2,543 @@
 
 import React, { useState } from "react"
 import { useRouter, useParams } from "next/navigation"
-
-export interface LibraryItem {
-  id: string
-  title: string
-  type: "Image" | "Video" | "Caption" | "Template"
-  folder: "Product Photos" | "Videos" | "Captions" | "Templates"
-  tags: string[]
-  url: string
-  size: string
-  uploadedAt: string
-}
+import {
+  Folder,
+  Image as ImageIcon,
+  Video,
+  FileText,
+  Link as LinkIcon,
+  HelpCircle,
+  PlusCircle,
+  Search,
+  Trash2,
+  CalendarClock,
+  ExternalLink,
+  Tag,
+  Check,
+  Sparkles,
+  Layers,
+} from "lucide-react"
+import { useAssetLibrary, LibraryAsset } from "../../../../../hooks/useAssetLibrary"
 
 export default function SafeLibraryPage() {
   const router = useRouter()
   const params = useParams()
-  const workspaceId = params?.id || "workspace-1"
+  const workspaceId = (params?.id as string) || "workspace-1"
+
+  const { assets, isLoaded, addAsset, deleteAsset } = useAssetLibrary()
 
   const [activeFolder, setActiveFolder] = useState<string>("ALL")
   const [activeTypeFilter, setActiveTypeFilter] = useState<string>("ALL")
   const [searchQuery, setSearchQuery] = useState<string>("")
-
-  // Modal State
   const [showUploadModal, setShowUploadModal] = useState<boolean>(false)
+  const [toastMsg, setToastMsg] = useState<string | null>(null)
+
+  // New Asset Form State
+  const [newType, setNewType] = useState<LibraryAsset["type"]>("Image")
   const [newTitle, setNewTitle] = useState("")
-  const [newType, setNewType] = useState<LibraryItem["type"]>("Image")
-  const [newFolder, setNewFolder] = useState<LibraryItem["folder"]>("Product Photos")
-  const [newTags, setNewTags] = useState("ecommerce, promo, product")
-  const [newFileUrl, setNewFileUrl] = useState("")
+  const [newFolder, setNewFolder] = useState<LibraryAsset["folder"]>("Product Photos")
+  const [newContent, setNewContent] = useState("")
+  const [newUrl, setNewUrl] = useState("")
+  const [newTargetUrl, setNewTargetUrl] = useState("")
+  const [newTags, setNewTags] = useState("facebook, marketing, campaign")
+  const [pollOptions, setPollOptions] = useState(["Option 1", "Option 2", "Option 3", "Option 4"])
 
-  const [libraryItems, setLibraryItems] = useState<LibraryItem[]>([
-    {
-      id: "lib-101",
-      title: "Premium Wireless Earbuds HD Banner",
-      type: "Image",
-      folder: "Product Photos",
-      tags: ["gadgets", "promo", "banner"],
-      url: "https://images.unsplash.com/photo-1590658268037-6bf12165a8df?w=600&auto=format&fit=crop",
-      size: "2.4 MB (Cloudflare R2)",
-      uploadedAt: "2026-07-28",
-    },
-    {
-      id: "lib-102",
-      title: "Eid Sale 2026 Promo Video Reel",
-      type: "Video",
-      folder: "Videos",
-      tags: ["video", "reel", "eid-sale"],
-      url: "https://images.unsplash.com/photo-1536240478700-b869070f9279?w=600&auto=format&fit=crop",
-      size: "18.5 MB (AWS S3)",
-      uploadedAt: "2026-07-29",
-    },
-    {
-      id: "lib-103",
-      title: "High-Converting Curiosity Hook Caption",
-      type: "Caption",
-      folder: "Captions",
-      tags: ["caption", "bengali-hook", "curiosity"],
-      url: "https://images.unsplash.com/photo-1455390582262-044cdead277a?w=600&auto=format&fit=crop",
-      size: "4 KB",
-      uploadedAt: "2026-07-30",
-    },
-    {
-      id: "lib-104",
-      title: "E-Commerce Carousel Post Template",
-      type: "Template",
-      folder: "Templates",
-      tags: ["template", "carousel", "canva"],
-      url: "https://images.unsplash.com/photo-1542744094-3a3172720a8a?w=600&auto=format&fit=crop",
-      size: "5.1 MB (Cloudflare R2)",
-      uploadedAt: "2026-07-31",
-    },
-  ])
+  const showToast = (msg: string) => {
+    setToastMsg(msg)
+    setTimeout(() => setToastMsg(null), 3000)
+  }
 
-  // Folders list
-  const folders = ["ALL", "Product Photos", "Videos", "Captions", "Templates"]
-  const types = ["ALL", "Image", "Video", "Caption", "Template"]
+  const folders: ("ALL" | LibraryAsset["folder"])[] = [
+    "ALL",
+    "Product Photos",
+    "Videos & Reels",
+    "Captions & Copy",
+    "Link Cards",
+    "Polls & Surveys",
+  ]
 
-  // Filter items
-  const filteredItems = libraryItems.filter((item) => {
+  const types: { id: "ALL" | LibraryAsset["type"]; label: string; icon: any }[] = [
+    { id: "ALL", label: "All Formats", icon: Layers },
+    { id: "Image", label: "Images", icon: ImageIcon },
+    { id: "Video", label: "Videos", icon: Video },
+    { id: "Text", label: "Captions", icon: FileText },
+    { id: "Link", label: "Link Cards", icon: LinkIcon },
+    { id: "Poll", label: "Polls", icon: HelpCircle },
+  ]
+
+  // Filter Assets
+  const filteredItems = assets.filter((item) => {
     const matchesFolder = activeFolder === "ALL" || item.folder === activeFolder
     const matchesType = activeTypeFilter === "ALL" || item.type === activeTypeFilter
+    const q = searchQuery.toLowerCase()
     const matchesSearch =
       searchQuery === "" ||
-      item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.tags.some((tag) => tag.toLowerCase().includes(searchQuery.toLowerCase()))
+      item.title.toLowerCase().includes(q) ||
+      (item.content && item.content.toLowerCase().includes(q)) ||
+      item.tags.some((t) => t.toLowerCase().includes(q))
     return matchesFolder && matchesType && matchesSearch
   })
 
-  // Handle New Asset Upload
-  const handleUploadAsset = (e: React.FormEvent) => {
+  // Handle Form Submission
+  const handleCreateAsset = (e: React.FormEvent) => {
     e.preventDefault()
-    if (!newTitle) return
+    if (!newTitle.trim()) return
 
-    const newItem: LibraryItem = {
-      id: `lib-${Date.now()}`,
+    const fallbackImage = "https://images.unsplash.com/photo-1522335789203-aabd1fc54bc9?w=600&auto=format&fit=crop"
+
+    addAsset({
       title: newTitle,
       type: newType,
       folder: newFolder,
-      tags: newTags.split(",").map((t) => t.trim()),
-      url: newFileUrl || "https://images.unsplash.com/photo-1611162617213-7d7a39e9b1d7?w=600&auto=format&fit=crop",
-      size: "3.5 MB (Cloudflare R2 Storage)",
-      uploadedAt: new Date().toISOString().split("T")[0],
-    }
+      content: newType === "Text" || newType === "Poll" ? newContent : undefined,
+      url: newType === "Text" ? undefined : newUrl || fallbackImage,
+      targetUrl: newType === "Link" ? newTargetUrl || "https://bmt.cards/product-offer" : undefined,
+      pollOptions: newType === "Poll" ? pollOptions.filter((o) => o.trim().length > 0) : undefined,
+      tags: newTags.split(",").map((t) => t.trim()).filter(Boolean),
+      size: newType === "Video" ? "14.2 MB" : newType === "Image" || newType === "Link" ? "2.1 MB" : "1.5 KB",
+    })
 
-    setLibraryItems([newItem, ...libraryItems])
     setShowUploadModal(false)
     setNewTitle("")
-    setNewFileUrl("")
+    setNewContent("")
+    setNewUrl("")
+    setNewTargetUrl("")
+    showToast(`✓ New ${newType} asset saved persistently to Central Library!`)
   }
 
-  const handleDeleteItem = (id: string) => {
-    if (confirm("Remove this asset from Library?")) {
-      setLibraryItems((prev) => prev.filter((item) => item.id !== id))
+  const handleDelete = (id: string, title: string) => {
+    if (confirm(`Remove "${title}" from Central Library?`)) {
+      deleteAsset(id)
+      showToast("✓ Asset deleted from Library.")
     }
+  }
+
+  const handleUseInScheduler = (item: LibraryAsset) => {
+    router.push(`/workspace/${workspaceId}/safe/post-scheduler?libraryAssetId=${item.id}&type=${item.type}`)
   }
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b pb-4">
+      {/* Toast Notification */}
+      {toastMsg && (
+        <div className="fixed top-16 right-6 z-50 bg-emerald-600 text-white text-xs font-semibold px-4 py-2.5 rounded-lg shadow-xl flex items-center gap-2 animate-in fade-in">
+          <Check className="w-4 h-4" />
+          <span>{toastMsg}</span>
+        </div>
+      )}
+
+      {/* 1. Header & Actions */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-border pb-4">
         <div>
-          <h1 className="text-2xl font-extrabold tracking-tight">SHOPE Asset Library</h1>
+          <div className="flex items-center gap-2">
+            <h1 className="text-2xl font-extrabold tracking-tight text-foreground">
+              Central Asset Library
+            </h1>
+            <span className="bg-blue-500/10 text-blue-600 dark:text-blue-400 text-[10px] font-bold px-2 py-0.5 rounded-full border border-blue-500/20">
+              Persistent Storage
+            </span>
+          </div>
           <p className="text-xs text-muted-foreground mt-1">
-            Store and organize Images, Videos, Captions, and Templates for instant reuse in Post Scheduler (AWS S3 / Cloudflare R2).
+            Manage your marketing assets (Images, Videos, Captions, Link Cards & Polls) with instant one-click Post Scheduler integration.
           </p>
         </div>
 
         <button
           onClick={() => setShowUploadModal(true)}
-          className="bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs px-4 py-2 rounded-lg transition shadow-sm flex items-center space-x-2"
+          className="bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs px-4 py-2 rounded-lg transition shadow-xs flex items-center gap-2 self-start sm:self-auto"
         >
-          <span>📁 Upload New Asset</span>
+          <PlusCircle className="w-4 h-4" />
+          <span>Add Asset to Library</span>
         </button>
       </div>
 
-      {/* Folders & Filters Bar */}
-      <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4">
-        {/* Folders Tabs */}
-        <div className="flex items-center space-x-1.5 overflow-x-auto pb-1">
+      {/* 2. Format Counts Metric Row */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 text-xs">
+        <div className="border border-border bg-card p-3 rounded-xl shadow-xs">
+          <span className="text-[10px] font-bold text-muted-foreground uppercase">Total Assets</span>
+          <div className="text-xl font-black text-foreground mt-0.5">{assets.length}</div>
+        </div>
+        <div className="border border-border bg-card p-3 rounded-xl shadow-xs">
+          <span className="text-[10px] font-bold text-muted-foreground uppercase flex items-center gap-1">
+            <ImageIcon className="w-3 h-3 text-blue-500" /> Images
+          </span>
+          <div className="text-xl font-black text-blue-600 dark:text-blue-400 mt-0.5">
+            {assets.filter((a) => a.type === "Image").length}
+          </div>
+        </div>
+        <div className="border border-border bg-card p-3 rounded-xl shadow-xs">
+          <span className="text-[10px] font-bold text-muted-foreground uppercase flex items-center gap-1">
+            <Video className="w-3 h-3 text-red-500" /> Videos
+          </span>
+          <div className="text-xl font-black text-red-600 dark:text-red-400 mt-0.5">
+            {assets.filter((a) => a.type === "Video").length}
+          </div>
+        </div>
+        <div className="border border-border bg-card p-3 rounded-xl shadow-xs">
+          <span className="text-[10px] font-bold text-muted-foreground uppercase flex items-center gap-1">
+            <FileText className="w-3 h-3 text-emerald-500" /> Captions
+          </span>
+          <div className="text-xl font-black text-emerald-600 dark:text-emerald-400 mt-0.5">
+            {assets.filter((a) => a.type === "Text").length}
+          </div>
+        </div>
+        <div className="border border-border bg-card p-3 rounded-xl shadow-xs">
+          <span className="text-[10px] font-bold text-muted-foreground uppercase flex items-center gap-1">
+            <LinkIcon className="w-3 h-3 text-purple-500" /> Link Cards
+          </span>
+          <div className="text-xl font-black text-purple-600 dark:text-purple-400 mt-0.5">
+            {assets.filter((a) => a.type === "Link").length}
+          </div>
+        </div>
+        <div className="border border-border bg-card p-3 rounded-xl shadow-xs">
+          <span className="text-[10px] font-bold text-muted-foreground uppercase flex items-center gap-1">
+            <HelpCircle className="w-3 h-3 text-amber-500" /> Polls
+          </span>
+          <div className="text-xl font-black text-amber-600 dark:text-amber-400 mt-0.5">
+            {assets.filter((a) => a.type === "Poll").length}
+          </div>
+        </div>
+      </div>
+
+      {/* 3. Folder Tabs & Search Bar */}
+      <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 pt-1">
+        {/* Folder Tabs */}
+        <div className="flex items-center space-x-1.5 overflow-x-auto pb-1 no-scrollbar">
           {folders.map((f) => (
             <button
               key={f}
               onClick={() => setActiveFolder(f)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition whitespace-nowrap ${
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition whitespace-nowrap flex items-center gap-1.5 ${
                 activeFolder === f
-                  ? "bg-blue-600 text-white shadow-sm"
-                  : "bg-card border hover:bg-muted text-muted-foreground"
+                  ? "bg-blue-600 text-white shadow-xs"
+                  : "bg-card border border-border hover:bg-muted text-muted-foreground"
               }`}
             >
-              {f === "ALL" ? "📂 All Folders" : `📁 ${f}`}
+              <Folder className="w-3.5 h-3.5" />
+              <span>{f === "ALL" ? "All Folders" : f}</span>
             </button>
           ))}
         </div>
 
-        {/* Search & Type Filter */}
+        {/* Search & Type Select */}
         <div className="flex items-center space-x-2">
-          <input
-            type="text"
-            placeholder="Search by title or #tags..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="px-3 py-1.5 border rounded-lg bg-card text-xs w-56 focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
+          <div className="relative">
+            <Search className="w-3.5 h-3.5 absolute left-3 top-2.5 text-muted-foreground" />
+            <input
+              type="text"
+              placeholder="Search assets or #tags..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-8 pr-3 py-1.5 border border-border rounded-lg bg-card text-xs w-56 focus:outline-none focus:ring-1 focus:ring-blue-500 text-foreground"
+            />
+          </div>
 
-          <select
-            value={activeTypeFilter}
-            onChange={(e) => setActiveTypeFilter(e.target.value)}
-            className="px-3 py-1.5 border rounded-lg bg-card text-xs font-semibold focus:outline-none"
-          >
-            <option value="ALL">All Types</option>
-            <option value="Image">🖼️ Images</option>
-            <option value="Video">🎬 Videos</option>
-            <option value="Caption">📝 Captions</option>
-            <option value="Template">🎨 Templates</option>
-          </select>
+          <div className="flex items-center gap-1 bg-muted/60 p-1 rounded-lg">
+            {types.map((t) => {
+              const Icon = t.icon
+              return (
+                <button
+                  key={t.id}
+                  onClick={() => setActiveTypeFilter(t.id)}
+                  title={t.label}
+                  className={`px-2 py-1 rounded-md text-[11px] font-semibold transition flex items-center gap-1 ${
+                    activeTypeFilter === t.id
+                      ? "bg-card text-foreground shadow-xs"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  <Icon className="w-3 h-3" />
+                  <span className="hidden sm:inline">{t.label}</span>
+                </button>
+              )
+            })}
+          </div>
         </div>
       </div>
 
-      {/* Grid of Assets */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {filteredItems.map((item) => (
-          <div key={item.id} className="border bg-card rounded-xl overflow-hidden shadow-sm flex flex-col justify-between group hover:border-blue-500 transition">
-            <div className="space-y-2">
-              <div className="h-40 bg-muted relative overflow-hidden">
-                <img src={item.url} alt={item.title} className="w-full h-full object-cover group-hover:scale-105 transition duration-300" />
-                <span className="absolute top-2 left-2 bg-black/70 text-white text-[10px] font-bold px-2 py-0.5 rounded backdrop-blur">
-                  {item.type}
-                </span>
-                <span className="absolute top-2 right-2 bg-blue-600 text-white text-[10px] font-bold px-2 py-0.5 rounded shadow">
-                  {item.folder}
-                </span>
-              </div>
-
-              <div className="p-3.5 space-y-2">
-                <h3 className="font-bold text-xs text-foreground line-clamp-2">{item.title}</h3>
-                
-                <div className="flex flex-wrap gap-1">
-                  {item.tags.map((tag, idx) => (
-                    <span key={idx} className="bg-muted px-1.5 py-0.5 rounded text-[9px] font-medium text-muted-foreground">
-                      #{tag}
-                    </span>
-                  ))}
-                </div>
-
-                <div className="text-[10px] text-muted-foreground flex items-center justify-between pt-1 border-t">
-                  <span>{item.size}</span>
-                  <span>{item.uploadedAt}</span>
-                </div>
-              </div>
-            </div>
-
-            <div className="p-3 bg-muted/20 border-t flex items-center justify-between gap-2">
-              <button
-                onClick={() => router.push(`/workspace/${workspaceId}/safe/post-scheduler?libraryAssetId=${item.id}`)}
-                className="flex-1 bg-blue-600 hover:bg-blue-700 text-white text-[11px] font-bold py-1.5 rounded transition text-center"
-              >
-                🚀 Select in Post Scheduler
-              </button>
-              <button
-                onClick={() => handleDeleteItem(item.id)}
-                className="p-1.5 border hover:bg-destructive/10 text-destructive rounded text-xs"
-                title="Delete Asset"
-              >
-                🗑️
-              </button>
-            </div>
+      {/* 4. Asset Cards Grid */}
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        {filteredItems.length === 0 ? (
+          <div className="col-span-full border border-dashed border-border p-12 text-center rounded-xl space-y-2">
+            <Folder className="w-8 h-8 text-muted-foreground mx-auto" />
+            <p className="text-sm font-semibold text-foreground">No assets found in this folder</p>
+            <p className="text-xs text-muted-foreground">Click "Add Asset to Library" to create your first content item.</p>
           </div>
-        ))}
+        ) : (
+          filteredItems.map((item) => (
+            <div
+              key={item.id}
+              className="border border-border bg-card rounded-xl overflow-hidden shadow-xs flex flex-col justify-between group hover:border-blue-500/60 transition"
+            >
+              <div className="space-y-2">
+                {/* Visual Preview according to type */}
+                {item.type === "Image" || item.type === "Video" || item.type === "Link" ? (
+                  <div className="h-44 bg-muted relative overflow-hidden group">
+                    <img
+                      src={item.url}
+                      alt={item.title}
+                      className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
+                    />
+                    <span className="absolute top-2 left-2 bg-black/75 text-white text-[10px] font-bold px-2 py-0.5 rounded backdrop-blur flex items-center gap-1">
+                      {item.type === "Video" && <Video className="w-3 h-3 text-red-400" />}
+                      {item.type === "Image" && <ImageIcon className="w-3 h-3 text-blue-400" />}
+                      {item.type === "Link" && <LinkIcon className="w-3 h-3 text-purple-400" />}
+                      <span>{item.type}</span>
+                    </span>
+                    <span className="absolute top-2 right-2 bg-blue-600 text-white text-[10px] font-bold px-2 py-0.5 rounded shadow-xs">
+                      {item.folder}
+                    </span>
+                    {item.type === "Link" && item.targetUrl && (
+                      <div className="absolute bottom-0 inset-x-0 bg-black/80 text-white px-2 py-1 text-[10px] truncate flex items-center gap-1 font-mono">
+                        <ExternalLink className="w-2.5 h-2.5 shrink-0" />
+                        <span className="truncate">{item.targetUrl}</span>
+                      </div>
+                    )}
+                  </div>
+                ) : item.type === "Text" ? (
+                  <div className="h-44 bg-blue-500/5 p-4 flex flex-col justify-between border-b border-border relative">
+                    <span className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[10px] font-bold px-2 py-0.5 rounded w-fit border border-emerald-500/20 flex items-center gap-1">
+                      <FileText className="w-3 h-3" />
+                      <span>Caption / Hook</span>
+                    </span>
+                    <p className="text-xs font-medium text-foreground line-clamp-4 italic">
+                      "{item.content}"
+                    </p>
+                    <span className="text-[10px] text-muted-foreground">{item.folder}</span>
+                  </div>
+                ) : (
+                  /* Poll Item Preview */
+                  <div className="h-44 bg-amber-500/5 p-3.5 flex flex-col justify-between border-b border-border relative">
+                    <div className="space-y-1.5">
+                      <span className="bg-amber-500/10 text-amber-600 dark:text-amber-400 text-[10px] font-bold px-2 py-0.5 rounded w-fit border border-amber-500/20 flex items-center gap-1">
+                        <HelpCircle className="w-3 h-3" />
+                        <span>Interactive Poll</span>
+                      </span>
+                      <p className="text-xs font-bold text-foreground line-clamp-2">{item.content}</p>
+                    </div>
+                    <div className="space-y-1">
+                      {item.pollOptions?.slice(0, 2).map((opt, i) => (
+                        <div key={i} className="text-[10px] bg-card border border-border px-2 py-0.5 rounded truncate text-muted-foreground">
+                          {i + 1}. {opt}
+                        </div>
+                      ))}
+                      {item.pollOptions && item.pollOptions.length > 2 && (
+                        <span className="text-[9px] text-muted-foreground">
+                          +{item.pollOptions.length - 2} more options
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Info & Tags */}
+                <div className="p-3.5 space-y-2">
+                  <h3 className="font-bold text-xs text-foreground line-clamp-2">{item.title}</h3>
+
+                  <div className="flex flex-wrap gap-1">
+                    {item.tags.map((tag, idx) => (
+                      <span
+                        key={idx}
+                        className="bg-muted px-1.5 py-0.5 rounded text-[9px] font-medium text-muted-foreground"
+                      >
+                        #{tag}
+                      </span>
+                    ))}
+                  </div>
+
+                  <div className="text-[10px] text-muted-foreground flex items-center justify-between pt-1 border-t border-border">
+                    <span>{item.size}</span>
+                    <span>{item.uploadedAt}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Card Actions */}
+              <div className="p-3 bg-muted/20 border-t border-border flex items-center justify-between gap-2">
+                <button
+                  onClick={() => handleUseInScheduler(item)}
+                  className="flex-1 bg-blue-600 hover:bg-blue-700 text-white text-[11px] font-bold py-1.5 px-2 rounded-lg transition text-center flex items-center justify-center gap-1.5 shadow-xs"
+                >
+                  <CalendarClock className="w-3.5 h-3.5" />
+                  <span>Use in Scheduler</span>
+                </button>
+                <button
+                  onClick={() => handleDelete(item.id, item.title)}
+                  className="p-1.5 border border-border hover:bg-destructive/10 text-destructive rounded-lg text-xs transition"
+                  title="Delete Asset"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </div>
+          ))
+        )}
       </div>
 
-      {/* Upload Modal */}
+      {/* 5. Create New Asset Modal */}
       {showUploadModal && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-card border w-full max-w-md rounded-xl p-6 shadow-2xl space-y-4 animate-in fade-in zoom-in duration-150">
-            <div className="flex items-center justify-between border-b pb-3">
-              <h2 className="text-base font-extrabold">Upload New Asset to Library</h2>
-              <button onClick={() => setShowUploadModal(false)} className="text-muted-foreground hover:text-foreground text-sm font-bold">
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-card border border-border w-full max-w-lg rounded-xl p-6 shadow-2xl space-y-4 animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between border-b border-border pb-3">
+              <div className="flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-blue-500" />
+                <h2 className="text-base font-extrabold text-foreground">Add New Asset to Library</h2>
+              </div>
+              <button
+                onClick={() => setShowUploadModal(false)}
+                className="text-muted-foreground hover:text-foreground text-sm font-bold"
+              >
                 ✕
               </button>
             </div>
 
-            <form onSubmit={handleUploadAsset} className="space-y-3 text-xs">
+            {/* Type Selector Tabs in Modal */}
+            <div className="grid grid-cols-5 gap-1.5 p-1 bg-muted/60 rounded-lg text-xs">
+              {(["Image", "Video", "Text", "Link", "Poll"] as const).map((t) => (
+                <button
+                  key={t}
+                  type="button"
+                  onClick={() => {
+                    setNewType(t)
+                    if (t === "Image") setNewFolder("Product Photos")
+                    else if (t === "Video") setNewFolder("Videos & Reels")
+                    else if (t === "Text") setNewFolder("Captions & Copy")
+                    else if (t === "Link") setNewFolder("Link Cards")
+                    else if (t === "Poll") setNewFolder("Polls & Surveys")
+                  }}
+                  className={`py-1.5 font-bold rounded-md transition text-center text-[11px] ${
+                    newType === t ? "bg-card text-foreground shadow-xs" : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  {t}
+                </button>
+              ))}
+            </div>
+
+            <form onSubmit={handleCreateAsset} className="space-y-3.5 text-xs">
               <div>
-                <label className="font-bold block mb-1">Asset Title *</label>
+                <label className="font-bold block mb-1 text-foreground">Asset Title *</label>
                 <input
                   type="text"
                   required
-                  placeholder="e.g. Summer Special Product Banner HD"
+                  placeholder="e.g. Summer Special Offer Post"
                   value={newTitle}
                   onChange={(e) => setNewTitle(e.target.value)}
-                  className="w-full px-3 py-2 border rounded-lg bg-background"
+                  className="w-full px-3 py-2 border border-border rounded-lg bg-background text-foreground"
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="font-bold block mb-1">Asset Type</label>
-                  <select
-                    value={newType}
-                    onChange={(e) => setNewType(e.target.value as any)}
-                    className="w-full px-3 py-2 border rounded-lg bg-background font-medium"
-                  >
-                    <option value="Image">Image</option>
-                    <option value="Video">Video</option>
-                    <option value="Caption">Caption</option>
-                    <option value="Template">Template</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="font-bold block mb-1">Target Folder</label>
-                  <select
-                    value={newFolder}
-                    onChange={(e) => setNewFolder(e.target.value as any)}
-                    className="w-full px-3 py-2 border rounded-lg bg-background font-medium"
-                  >
-                    <option value="Product Photos">Product Photos</option>
-                    <option value="Videos">Videos</option>
-                    <option value="Captions">Captions</option>
-                    <option value="Templates">Templates</option>
-                  </select>
-                </div>
+              <div>
+                <label className="font-bold block mb-1 text-foreground">Folder Category</label>
+                <select
+                  value={newFolder}
+                  onChange={(e) => setNewFolder(e.target.value as any)}
+                  className="w-full px-3 py-2 border border-border rounded-lg bg-background text-foreground font-medium"
+                >
+                  <option value="Product Photos">Product Photos</option>
+                  <option value="Videos & Reels">Videos & Reels</option>
+                  <option value="Captions & Copy">Captions & Copy</option>
+                  <option value="Link Cards">Link Cards</option>
+                  <option value="Polls & Surveys">Polls & Surveys</option>
+                </select>
               </div>
 
+              {/* Conditional Inputs based on Type */}
+              {newType === "Text" && (
+                <div>
+                  <label className="font-bold block mb-1 text-foreground">Caption / Copywriting Content *</label>
+                  <textarea
+                    rows={4}
+                    required
+                    placeholder="Write marketing caption, hook, or sales pitch..."
+                    value={newContent}
+                    onChange={(e) => setNewContent(e.target.value)}
+                    className="w-full px-3 py-2 border border-border rounded-lg bg-background text-foreground"
+                  />
+                </div>
+              )}
+
+              {newType === "Poll" && (
+                <div className="space-y-2">
+                  <label className="font-bold block mb-1 text-foreground">Poll Question *</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. Which feature should we build next?"
+                    value={newContent}
+                    onChange={(e) => setNewContent(e.target.value)}
+                    className="w-full px-3 py-2 border border-border rounded-lg bg-background text-foreground"
+                  />
+                  <label className="font-bold block text-[11px] text-muted-foreground">Poll Options (Min 2)</label>
+                  {pollOptions.map((opt, i) => (
+                    <input
+                      key={i}
+                      type="text"
+                      placeholder={`Option ${i + 1}`}
+                      value={opt}
+                      onChange={(e) => {
+                        const copy = [...pollOptions]
+                        copy[i] = e.target.value
+                        setPollOptions(copy)
+                      }}
+                      className="w-full px-3 py-1.5 border border-border rounded-lg bg-background text-foreground text-xs"
+                    />
+                  ))}
+                </div>
+              )}
+
+              {(newType === "Image" || newType === "Video" || newType === "Link") && (
+                <div>
+                  <label className="font-bold block mb-1 text-foreground">Media URL (CDN, Cloudflare R2, Unsplash) *</label>
+                  <input
+                    type="url"
+                    placeholder="https://images.unsplash.com/..."
+                    value={newUrl}
+                    onChange={(e) => setNewUrl(e.target.value)}
+                    className="w-full px-3 py-2 border border-border rounded-lg bg-background text-foreground"
+                  />
+                </div>
+              )}
+
+              {newType === "Link" && (
+                <div>
+                  <label className="font-bold block mb-1 text-foreground">Target Redirect Link *</label>
+                  <input
+                    type="url"
+                    required
+                    placeholder="https://yourwebsite.com/product-landing"
+                    value={newTargetUrl}
+                    onChange={(e) => setNewTargetUrl(e.target.value)}
+                    className="w-full px-3 py-2 border border-border rounded-lg bg-background text-foreground"
+                  />
+                </div>
+              )}
+
               <div>
-                <label className="font-bold block mb-1">Tags (comma separated)</label>
+                <label className="font-bold block mb-1 text-foreground">Tags (comma separated)</label>
                 <input
                   type="text"
-                  placeholder="e.g. product, promo, sale"
+                  placeholder="e.g. eid, promo, deal"
                   value={newTags}
                   onChange={(e) => setNewTags(e.target.value)}
-                  className="w-full px-3 py-2 border rounded-lg bg-background"
+                  className="w-full px-3 py-2 border border-border rounded-lg bg-background text-foreground"
                 />
               </div>
 
-              <div>
-                <label className="font-bold block mb-1">Media URL (S3 / R2 / Direct link)</label>
-                <input
-                  type="url"
-                  placeholder="https://..."
-                  value={newFileUrl}
-                  onChange={(e) => setNewFileUrl(e.target.value)}
-                  className="w-full px-3 py-2 border rounded-lg bg-background"
-                />
-              </div>
-
-              <div className="pt-3 flex items-center justify-end space-x-2">
+              <div className="pt-3 flex items-center justify-end space-x-2 border-t border-border">
                 <button
                   type="button"
                   onClick={() => setShowUploadModal(false)}
-                  className="px-4 py-2 border rounded-lg font-semibold hover:bg-muted"
+                  className="px-4 py-2 border border-border rounded-lg font-semibold hover:bg-muted text-muted-foreground"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg shadow-sm"
+                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg shadow-xs"
                 >
-                  Upload Asset
+                  Save to Library
                 </button>
               </div>
             </form>
