@@ -5,6 +5,7 @@ import { useWorkspace } from "../../../../hooks/useWorkspace"
 import { useAuth } from "../../../../hooks/useAuth"
 import { useTheme } from "../../../../hooks/useTheme"
 import { useRouter, usePathname } from "next/navigation"
+import { TopPlatformHeader } from "../../../../components/layout/TopPlatformHeader"
 
 export default function SafeLayout({ children }: { children: React.ReactNode }) {
   const { activeWorkspace } = useWorkspace()
@@ -67,102 +68,67 @@ export default function SafeLayout({ children }: { children: React.ReactNode }) 
   ]
 
   return (
-    <div className="flex h-screen bg-background text-foreground">
-      {/* 1. Sidebar */}
-      <aside className="w-64 border-r bg-card flex flex-col justify-between p-4 shadow-sm">
-        <div className="space-y-4">
-          <div className="flex items-center space-x-2 px-2 py-1">
-            <div className="h-7 w-7 rounded-lg bg-blue-600 flex items-center justify-center text-white font-black text-xs shadow-sm">
-              BMT
-            </div>
-            <div>
-              <span className="font-extrabold text-base tracking-tight block leading-none">BMT SAFE</span>
-              <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold">Official Graph API</span>
-            </div>
-          </div>
+    <div className="flex flex-col h-screen bg-background text-foreground overflow-hidden">
+      {/* 1. Global Top Platform Navigation Header (Per Client PDF Spec) */}
+      <TopPlatformHeader currentMode="SAFE" />
 
-          <nav className="space-y-4 overflow-y-auto max-h-[calc(100vh-210px)] pr-1 text-xs">
-            {navItems.map((group, idx) => (
-              <div key={idx} className="space-y-1">
-                <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground px-2 py-0.5">
-                  {group.category}
-                </div>
-                {group.items.map((item) => {
-                  const active = isActive(item.path)
-                  return (
-                    <button
-                      key={item.path}
-                      onClick={() => router.push(item.path)}
-                      className={`w-full text-left px-2.5 py-1.5 rounded-md transition font-medium text-xs flex items-center justify-between ${
-                        active
-                          ? "bg-blue-600 text-white font-semibold shadow-sm"
-                          : "hover:bg-muted text-muted-foreground hover:text-foreground"
-                      }`}
-                    >
-                      <span>{item.label}</span>
-                    </button>
-                  )
-                })}
+      {/* 2. Workspace Content with Sidebar */}
+      <div className="flex flex-1 overflow-hidden">
+        {/* Sidebar */}
+        <aside className="w-64 border-r bg-card flex flex-col justify-between p-4 shadow-sm shrink-0 overflow-y-auto">
+          <div className="space-y-4">
+            <div className="flex items-center space-x-2 px-2 py-1">
+              <div className="h-7 w-7 rounded-lg bg-blue-600 flex items-center justify-center text-white font-black text-xs shadow-sm">
+                FB
               </div>
-            ))}
-          </nav>
-        </div>
+              <div>
+                <span className="font-extrabold text-sm tracking-tight block leading-none">FACEBOOK SUITE</span>
+                <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold">🟢 SAFE Mode (Official API)</span>
+              </div>
+            </div>
 
-        <div className="space-y-3 pt-3 border-t">
-          <div className="flex items-center justify-between text-xs text-muted-foreground px-1">
-            <span className="truncate font-medium">Workspace: {activeWorkspace?.name || "Corporate"}</span>
+            <nav className="space-y-4 overflow-y-auto max-h-[calc(100vh-210px)] pr-1 text-xs">
+              {navItems.map((group, idx) => (
+                <div key={idx} className="space-y-1">
+                  <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground px-2 py-0.5">
+                    {group.category}
+                  </div>
+                  {group.items.map((item) => {
+                    const active = isActive(item.path)
+                    return (
+                      <button
+                        key={item.path}
+                        onClick={() => router.push(item.path)}
+                        className={`w-full text-left px-2.5 py-1.5 rounded-md transition font-medium text-xs flex items-center justify-between ${
+                          active
+                            ? "bg-blue-600 text-white font-semibold shadow-sm"
+                            : "hover:bg-muted text-muted-foreground hover:text-foreground"
+                        }`}
+                      >
+                        <span>{item.label}</span>
+                      </button>
+                    )
+                  })}
+                </div>
+              ))}
+            </nav>
           </div>
 
-          <button
-            onClick={() => router.push(`/workspace/${workspaceId}/advanced/connect-accounts`)}
-            className="w-full rounded-lg bg-orange-500/10 hover:bg-orange-500/20 text-orange-600 dark:text-orange-400 border border-orange-200 dark:border-orange-900 py-1.5 text-xs font-bold transition flex items-center justify-center space-x-1"
-          >
-            <span>⚡ Switch to ADVANCED</span>
-          </button>
-        </div>
-      </aside>
+          <div className="space-y-3 pt-3 border-t">
+            <div className="flex items-center justify-between text-xs text-muted-foreground px-1">
+              <span className="truncate font-medium">Workspace: {activeWorkspace?.name || "Corporate"}</span>
+            </div>
 
-      {/* 2. Main content area */}
-      <div className="flex-1 flex flex-col overflow-hidden">
-        {/* Topbar */}
-        <header className="h-14 border-b bg-card flex items-center justify-between px-6">
-          <div className="flex items-center space-x-2 text-xs text-muted-foreground">
-            <span className="font-semibold text-foreground">BMT Marketing OS</span>
-            <span>/</span>
-            <span className="bg-blue-100 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300 font-bold px-2 py-0.5 rounded text-[10px]">
-              SAFE Version
-            </span>
-          </div>
-
-          <div className="flex items-center space-x-4">
-            {/* Theme Toggle */}
             <button
-              onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-              className="p-1.5 border rounded-lg hover:bg-muted text-xs transition"
-              title="Toggle Light/Dark Theme"
+              onClick={() => router.push(`/workspace/${workspaceId}/advanced/connect-accounts`)}
+              className="w-full rounded-lg bg-orange-500/10 hover:bg-orange-500/20 text-orange-600 dark:text-orange-400 border border-orange-200 dark:border-orange-900 py-1.5 text-xs font-bold transition flex items-center justify-center space-x-1"
             >
-              {theme === "dark" ? "☀️ Light Mode" : "🌙 Dark Mode"}
+              <span>⚡ Switch to ADVANCED</span>
             </button>
-
-            {/* Profile Info */}
-            <div className="flex items-center space-x-3 text-xs">
-              <div className="flex items-center space-x-1.5">
-                <div className="h-6 w-6 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-[10px]">
-                  {user?.name ? user.name[0].toUpperCase() : "U"}
-                </div>
-                <span className="font-semibold">{user?.name || "Agency Admin"}</span>
-              </div>
-              <button
-                onClick={handleLogout}
-                className="px-2.5 py-1 border rounded-md text-xs hover:bg-destructive/10 text-destructive font-medium transition"
-              >
-                Logout
-              </button>
-            </div>
           </div>
-        </header>
+        </aside>
 
-        {/* View content */}
+        {/* Main content area */}
         <main className="flex-1 overflow-auto p-6 bg-muted/10">
           {children}
         </main>
