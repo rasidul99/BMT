@@ -147,11 +147,14 @@ export default function SafeDownloaderPage() {
   const handleSaveToLibrary = () => {
     if (!downloadedResult) return
 
+    const isAudio = downloadedResult.format.includes("Audio")
     addAsset({
       title: downloadedResult.title,
-      type: downloadedResult.format.includes("Audio") ? "Text" : "Video",
+      type: isAudio ? "Text" : "Video",
       folder: "Videos & Reels",
       url: downloadedResult.videoUrl,
+      videoUrl: downloadedResult.videoUrl,
+      thumbnailUrl: downloadedResult.thumbnailUrl,
       tags: ["downloaded", downloadedResult.platform.toLowerCase(), "reel", "hd"],
       size: downloadedResult.fileSize,
     })
@@ -330,9 +333,18 @@ export default function SafeDownloaderPage() {
               )}
 
               {isSavedToLibrary && (
-                <div className="p-2.5 bg-blue-500/10 border border-blue-500/30 rounded-lg text-blue-600 dark:text-blue-400 text-xs font-semibold flex items-center gap-2">
-                  <FileCheck className="w-4 h-4 shrink-0" />
-                  <span>✓ সেন্ট্রাল লাইব্রেরিতে (Videos & Reels) স্থায়ীভাবে যুক্ত করা হয়েছে!</span>
+                <div className="p-2.5 bg-blue-500/10 border border-blue-500/30 rounded-lg text-blue-600 dark:text-blue-400 text-xs font-semibold flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <FileCheck className="w-4 h-4 shrink-0 text-blue-500" />
+                    <span>✓ সেন্ট্রাল লাইব্রেরিতে (Videos & Reels) স্থায়ীভাবে যুক্ত করা হয়েছে!</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => router.push(`/workspace/${workspaceId}/safe/library`)}
+                    className="bg-blue-600 hover:bg-blue-700 text-white font-bold px-2.5 py-1 rounded text-[10px] transition shrink-0"
+                  >
+                    লাইব্রেরিতে দেখুন →
+                  </button>
                 </div>
               )}
             </div>

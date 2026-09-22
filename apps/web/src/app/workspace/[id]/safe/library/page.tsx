@@ -18,6 +18,7 @@ import {
   Check,
   Sparkles,
   Layers,
+  Download,
 } from "lucide-react"
 import { useAssetLibrary, LibraryAsset } from "../../../../../hooks/useAssetLibrary"
 
@@ -273,15 +274,39 @@ export default function SafeLibraryPage() {
             >
               <div className="space-y-2">
                 {/* Visual Preview according to type */}
-                {item.type === "Image" || item.type === "Video" || item.type === "Link" ? (
+                {item.type === "Video" ? (
+                  <div className="h-44 bg-black relative overflow-hidden group flex items-center justify-center">
+                    {item.videoUrl || (item.url && (item.url.endsWith(".mp4") || item.url.startsWith("/downloads/"))) ? (
+                      <video
+                        src={item.videoUrl || item.url}
+                        controls
+                        playsInline
+                        preload="metadata"
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <img
+                        src={item.thumbnailUrl || item.url || "https://images.unsplash.com/photo-1536240478700-b869070f9279?w=600&auto=format&fit=crop"}
+                        alt={item.title}
+                        className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
+                      />
+                    )}
+                    <span className="absolute top-2 left-2 bg-black/75 text-white text-[10px] font-bold px-2 py-0.5 rounded backdrop-blur flex items-center gap-1 pointer-events-none">
+                      <Video className="w-3 h-3 text-red-400" />
+                      <span>Video</span>
+                    </span>
+                    <span className="absolute top-2 right-2 bg-blue-600 text-white text-[10px] font-bold px-2 py-0.5 rounded shadow-xs pointer-events-none">
+                      {item.folder}
+                    </span>
+                  </div>
+                ) : item.type === "Image" || item.type === "Link" ? (
                   <div className="h-44 bg-muted relative overflow-hidden group">
                     <img
-                      src={item.url}
+                      src={item.url || "https://images.unsplash.com/photo-1522335789203-aabd1fc54bc9?w=600&auto=format&fit=crop"}
                       alt={item.title}
                       className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
                     />
                     <span className="absolute top-2 left-2 bg-black/75 text-white text-[10px] font-bold px-2 py-0.5 rounded backdrop-blur flex items-center gap-1">
-                      {item.type === "Video" && <Video className="w-3 h-3 text-red-400" />}
                       {item.type === "Image" && <ImageIcon className="w-3 h-3 text-blue-400" />}
                       {item.type === "Link" && <LinkIcon className="w-3 h-3 text-purple-400" />}
                       <span>{item.type}</span>
@@ -363,6 +388,16 @@ export default function SafeLibraryPage() {
                   <CalendarClock className="w-3.5 h-3.5" />
                   <span>Use in Scheduler</span>
                 </button>
+                {item.type === "Video" && (item.videoUrl || item.url) && (
+                  <a
+                    href={`/api/media/download?format=video&filename=${encodeURIComponent(item.title.slice(0, 30))}.mp4&file=${encodeURIComponent(item.videoUrl || item.url || "")}`}
+                    download
+                    className="p-1.5 border border-border hover:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-lg text-xs transition"
+                    title="Download to PC"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                  </a>
+                )}
                 <button
                   onClick={() => handleDelete(item.id, item.title)}
                   className="p-1.5 border border-border hover:bg-destructive/10 text-destructive rounded-lg text-xs transition"

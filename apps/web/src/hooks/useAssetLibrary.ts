@@ -9,6 +9,8 @@ export interface LibraryAsset {
   folder: "Product Photos" | "Videos & Reels" | "Captions & Copy" | "Link Cards" | "Polls & Surveys"
   content?: string // For Text / Captions or Poll Question
   url?: string // Media URL / Thumbnail URL
+  videoUrl?: string // Direct video stream/file URL
+  thumbnailUrl?: string // Direct thumbnail image URL
   targetUrl?: string // For Clickable Link cards
   pollOptions?: string[] // For Poll items
   tags: string[]
@@ -38,7 +40,9 @@ export function useAssetLibrary() {
       title: "Eid Mega Sale 2026 Viral Video Reel (1080p)",
       type: "Video",
       folder: "Videos & Reels",
-      url: "https://images.unsplash.com/photo-1536240478700-b869070f9279?w=600&auto=format&fit=crop",
+      url: "/sample-video.mp4",
+      videoUrl: "/sample-video.mp4",
+      thumbnailUrl: "https://images.unsplash.com/photo-1536240478700-b869070f9279?w=600&auto=format&fit=crop",
       tags: ["video", "reel", "eid-sale"],
       size: "18.5 MB (AWS S3)",
       uploadedAt: "2026-08-02",
@@ -80,22 +84,21 @@ export function useAssetLibrary() {
   const loadAssets = useCallback(() => {
     if (typeof window === "undefined") return
 
-    const saved = localStorage.getItem(STORAGE_KEY)
-    if (saved) {
-      try {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY)
+      if (saved) {
         const parsed = JSON.parse(saved)
         if (Array.isArray(parsed) && parsed.length > 0) {
           setAssets(parsed)
-        } else {
-          setAssets(defaultAssets)
-          localStorage.setItem(STORAGE_KEY, JSON.stringify(defaultAssets))
+          setIsLoaded(true)
+          return
         }
-      } catch {
-        setAssets(defaultAssets)
       }
-    } else {
       setAssets(defaultAssets)
       localStorage.setItem(STORAGE_KEY, JSON.stringify(defaultAssets))
+    } catch (e) {
+      console.warn("Failed to parse library assets from localStorage:", e)
+      setAssets(defaultAssets)
     }
     setIsLoaded(true)
   }, [])
@@ -119,29 +122,74 @@ export function useAssetLibrary() {
   const saveToStorage = (updated: LibraryAsset[]) => {
     setAssets(updated)
     if (typeof window !== "undefined") {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(updated))
-      window.dispatchEvent(new Event("bmt_library_update"))
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(updated))
+        window.dispatchEvent(new Event("bmt_library_update"))
+      } catch (e) {
+        console.error("Failed to write assets to localStorage:", e)
+      }
     }
   }
 
   const addAsset = (newAsset: Omit<LibraryAsset, "id" | "uploadedAt">): LibraryAsset => {
+    let currentAssets: LibraryAsset[] = []
+    if (typeof window !== "undefined") {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY)
+        if (raw) {
+          const parsed = JSON.parse(raw)
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            currentAssets = parsed
+          }
+        }
+      } catch (e) {
+        console.error("Error reading localStorage in addAsset:", e)
+      }
+    }
+
+    if (currentAssets.length === 0) {
+      currentAssets = assets.length > 0 ? assets : defaultAssets
+    }
+
     const asset: LibraryAsset = {
       ...newAsset,
       id: `lib-${Date.now()}`,
       uploadedAt: new Date().toISOString().split("T")[0],
     }
-    const updated = [asset, ...assets]
+
+    // Insert new asset at the top of the array
+    const updated = [asset, ...currentAssets]
     saveToStorage(updated)
     return asset
   }
 
   const deleteAsset = (id: string) => {
-    const updated = assets.filter((item) => item.id !== id)
+    let current = assets
+    if (typeof window !== "undefined") {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY)
+        if (raw) {
+          const parsed = JSON.parse(raw)
+          if (Array.isArray(parsed)) current = parsed
+        }
+      } catch {}
+    }
+    const updated = current.filter((item) => item.id !== id)
     saveToStorage(updated)
   }
 
   const updateAsset = (id: string, changes: Partial<LibraryAsset>) => {
-    const updated = assets.map((item) => (item.id === id ? { ...item, ...changes } : item))
+    let current = assets
+    if (typeof window !== "undefined") {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY)
+        if (raw) {
+          const parsed = JSON.parse(raw)
+          if (Array.isArray(parsed)) current = parsed
+        }
+      } catch {}
+    }
+    const updated = current.map((item) => (item.id === id ? { ...item, ...changes } : item))
     saveToStorage(updated)
   }
 
