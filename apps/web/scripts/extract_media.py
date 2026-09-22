@@ -1,6 +1,7 @@
 import sys
 import json
 import os
+import subprocess
 import warnings
 
 # Suppress all python warnings
@@ -13,6 +14,51 @@ except Exception:
     pass
 
 import yt_dlp
+
+def ensure_universal_h264(file_path):
+    """
+    Ensure video is encoded in universal H.264 (AVC) so default Windows Media Player,
+    QuickTime, and all mobile/desktop players can play video + audio without missing codecs.
+    """
+    if not os.path.exists(file_path) or not file_path.endswith('.mp4'):
+        return
+
+    try:
+        # Check current video codec
+        probe_cmd = [
+            'ffprobe', '-v', 'error',
+            '-select_streams', 'v:0',
+            '-show_entries', 'stream=codec_name',
+            '-of', 'default=noprint_wrappers=1:nokey=1',
+            file_path
+        ]
+        codec = subprocess.check_output(probe_cmd).decode('utf-8', errors='ignore').strip().lower()
+
+        # If already H.264 / AVC, nothing to do
+        if codec in ['h264', 'avc', 'avc1']:
+            return
+
+        # If AV1, VP9, or other non-universal codec, quickly transcode video to H.264 with audio copied
+        dir_name = os.path.dirname(file_path)
+        base_name = os.path.basename(file_path)
+        temp_path = os.path.join(dir_name, f"transcoded_{base_name}")
+
+        ffmpeg_cmd = [
+            'ffmpeg', '-y',
+            '-i', file_path,
+            '-c:v', 'libx264',
+            '-preset', 'veryfast',
+            '-crf', '22',
+            '-c:a', 'copy',
+            temp_path
+        ]
+        subprocess.run(ffmpeg_cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True)
+
+        if os.path.exists(temp_path) and os.path.getsize(temp_path) > 0:
+            os.replace(temp_path, file_path)
+    except Exception as e:
+        # If transcode fails, retain original file
+        pass
 
 def main():
     if len(sys.argv) < 3:
@@ -70,6 +116,10 @@ def main():
                         filename = f
                         file_path = os.path.join(output_dir, f)
                         break
+
+            # Guarantee Universal H.264 Playback for Windows Media Player & all devices
+            if not is_audio and os.path.exists(file_path):
+                ensure_universal_h264(file_path)
 
             file_size_mb = "2.4 MB"
             if os.path.exists(file_path):
