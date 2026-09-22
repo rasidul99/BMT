@@ -43,9 +43,9 @@ export default function SafeDownloaderPage() {
   const [isSavedToLibrary, setIsSavedToLibrary] = useState(false)
   const [isDownloadedToPC, setIsDownloadedToPC] = useState(false)
 
-  // Public sample working video for realistic playback & real download
-  const sampleVideoUrl = "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4"
-  const sampleAudioUrl = "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3"
+  // Local sample media for guaranteed 100% reliable playback & real download
+  const sampleVideoUrl = "/sample-video.mp4"
+  const sampleAudioUrl = "/sample-audio.mp3"
 
   const handleStartExtraction = (e: React.FormEvent) => {
     e.preventDefault()
@@ -96,18 +96,18 @@ export default function SafeDownloaderPage() {
     }, 2000)
   }
 
-  // 1. Native Download Directly to User's PC (Downloads Folder)
+  // 1. Native Download Directly to User's PC (Downloads Folder) via API Route
   const handleDownloadToComputer = () => {
     if (!downloadedResult) return
 
     const isVideo = downloadedResult.format.includes("Video")
     const filename = `${downloadedResult.platform.toLowerCase()}_media_${Date.now()}.${isVideo ? "mp4" : "mp3"}`
+    const downloadEndpoint = `/api/media/download?format=${isVideo ? "video" : "audio"}&filename=${encodeURIComponent(filename)}`
 
-    // Create real browser download anchor
+    // Create real browser download anchor calling API with Content-Disposition: attachment
     const link = document.createElement("a")
-    link.href = downloadedResult.videoUrl
-    link.download = filename
-    link.target = "_blank"
+    link.href = downloadEndpoint
+    link.setAttribute("download", filename)
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)
@@ -252,7 +252,10 @@ export default function SafeDownloaderPage() {
                 <video
                   src={downloadedResult.videoUrl}
                   controls
+                  autoPlay
+                  muted
                   playsInline
+                  preload="auto"
                   className="w-full h-full object-cover"
                 />
               ) : (
