@@ -1,122 +1,125 @@
 "use client"
 
 import React from "react"
+import { useRouter, usePathname } from "next/navigation"
+import {
+  Workflow,
+  KeyRound,
+  CalendarClock,
+  Users,
+  MessageSquare,
+  Bot,
+  UserPlus,
+  UserMinus,
+  Ban,
+  Target,
+  ShieldCheck,
+} from "lucide-react"
 import { useWorkspace } from "../../../../hooks/useWorkspace"
-import { useAuth } from "../../../../hooks/useAuth"
-import { useTheme } from "../../../../hooks/useTheme"
-import { useRouter } from "next/navigation"
 import { TopPlatformHeader } from "../../../../components/layout/TopPlatformHeader"
+import { useSidebarStore } from "../../../../stores/sidebar.store"
 
 export default function AdvancedLayout({ children }: { children: React.ReactNode }) {
   const { activeWorkspace, selectMode } = useWorkspace()
-  const { user, logout } = useAuth()
-  const { theme, setTheme } = useTheme()
+  const { isCollapsed } = useSidebarStore()
   const router = useRouter()
+  const pathname = usePathname()
 
-  const handleLogout = () => {
-    logout()
-    router.push("/auth/login")
-  }
+  const workspaceId = activeWorkspace?.id || "workspace-1"
+  const isActive = (path: string) => pathname.includes(path)
 
   const handleModeSwitch = () => {
     selectMode("SAFE")
-    router.push(`/workspace/${activeWorkspace?.id || "workspace-1"}/safe/dashboard`)
+    router.push(`/workspace/${workspaceId}/safe/dashboard`)
   }
+
+  const advancedNav = [
+    { label: "Topological Workflow Designer", icon: Workflow, path: `/workspace/${workspaceId}/advanced/designer` },
+    { label: "Connect Accounts (100 FB/Pages)", icon: KeyRound, path: `/workspace/${workspaceId}/advanced/connect-accounts` },
+    { label: "Post Scheduler & AI Variations", icon: CalendarClock, path: `/workspace/${workspaceId}/advanced/post-scheduler` },
+    { label: "Post A Group Engine", icon: Users, path: `/workspace/${workspaceId}/advanced/group-poster` },
+    { label: "Smart Comment Assistant", icon: MessageSquare, path: `/workspace/${workspaceId}/advanced/comment-assistant` },
+    { label: "Messenger Controller Bot", icon: Bot, path: `/workspace/${workspaceId}/advanced/messenger-controller` },
+    { label: "Friend Request & Accept Engine", icon: UserPlus, path: `/workspace/${workspaceId}/advanced/friend-automation` },
+    { label: "Unfriend Inactive Users", icon: UserMinus, path: `/workspace/${workspaceId}/advanced/unfriend-inactive` },
+    { label: "Link Comment Auto-Deleter", icon: Ban, path: `/workspace/${workspaceId}/advanced/link-comment-block` },
+    { label: "Active Group & Link Hunter", icon: Target, path: `/workspace/${workspaceId}/advanced/group-hunter` },
+  ]
 
   return (
     <div className="flex flex-col h-screen bg-background text-foreground overflow-hidden">
-      {/* 1. Global Top Platform Navigation Header (Per Client PDF Spec) */}
+      {/* 1. Global Top Platform Navigation Header */}
       <TopPlatformHeader currentMode="ADVANCED" />
 
       {/* 2. Workspace Content with Sidebar */}
       <div className="flex flex-1 overflow-hidden">
         {/* Sidebar */}
-        <aside className="w-64 border-r bg-card flex flex-col justify-between p-4 shadow-sm shrink-0 overflow-y-auto">
-          <div className="space-y-4">
-            <div className="flex items-center space-x-2 px-2 py-1">
-              <div className="h-7 w-7 rounded-lg bg-orange-600 flex items-center justify-center text-white font-black text-xs shadow-sm">
+        <aside
+          className={`border-r border-border bg-card flex flex-col justify-between transition-all duration-300 shadow-sm shrink-0 overflow-hidden ${
+            isCollapsed ? "w-16 p-2" : "w-64 p-3"
+          }`}
+        >
+          <div className="space-y-3 overflow-hidden flex flex-col flex-1">
+            {/* Sidebar Sub-Header */}
+            <div className={`flex items-center gap-2 px-1 py-1 ${isCollapsed ? "justify-center" : ""}`}>
+              <div className="h-7 w-7 rounded-lg bg-orange-600 flex items-center justify-center text-white font-black text-xs shadow-xs shrink-0">
                 FB
               </div>
-              <div>
-                <span className="font-extrabold text-sm tracking-tight block leading-none">FACEBOOK SUITE</span>
-                <span className="text-[10px] text-orange-600 dark:text-orange-400 font-bold">⚡ ADVANCED (High Power)</span>
-              </div>
+              {!isCollapsed && (
+                <div className="overflow-hidden">
+                  <span className="font-extrabold text-xs tracking-tight block truncate">FACEBOOK MARKETING</span>
+                  <span className="text-[10px] text-orange-600 dark:text-orange-400 font-bold block">⚡ ADVANCED (High Power)</span>
+                </div>
+              )}
             </div>
 
-            <nav className="space-y-1 overflow-y-auto max-h-[calc(100vh-210px)] pr-1 text-xs">
-              <div className="text-[10px] font-bold uppercase tracking-wider text-orange-600 dark:text-orange-400 px-3 py-1">Active Automations (Risk Mode)</div>
-              <button
-                onClick={() => router.push(`/workspace/${activeWorkspace?.id || "workspace-1"}/advanced/designer`)}
-                className="w-full text-left px-3 py-1.5 rounded-lg bg-orange-50 dark:bg-orange-900/20 text-orange-700 dark:text-orange-400 font-semibold text-xs"
-              >
-                🎨 Topological Workflow Designer
-              </button>
-              <button
-                onClick={() => router.push(`/workspace/${activeWorkspace?.id || "workspace-1"}/advanced/connect-accounts`)}
-                className="w-full text-left px-3 py-1.5 rounded-lg hover:bg-muted text-muted-foreground text-xs font-medium"
-              >
-                🔐 Connect Accounts (100 FB/Pages)
-              </button>
-              <button
-                onClick={() => router.push(`/workspace/${activeWorkspace?.id || "workspace-1"}/advanced/post-scheduler`)}
-                className="w-full text-left px-3 py-1.5 rounded-lg hover:bg-muted text-muted-foreground text-xs font-medium"
-              >
-                📢 Post Scheduler & AI Variations
-              </button>
-              <button
-                onClick={() => router.push(`/workspace/${activeWorkspace?.id || "workspace-1"}/advanced/group-poster`)}
-                className="w-full text-left px-3 py-1.5 rounded-lg hover:bg-muted text-muted-foreground text-xs font-medium"
-              >
-                👥 Post A Group Engine
-              </button>
-              <button
-                onClick={() => router.push(`/workspace/${activeWorkspace?.id || "workspace-1"}/advanced/comment-assistant`)}
-                className="w-full text-left px-3 py-1.5 rounded-lg hover:bg-muted text-muted-foreground text-xs font-medium"
-              >
-                💬 Smart Comment Assistant
-              </button>
-              <button
-                onClick={() => router.push(`/workspace/${activeWorkspace?.id || "workspace-1"}/advanced/messenger-controller`)}
-                className="w-full text-left px-3 py-1.5 rounded-lg hover:bg-muted text-muted-foreground text-xs font-medium"
-              >
-                📬 Messenger Controller Bot
-              </button>
-              <button
-                onClick={() => router.push(`/workspace/${activeWorkspace?.id || "workspace-1"}/advanced/friend-automation`)}
-                className="w-full text-left px-3 py-1.5 rounded-lg hover:bg-muted text-muted-foreground text-xs font-medium"
-              >
-                🤝 Friend Request & Accept Engine
-              </button>
-              <button
-                onClick={() => router.push(`/workspace/${activeWorkspace?.id || "workspace-1"}/advanced/unfriend-inactive`)}
-                className="w-full text-left px-3 py-1.5 rounded-lg hover:bg-muted text-muted-foreground text-xs font-medium"
-              >
-                🧹 Unfriend Inactive Users
-              </button>
-              <button
-                onClick={() => router.push(`/workspace/${activeWorkspace?.id || "workspace-1"}/advanced/link-comment-block`)}
-                className="w-full text-left px-3 py-1.5 rounded-lg hover:bg-muted text-muted-foreground text-xs font-medium"
-              >
-                🚫 Link Comment Auto-Deleter
-              </button>
-              <button
-                onClick={() => router.push(`/workspace/${activeWorkspace?.id || "workspace-1"}/advanced/group-hunter`)}
-                className="w-full text-left px-3 py-1.5 rounded-lg hover:bg-muted text-muted-foreground text-xs font-medium"
-              >
-                🎯 Active Group & Link Hunter
-              </button>
+            {/* Nav list */}
+            <nav className="space-y-1 overflow-y-auto flex-1 pr-0.5 text-xs no-scrollbar">
+              {!isCollapsed && (
+                <div className="text-[10px] font-bold uppercase tracking-wider text-orange-600 dark:text-orange-400 px-2 py-1">
+                  Active Automations
+                </div>
+              )}
+              {advancedNav.map((item) => {
+                const active = isActive(item.path)
+                const Icon = item.icon
+                return (
+                  <button
+                    key={item.path}
+                    onClick={() => router.push(item.path)}
+                    title={isCollapsed ? item.label : undefined}
+                    className={`w-full rounded-lg transition font-medium text-xs flex items-center gap-2.5 ${
+                      isCollapsed ? "justify-center p-2.5" : "px-2.5 py-2 text-left"
+                    } ${
+                      active
+                        ? "bg-orange-600 text-white font-semibold shadow-xs"
+                        : "hover:bg-muted text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    <Icon className={`w-4 h-4 shrink-0 ${active ? "text-white" : "text-muted-foreground"}`} />
+                    {!isCollapsed && <span className="truncate">{item.label}</span>}
+                  </button>
+                )
+              })}
             </nav>
           </div>
 
-          <div className="space-y-3 pt-3 border-t">
-            <div className="text-xs text-muted-foreground px-1">
-              Workspace: {activeWorkspace?.name || "Corporate"}
-            </div>
+          {/* Footer mode switch */}
+          <div className="pt-2 border-t border-border mt-2">
+            {!isCollapsed && (
+              <div className="text-[11px] text-muted-foreground px-1 mb-2 truncate">
+                Workspace: {activeWorkspace?.name || "Corporate"}
+              </div>
+            )}
             <button
               onClick={handleModeSwitch}
-              className="w-full rounded bg-blue-600 hover:bg-blue-700 text-white py-1.5 text-xs font-semibold shadow-sm transition"
+              title="Switch to SAFE Mode"
+              className={`w-full rounded-lg bg-blue-600 hover:bg-blue-700 text-white py-2 text-xs font-semibold shadow-xs transition flex items-center justify-center gap-1.5 ${
+                isCollapsed ? "p-2" : "px-2"
+              }`}
             >
-              🟢 Switch to SAFE Mode
+              <ShieldCheck className="w-3.5 h-3.5 text-white shrink-0" />
+              {!isCollapsed && <span>Switch to SAFE Mode</span>}
             </button>
           </div>
         </aside>
