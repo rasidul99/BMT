@@ -278,6 +278,7 @@ export default function SafeDownloaderPage() {
             <div className="rounded-lg overflow-hidden border border-border bg-black aspect-video flex items-center justify-center relative shadow-inner">
               {downloadedResult.format.includes("Video") ? (
                 <video
+                  key={downloadedResult.videoUrl}
                   src={downloadedResult.videoUrl}
                   controls
                   autoPlay
@@ -289,7 +290,7 @@ export default function SafeDownloaderPage() {
               ) : (
                 <div className="p-6 text-center space-y-3 w-full">
                   <Music className="w-12 h-12 text-purple-400 mx-auto" />
-                  <audio src={downloadedResult.videoUrl} controls className="w-full mt-2" />
+                  <audio key={downloadedResult.videoUrl} src={downloadedResult.videoUrl} controls className="w-full mt-2" />
                 </div>
               )}
             </div>

@@ -6,14 +6,20 @@ import warnings
 # Suppress all python warnings
 warnings.filterwarnings("ignore")
 
+try:
+    import static_ffmpeg
+    static_ffmpeg.add_paths()
+except Exception:
+    pass
+
 import yt_dlp
 
 def main():
     if len(sys.argv) < 3:
-        print(json.dumps({"error": "Missing url or output_dir"}))
+        print(json.dumps({"success": False, "error": "Missing url or output_dir"}))
         sys.exit(1)
 
-    url = sys.argv[1]
+    url = sys.argv[1].strip()
     output_dir = sys.argv[2]
     media_format = sys.argv[3] if len(sys.argv) > 3 else "video"
 
@@ -34,17 +40,20 @@ def main():
             'preferredquality': '192',
         }]
     else:
-        ydl_opts['format'] = 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best'
+        # Prioritize pre-merged single MP4 streams (hd, sd, best[ext=mp4]) for maximum speed and compatibility
+        ydl_opts['format'] = 'hd/sd/b/best[ext=mp4]/bestvideo+bestaudio/best'
 
     try:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(url, download=True)
-            
+            if not info:
+                raise Exception("Could not extract video metadata from given URL")
+
             content_id = str(info.get('id', 'media_' + str(int(os.times()[4]))))
-            title = info.get('title') or info.get('description') or f"Media {content_id}"
-            clean_title = ' '.join(title.splitlines())[:120].strip()
-            
-            duration = info.get('duration', 0)
+            raw_title = info.get('title') or info.get('description') or f"Facebook Reel #{content_id[-6:]}"
+            clean_title = ' '.join(raw_title.splitlines())[:120].strip()
+
+            duration = info.get('duration') or 0
             mins = int(duration // 60)
             secs = int(duration % 60)
             duration_str = f"{mins}:{secs:02d} min"
@@ -57,12 +66,12 @@ def main():
             # If not matching exact ext, find file starting with content_id
             if not os.path.exists(file_path):
                 for f in os.listdir(output_dir):
-                    if f.startswith(content_id):
+                    if f.startswith(content_id) and not f.endswith(".part"):
                         filename = f
                         file_path = os.path.join(output_dir, f)
                         break
 
-            file_size_mb = "1.5 MB"
+            file_size_mb = "2.4 MB"
             if os.path.exists(file_path):
                 size_bytes = os.path.getsize(file_path)
                 file_size_mb = f"{(size_bytes / (1024 * 1024)):.1f} MB"
@@ -77,7 +86,6 @@ def main():
                 "videoUrl": f"/downloads/{filename}",
                 "thumbnailUrl": info.get('thumbnail') or ""
             }
-            # Pure JSON output
             print(json.dumps(result))
     except Exception as e:
         print(json.dumps({"success": False, "error": str(e)}))
