@@ -247,10 +247,23 @@ export default function SafeAIVariationsPage() {
   // 3. Dispatch to Post Scheduler (Module 9)
   const handleSendToScheduler = (item: VariationItem) => {
     const fullContent = `${item.headline}\n\n${item.body}\n\n${item.hashtags}\n${item.cta}`
+    const titleText = `[${item.tone}] ${productName}`
+    const formatType = item.format === "Group Share" ? "Post" : item.format
+
+    if (typeof window !== "undefined") {
+      sessionStorage.setItem(
+        "bmt_imported_scheduler_post",
+        JSON.stringify({
+          title: titleText,
+          description: fullContent,
+          format: formatType,
+        })
+      )
+    }
+
     const query = new URLSearchParams({
-      importedTitle: `[${item.tone}] ${productName}`,
-      importedContent: fullContent,
-      importedFormat: item.format === "Group Share" ? "Post" : item.format,
+      importedTitle: titleText,
+      importedFormat: formatType,
     }).toString()
 
     router.push(`/workspace/${workspaceId}/safe/post-scheduler?${query}`)

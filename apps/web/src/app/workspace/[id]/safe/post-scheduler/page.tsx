@@ -336,23 +336,50 @@ export default function SafePostSchedulerPage() {
   ]
 
   useEffect(() => {
+    // 1. Check sessionStorage transfer first (safe multi-line copy without URL length or encoding issues)
+    if (typeof window !== "undefined") {
+      const stored = sessionStorage.getItem("bmt_imported_scheduler_post")
+      if (stored) {
+        try {
+          const parsed = JSON.parse(stored)
+          if (parsed.title) setTitle(parsed.title)
+          if (parsed.description) setDescription(parsed.description)
+          if (parsed.format && ["Text", "Image", "Video", "Reel", "Story", "Poll"].includes(parsed.format)) {
+            setPostFormat(parsed.format as any)
+          }
+          sessionStorage.removeItem("bmt_imported_scheduler_post")
+          return
+        } catch {}
+      }
+    }
+
     if (libraryAssetId) {
       setMediaUrl("https://images.unsplash.com/photo-1590658268037-6bf12165a8df?w=600&auto=format&fit=crop")
     }
 
-    const importedContent = searchParams.get("importedContent")
-    const importedTitle = searchParams.get("importedTitle")
-    const importedMedia = searchParams.get("importedMedia")
+    const safeParam = (paramName: string) => {
+      const val = searchParams.get(paramName)
+      if (!val) return null
+      try {
+        return decodeURIComponent(val)
+      } catch {
+        return val
+      }
+    }
+
+    const importedContent = safeParam("importedContent")
+    const importedTitle = safeParam("importedTitle")
+    const importedMedia = safeParam("importedMedia")
     const importedFormat = searchParams.get("importedFormat")
 
     if (importedContent) {
-      setDescription(decodeURIComponent(importedContent))
+      setDescription(importedContent)
     }
     if (importedTitle) {
-      setTitle(decodeURIComponent(importedTitle))
+      setTitle(importedTitle)
     }
     if (importedMedia) {
-      setMediaUrl(decodeURIComponent(importedMedia))
+      setMediaUrl(importedMedia)
     }
     if (importedFormat && ["Text", "Image", "Video", "Reel", "Story", "Poll"].includes(importedFormat)) {
       setPostFormat(importedFormat as any)
