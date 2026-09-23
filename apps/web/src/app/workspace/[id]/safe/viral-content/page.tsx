@@ -565,19 +565,23 @@ export default function SafeViralContentPage() {
 
                         {/* Top Badges */}
                         <div className="absolute top-2.5 left-2.5 right-2.5 flex items-center justify-between">
-                          <span
-                            className={`text-[10px] font-extrabold px-2 py-0.5 rounded-md shadow-sm ${
-                              item.platform === "Facebook"
-                                ? "bg-blue-600 text-white"
-                                : item.platform === "YouTube"
-                                ? "bg-red-600 text-white"
-                                : "bg-black/90 text-teal-300 border border-teal-500/40"
-                            }`}
-                          >
-                            {item.platform === "Facebook" && "📘 Reel"}
-                            {item.platform === "YouTube" && "▶️ YouTube"}
-                            {item.platform === "TikTok" && "🎵 TikTok"}
-                          </span>
+                          {(() => {
+                            const isFb = item.url.includes("facebook.com")
+                            const isTt = item.url.includes("tiktok.com")
+                            const isYt = item.url.includes("youtube.com") || item.url.includes("youtu.be")
+                            const badgeColor = isFb
+                              ? "bg-blue-600 text-white"
+                              : isTt
+                              ? "bg-black/90 text-teal-300 border border-teal-500/40"
+                              : "bg-red-600 text-white"
+                            const badgeLabel = isFb ? "📘 Facebook Reel" : isTt ? "🎵 TikTok" : "▶️ YouTube"
+
+                            return (
+                              <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-md shadow-sm ${badgeColor}`}>
+                                {badgeLabel}
+                              </span>
+                            )
+                          })()}
 
                           <button
                             onClick={() => toggleBookmark(item)}
@@ -719,14 +723,26 @@ export default function SafeViralContentPage() {
                       </button>
 
                       {/* View Original External Link */}
-                      <a
-                        href={item.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="w-full text-center block text-[10px] text-muted-foreground hover:text-foreground font-semibold pt-1"
-                      >
-                        🔗 View original on {item.platform} &rarr;
-                      </a>
+                      {(() => {
+                        const targetSource = item.url.includes("facebook.com")
+                          ? "Facebook"
+                          : item.url.includes("tiktok.com")
+                          ? "TikTok"
+                          : item.url.includes("youtube.com") || item.url.includes("youtu.be")
+                          ? "YouTube"
+                          : item.platform
+
+                        return (
+                          <a
+                            href={item.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="w-full text-center block text-[10px] text-muted-foreground hover:text-foreground font-semibold pt-1"
+                          >
+                            🔗 View original on {targetSource} &rarr;
+                          </a>
+                        )
+                      })()}
                     </div>
                   </div>
                 )
