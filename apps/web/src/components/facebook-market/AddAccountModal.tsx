@@ -106,7 +106,10 @@ export function AddAccountModal({ isOpen, onClose, onAdd, currentCount }: AddAcc
               </div>
 
               <div>
-                <label className="text-[10px] font-bold text-muted-foreground uppercase">Facebook UID</label>
+                <label className="text-[10px] font-bold text-muted-foreground uppercase flex items-center justify-between">
+                  <span>Facebook UID</span>
+                  <span className="text-[9px] text-blue-500 font-normal lowercase">numeric id from profile</span>
+                </label>
                 <input
                   type="text"
                   required
@@ -149,9 +152,12 @@ export function AddAccountModal({ isOpen, onClose, onAdd, currentCount }: AddAcc
 
           {/* Authentication Credentials */}
           <div className="space-y-3 bg-muted/30 p-3.5 rounded-xl border border-border/60">
-            <div className="font-bold text-[11px] text-foreground flex items-center space-x-1.5">
-              <KeyRound className="w-3.5 h-3.5 text-amber-500" />
-              <span>Authentication Token / Cookie</span>
+            <div className="font-bold text-[11px] text-foreground flex items-center justify-between">
+              <div className="flex items-center space-x-1.5">
+                <KeyRound className="w-3.5 h-3.5 text-amber-500" />
+                <span>Authentication Token / Cookie</span>
+              </div>
+              <span className="text-[10px] text-muted-foreground font-normal">Use Cookie-Editor extension or Meta Developer Token</span>
             </div>
 
             <div className="grid grid-cols-2 gap-2.5">
@@ -197,9 +203,12 @@ export function AddAccountModal({ isOpen, onClose, onAdd, currentCount }: AddAcc
 
           {/* Dedicated Proxy Configuration */}
           <div className="space-y-3 bg-muted/30 p-3.5 rounded-xl border border-border/60">
-            <div className="font-bold text-[11px] text-foreground flex items-center space-x-1.5">
-              <Server className="w-3.5 h-3.5 text-emerald-500" />
-              <span>Dedicated Proxy (Anti-Ban Isolation)</span>
+            <div className="font-bold text-[11px] text-foreground flex items-center justify-between">
+              <div className="flex items-center space-x-1.5">
+                <Server className="w-3.5 h-3.5 text-emerald-500" />
+                <span>Dedicated Proxy (Anti-Ban Isolation)</span>
+              </div>
+              <span className="text-[10px] text-muted-foreground font-normal">Prevents Facebook account linkage bans</span>
             </div>
 
             <div className="grid grid-cols-3 gap-2">

@@ -87,23 +87,83 @@ export function BulkImportModal({
           </div>
         </div>
 
-        {/* Format Explanation */}
-        <div className="p-3 bg-blue-500/10 border border-blue-500/20 rounded-xl space-y-1.5 text-xs">
+        {/* Format Explanation & Interactive Guide */}
+        <div className="p-3.5 bg-blue-500/10 border border-blue-500/20 rounded-xl space-y-2.5 text-xs">
           <div className="flex items-center justify-between font-bold text-blue-600 dark:text-blue-400">
-            <span className="flex items-center space-x-1">
-              <HelpCircle className="w-3.5 h-3.5" />
+            <span className="flex items-center space-x-1.5">
+              <HelpCircle className="w-4 h-4" />
               <span>Standard Industry Import Format (1 per line):</span>
             </span>
             <button
+              type="button"
               onClick={handleFillSample}
-              className="text-[11px] underline hover:no-underline font-semibold"
+              className="text-[11px] bg-blue-600/10 hover:bg-blue-600/20 text-blue-600 dark:text-blue-400 px-2 py-0.5 rounded font-semibold transition-colors"
             >
               Fill Sample Template
             </button>
           </div>
-          <div className="font-mono text-[11px] bg-background/80 p-2 rounded border text-muted-foreground select-all">
-            UID | Token_Or_Cookie | Proxy_IP:Port[:User:Pass] | Account_Name
+
+          <div className="font-mono text-[11px] bg-background/90 p-2.5 rounded-lg border border-border/80 text-muted-foreground flex flex-wrap gap-2 items-center">
+            <span className="bg-blue-500/10 text-blue-600 dark:text-blue-400 px-1.5 py-0.5 rounded font-semibold" title="Numeric Facebook User ID (e.g. 100084729182341)">
+              UID
+            </span>
+            <span className="text-muted-foreground/40">|</span>
+            <span className="bg-purple-500/10 text-purple-600 dark:text-purple-400 px-1.5 py-0.5 rounded font-semibold" title="Cookie string (c_user=...; xs=...) or Graph API Access Token (EAAG...)">
+              Token_Or_Cookie
+            </span>
+            <span className="text-muted-foreground/40">|</span>
+            <span className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 px-1.5 py-0.5 rounded font-semibold" title="Proxy IP:Port or IP:Port:User:Password for isolated anti-ban routing">
+              Proxy_IP:Port[:User:Pass]
+            </span>
+            <span className="text-muted-foreground/40">|</span>
+            <span className="bg-amber-500/10 text-amber-600 dark:text-amber-400 px-1.5 py-0.5 rounded font-semibold" title="Friendly Account or Persona Name">
+              Account_Name
+            </span>
           </div>
+
+          {/* Quick Helper Accordion / Tooltip Guide */}
+          <details className="group pt-1">
+            <summary className="cursor-pointer text-[11px] font-bold text-blue-600 dark:text-blue-400 hover:underline flex items-center space-x-1 select-none">
+              <span>📖 How & where do I get these credentials? (Click to view guide)</span>
+            </summary>
+            <div className="mt-2.5 grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px] leading-relaxed text-muted-foreground bg-background/60 p-3 rounded-lg border border-border/60">
+              <div className="space-y-1">
+                <p className="font-bold text-foreground flex items-center space-x-1">
+                  <span className="text-blue-500">1. Facebook UID:</span>
+                </p>
+                <p>
+                  Go to your FB profile URL (e.g. <code className="bg-muted px-1 rounded text-[10px]">facebook.com/profile.php?id=1000...</code>) or paste profile link in <span className="text-blue-500 font-semibold">lookup-id.com</span>.
+                </p>
+              </div>
+
+              <div className="space-y-1">
+                <p className="font-bold text-foreground flex items-center space-x-1">
+                  <span className="text-purple-500">2. Cookie / Session (Recommended):</span>
+                </p>
+                <p>
+                  Install free Chrome extension <span className="font-semibold text-foreground">Cookie-Editor</span>. Log into Facebook &gt; Click Extension &gt; Export cookie string (contains <code className="bg-muted px-1 rounded text-[10px]">c_user</code> & <code className="bg-muted px-1 rounded text-[10px]">xs</code>).
+                </p>
+              </div>
+
+              <div className="space-y-1">
+                <p className="font-bold text-foreground flex items-center space-x-1">
+                  <span className="text-emerald-500">3. Dedicated Proxy:</span>
+                </p>
+                <p>
+                  To prevent Facebook from detecting multiple accounts on one IP, get residential/mobile proxies from providers like <span className="font-semibold text-foreground">Webshare, Smartproxy, or IPRoyal</span> in <code className="bg-muted px-1 rounded text-[10px]">IP:Port:User:Pass</code> format.
+                </p>
+              </div>
+
+              <div className="space-y-1">
+                <p className="font-bold text-foreground flex items-center space-x-1">
+                  <span className="text-amber-500">4. Bulk Account Sellers / AdsPower:</span>
+                </p>
+                <p>
+                  If you bought marketing accounts or exported from <span className="font-semibold text-foreground">AdsPower, Dolphin&#123;anty&#125;, or GoLogin</span>, they export in this exact pipe (<code className="bg-muted px-1 rounded text-[10px]">|</code>) format!
+                </p>
+              </div>
+            </div>
+          </details>
         </div>
 
         {/* Text Area */}
