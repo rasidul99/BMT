@@ -27,7 +27,9 @@ import {
   Shield,
   Send,
   Film,
+  Pin,
 } from "lucide-react"
+import { useCtaPinTemplates } from "../../../../../hooks/useCtaPinTemplates"
 
 interface QueueJob {
   id: string
@@ -39,6 +41,12 @@ interface QueueJob {
   retryCount: number
   maxRetries: number
   lastError?: string
+  ctaPinConfig?: {
+    enabled: boolean
+    commentText: string
+    delaySeconds: number
+    autoPin: boolean
+  }
 }
 
 interface BestPostingTimeSlot {
@@ -149,6 +157,33 @@ export default function SafePostSchedulerPage() {
 
   const [registeredPages, setRegisteredPages] = useState<FacebookPageEntry[]>([])
   const [selectedTargetAccounts, setSelectedTargetAccounts] = useState<string[]>(["CARE HUB BD"])
+
+  // Module 11: CTA Pin Comment Automation Integration
+  const { templates: ctaTemplates } = useCtaPinTemplates()
+  const [enableCtaPinComment, setEnableCtaPinComment] = useState(true)
+  const [selectedCtaTemplateId, setSelectedCtaTemplateId] = useState<string>("")
+  const [ctaCommentText, setCtaCommentText] = useState("")
+  const [ctaDelaySeconds, setCtaDelaySeconds] = useState(15)
+  const [ctaAutoPin, setCtaAutoPin] = useState(true)
+
+  useEffect(() => {
+    if (ctaTemplates.length > 0 && !selectedCtaTemplateId) {
+      setSelectedCtaTemplateId(ctaTemplates[0].id)
+      setCtaCommentText(ctaTemplates[0].commentText)
+      setCtaDelaySeconds(ctaTemplates[0].delaySeconds)
+      setCtaAutoPin(ctaTemplates[0].autoPin)
+    }
+  }, [ctaTemplates, selectedCtaTemplateId])
+
+  const handleSelectCtaTemplate = (id: string) => {
+    setSelectedCtaTemplateId(id)
+    const tmpl = ctaTemplates.find((t) => t.id === id)
+    if (tmpl) {
+      setCtaCommentText(tmpl.commentText)
+      setCtaDelaySeconds(tmpl.delaySeconds)
+      setCtaAutoPin(tmpl.autoPin)
+    }
+  }
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -427,7 +462,52 @@ export default function SafePostSchedulerPage() {
       const data = await response.json()
 
       if (data.id || data.post_id) {
-        return { success: true, postId: data.id || data.post_id }
+        const createdPostId = data.id || data.post_id
+
+        // Module 11: Auto CTA Pin Comment Trigger
+        if (job.ctaPinConfig?.enabled && job.ctaPinConfig.commentText) {
+          try {
+            if (job.ctaPinConfig.delaySeconds > 0) {
+              await new Promise((r) => setTimeout(r, job.ctaPinConfig!.delaySeconds * 1000))
+            }
+
+            const commentRes = await fetch(`https://graph.facebook.com/v26.0/${createdPostId}/comments`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                message: job.ctaPinConfig.commentText,
+                access_token: pageToken,
+              }),
+            })
+            const commentData = await commentRes.json()
+
+            // Record to persistent CTA Pin audit log
+            if (typeof window !== "undefined") {
+              try {
+                const curLogsStr = localStorage.getItem("bmt_cta_pin_logs")
+                const curLogs = curLogsStr ? JSON.parse(curLogsStr) : []
+                const newLog = {
+                  id: `log-${Date.now()}`,
+                  postId: createdPostId,
+                  pageName: job.accountName,
+                  commentText: job.ctaPinConfig.commentText,
+                  pinnedStatus: job.ctaPinConfig.autoPin ? "Pinned" : "Comment Only",
+                  apiResponse: commentRes.ok
+                    ? `HTTP 200 OK — Comment ID: ${commentData.id}`
+                    : `HTTP ${commentRes.status} — ${commentData.error?.message || "Error"}`,
+                  timestamp: new Date().toISOString(),
+                }
+                localStorage.setItem("bmt_cta_pin_logs", JSON.stringify([newLog, ...curLogs]))
+              } catch (logErr) {
+                console.error("Failed to write CTA pin log", logErr)
+              }
+            }
+          } catch (cmtErr) {
+            console.error("Auto CTA Pin Comment failed", cmtErr)
+          }
+        }
+
+        return { success: true, postId: createdPostId }
       } else {
         return { success: false, error: data.error?.message || "Unknown Graph API error" }
       }
@@ -599,6 +679,12 @@ export default function SafePostSchedulerPage() {
       status: "Pending",
       retryCount: 0,
       maxRetries: 3,
+      ctaPinConfig: enableCtaPinComment && ctaCommentText.trim() ? {
+        enabled: true,
+        commentText: ctaCommentText.trim(),
+        delaySeconds: ctaDelaySeconds,
+        autoPin: ctaAutoPin,
+      } : undefined,
     }))
 
     const updatedJobs = [...newJobs, ...queueJobs]
@@ -1249,6 +1335,87 @@ export default function SafePostSchedulerPage() {
                       🖐️ Manual Drag/Drop
                     </button>
                   </div>
+                </div>
+
+                {/* Module 11 CTA Pin Comment Integration */}
+                <div className="p-3.5 border border-blue-500/30 bg-blue-50/30 dark:bg-blue-950/20 rounded-xl space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-1.5">
+                      <Pin className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+                      <span className="font-extrabold text-xs text-blue-900 dark:text-blue-300">
+                        1st Comment Pin Automation
+                      </span>
+                    </div>
+                    <span className="text-[10px] bg-blue-500/10 text-blue-600 dark:text-blue-400 font-bold px-2 py-0.5 rounded-full border border-blue-500/20">
+                      Module 11 • Anti-Reach Penalty
+                    </span>
+                  </div>
+
+                  <div className="flex items-center justify-between pt-0.5">
+                    <label className="text-xs font-bold text-foreground cursor-pointer flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={enableCtaPinComment}
+                        onChange={(e) => setEnableCtaPinComment(e.target.checked)}
+                        className="w-4 h-4 rounded text-blue-600 cursor-pointer"
+                      />
+                      <span>Auto-post link in 1st comment &amp; pin</span>
+                    </label>
+                    <a
+                      href={`/workspace/workspace-1/safe/cta-pin-comment`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-[10px] font-bold text-blue-600 hover:underline flex items-center gap-1"
+                    >
+                      Studio <ExternalLink className="w-2.5 h-2.5" />
+                    </a>
+                  </div>
+
+                  {enableCtaPinComment && (
+                    <div className="space-y-2 pt-2 border-t border-blue-500/20 text-xs">
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <label className="text-[10px] font-bold text-muted-foreground uppercase">Template</label>
+                          <select
+                            value={selectedCtaTemplateId}
+                            onChange={(e) => handleSelectCtaTemplate(e.target.value)}
+                            className="w-full mt-1 p-1.5 border rounded-lg bg-background text-xs font-semibold"
+                          >
+                            {ctaTemplates.map((t) => (
+                              <option key={t.id} value={t.id}>
+                                {t.title}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+
+                        <div>
+                          <label className="text-[10px] font-bold text-muted-foreground uppercase">Anti-Ban Delay</label>
+                          <select
+                            value={ctaDelaySeconds}
+                            onChange={(e) => setCtaDelaySeconds(Number(e.target.value))}
+                            className="w-full mt-1 p-1.5 border rounded-lg bg-background text-xs font-semibold"
+                          >
+                            <option value={0}>0s (Immediate)</option>
+                            <option value={15}>15s (Natural ✨)</option>
+                            <option value={30}>30s (Safe)</option>
+                            <option value={60}>60s (Conservative)</option>
+                          </select>
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="text-[10px] font-bold text-muted-foreground uppercase">CTA Comment Body</label>
+                        <textarea
+                          rows={2}
+                          value={ctaCommentText}
+                          onChange={(e) => setCtaCommentText(e.target.value)}
+                          className="w-full mt-1 p-2 border rounded-lg bg-background text-xs"
+                          placeholder="Comment text to post and pin..."
+                        />
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 {scheduleSuccess && (
