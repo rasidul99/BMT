@@ -62,6 +62,7 @@ export default function SafeViralContentPage() {
   // Pagination: Show 5 videos initially, add 5 more on 'See More'
   const [visibleCount, setVisibleCount] = useState<number>(5)
   const [isLoadingMore, setIsLoadingMore] = useState<boolean>(false)
+  const [showTikTokModal, setShowTikTokModal] = useState<boolean>(false)
 
   // Feedback State for Library saves
   const [savedLibraryIds, setSavedLibraryIds] = useState<Record<string, boolean>>({})
@@ -500,7 +501,7 @@ export default function SafeViralContentPage() {
                   <span>📘 Facebook Meta Graph API Integration</span>
                 </div>
                 <button
-                  onClick={() => router.push(`/workspace/${workspaceId}/safe/connect-fb`)}
+                  onClick={() => router.push(`/workspace/${workspaceId}/safe/connect-accounts`)}
                   className="bg-blue-600 hover:bg-blue-700 text-white font-bold px-3 py-1.5 rounded-lg transition text-xs shrink-0"
                 >
                   🔗 Connect FB Pages
@@ -519,7 +520,7 @@ export default function SafeViralContentPage() {
                   <span>🎵 TikTok Creator API Integration</span>
                 </div>
                 <button
-                  onClick={() => alert("TikTok Creator API কানেকশন অপশন শীঘ্রই যুক্ত হচ্ছে।")}
+                  onClick={() => setShowTikTokModal(true)}
                   className="bg-teal-600 hover:bg-teal-700 text-white font-bold px-3 py-1.5 rounded-lg transition text-xs shrink-0"
                 >
                   🔗 Connect TikTok Account
@@ -826,6 +827,48 @@ export default function SafeViralContentPage() {
             )}
           </>
         )}
+        </div>
+      )}
+      {/* TikTok Integration Modal */}
+      {showTikTokModal && (
+        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-card border border-teal-500/30 rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl animate-in fade-in zoom-in-95">
+            <div className="flex items-center justify-between border-b pb-3">
+              <div className="flex items-center space-x-2">
+                <span className="p-2 bg-black rounded-lg text-teal-400 border border-teal-500/40">
+                  <Film className="w-5 h-5" />
+                </span>
+                <h3 className="font-extrabold text-sm text-foreground">TikTok Creator API Integration</h3>
+              </div>
+              <button
+                onClick={() => setShowTikTokModal(false)}
+                className="text-muted-foreground hover:text-foreground text-xs font-bold p-1 rounded-md"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="space-y-3 text-xs text-muted-foreground leading-relaxed">
+              <div className="p-3 rounded-xl bg-teal-500/10 border border-teal-500/20 text-teal-400 font-semibold">
+                📌 স্ট্যাটাস: TikTok Business & Creator Login API
+              </div>
+              <p>
+                BMT মূলত <b>ফেসবুক মার্কেটিং ও অটোমেশন (Meta Graph API)</b> প্ল্যাটফর্ম। ফেসবুক পেজ কানেকশন মডিউলটি এখনই সক্রিয় ও প্রস্তুত রয়েছে।
+              </p>
+              <p>
+                টিকটকের পলিসি অনুযায়ী বট বা থার্ড-পার্টি স্ক্র্যাপিং কঠোরভাবে নিষিদ্ধ। টিকটক ডেভেলপার অ্যাপ অনুমোদন সম্পন্ন হওয়ার পর পরবর্তী ফেজে সরাসরি টিকটক অ্যাকাউন্ট অথেন্টিকেশন যুক্ত করা হবে।
+              </p>
+            </div>
+
+            <div className="flex justify-end pt-2">
+              <button
+                onClick={() => setShowTikTokModal(false)}
+                className="bg-teal-600 hover:bg-teal-700 text-white font-bold px-4 py-2 rounded-xl text-xs transition"
+              >
+                ঠিক আছে, বুঝতে পেরেছি
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
