@@ -1,7 +1,7 @@
 "use client"
 
 import React, { useState } from "react"
-import { useRouter, useParams } from "next/navigation"
+import { useRouter, useParams, useSearchParams } from "next/navigation"
 import {
   Download,
   Music,
@@ -31,6 +31,7 @@ interface DownloadedMediaResult {
 export default function SafeDownloaderPage() {
   const router = useRouter()
   const params = useParams()
+  const searchParams = useSearchParams()
   const workspaceId = (params?.id as string) || "workspace-1"
   const { addAsset } = useAssetLibrary()
 
@@ -42,6 +43,14 @@ export default function SafeDownloaderPage() {
   const [downloadedResult, setDownloadedResult] = useState<DownloadedMediaResult | null>(null)
   const [isSavedToLibrary, setIsSavedToLibrary] = useState(false)
   const [isDownloadedToPC, setIsDownloadedToPC] = useState(false)
+
+  // Auto-populate URL if redirected from Viral Content Finder
+  React.useEffect(() => {
+    const urlFromQuery = searchParams.get("url")
+    if (urlFromQuery) {
+      setVideoUrl(decodeURIComponent(urlFromQuery))
+    }
+  }, [searchParams])
 
   // Local sample media for guaranteed 100% reliable playback & real download
   const sampleVideoUrl = "/sample-video.mp4"

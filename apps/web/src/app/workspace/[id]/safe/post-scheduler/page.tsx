@@ -168,7 +168,25 @@ export default function SafePostSchedulerPage() {
     if (libraryAssetId) {
       setMediaUrl("https://images.unsplash.com/photo-1590658268037-6bf12165a8df?w=600&auto=format&fit=crop")
     }
-  }, [libraryAssetId])
+
+    const importedContent = searchParams.get("importedContent")
+    const importedTitle = searchParams.get("importedTitle")
+    const importedMedia = searchParams.get("importedMedia")
+    const importedFormat = searchParams.get("importedFormat")
+
+    if (importedContent) {
+      setDescription(decodeURIComponent(importedContent))
+    }
+    if (importedTitle) {
+      setTitle(decodeURIComponent(importedTitle))
+    }
+    if (importedMedia) {
+      setMediaUrl(decodeURIComponent(importedMedia))
+    }
+    if (importedFormat && ["Text", "Image", "Video", "Reel", "Story", "Poll"].includes(importedFormat)) {
+      setPostFormat(importedFormat as any)
+    }
+  }, [libraryAssetId, searchParams])
 
   // Dynamic Facebook Graph API Publisher (Supports Feed, Photo, Video endpoints)
   const publishToFacebookPage = async (job: QueueJob): Promise<{ success: boolean; postId?: string; error?: string }> => {
