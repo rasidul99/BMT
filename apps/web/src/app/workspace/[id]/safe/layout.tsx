@@ -38,6 +38,7 @@ export default function SafeLayout({ children }: { children: React.ReactNode }) 
       category: "Main & Accounts",
       items: [
         { label: "Overview Dashboard", icon: LayoutDashboard, path: `/workspace/${workspaceId}/safe/dashboard` },
+        { label: "Facebook Market (100 Accounts)", icon: Users, path: `/workspace/${workspaceId}/safe/facebook-market` },
         { label: "Connect FB Pages (OAuth)", icon: LinkIcon, path: `/workspace/${workspaceId}/safe/connect-accounts` },
         { label: "Asset Library", icon: Folder, path: `/workspace/${workspaceId}/safe/library` },
       ],
