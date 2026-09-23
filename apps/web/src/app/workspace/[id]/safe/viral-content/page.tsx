@@ -43,6 +43,7 @@ export default function SafeViralContentPage() {
     isLoading,
     error,
     searchViralContent,
+    loadMoreViralContent,
     toggleBookmark,
     isBookmarked,
   } = useViralResearch()
@@ -110,12 +111,31 @@ export default function SafeViralContentPage() {
     })
   }
 
-  const handleLoadMoreVideos = () => {
+  // Continuous progressive loading: Always appends 5 new videos and keeps the button active
+  const handleLoadMoreVideos = async () => {
     setIsLoadingMore(true)
-    setTimeout(() => {
+    try {
+      if (visibleCount + 5 <= results.length) {
+        setVisibleCount((prev) => prev + 5)
+      } else {
+        await loadMoreViralContent(
+          {
+            platform: selectedPlatform,
+            country: selectedCountry,
+            category: selectedCategory,
+            keyword: searchKeyword,
+            minLikes: minLikesFilter,
+          },
+          5
+        )
+        setVisibleCount((prev) => prev + 5)
+      }
+    } catch (e) {
+      console.warn("Error loading more videos:", e)
       setVisibleCount((prev) => prev + 5)
+    } finally {
       setIsLoadingMore(false)
-    }, 400)
+    }
   }
 
   const handleSaveToAssetLibrary = (item: ViralContentItem) => {
@@ -866,18 +886,18 @@ export default function SafeViralContentPage() {
               })}
             </div>
 
-            {/* See More Videos Button (+5 Videos) */}
-            {activeTab === "Feed" && visibleItems.length < sortedItems.length && (
+            {/* See More Videos Button (+5 Videos) - Always visible so user can continuously add 5 more videos */}
+            {activeTab === "Feed" && sortedItems.length > 0 && (
               <div className="flex justify-center pt-8 pb-4">
                 <button
                   onClick={handleLoadMoreVideos}
                   disabled={isLoadingMore}
-                  className="bg-rose-600 hover:bg-rose-700 disabled:opacity-50 text-white font-black px-8 py-3 rounded-2xl shadow-lg transition flex items-center space-x-2 text-xs hover:scale-[1.02] active:scale-[0.98]"
+                  className="bg-rose-600 hover:bg-rose-700 disabled:opacity-50 text-white font-black px-8 py-3.5 rounded-2xl shadow-xl transition flex items-center space-x-2 text-xs hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
                 >
                   {isLoadingMore ? (
                     <>
                       <RefreshCw className="w-4 h-4 animate-spin" />
-                      <span>Loading 5 more viral videos...</span>
+                      <span>Adding 5 more viral videos...</span>
                     </>
                   ) : (
                     <>

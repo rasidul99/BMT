@@ -102,6 +102,42 @@ export function useViralResearch() {
     return bookmarks.some((b) => b.id === id)
   }
 
+  // Append new items to existing results (deduplicated by id)
+  const appendResults = useCallback((newItems: ViralContentItem[]) => {
+    setResults((prev) => {
+      const existingIds = new Set(prev.map((i) => i.id))
+      const uniqueNew = newItems.filter((i) => !existingIds.has(i.id))
+      return [...prev, ...uniqueNew]
+    })
+  }, [])
+
+  // Load more viral videos dynamically from API
+  const loadMoreViralContent = async (params: ViralSearchParams, count: number = 5) => {
+    try {
+      const res = await fetch("/api/viral-content/search", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...params,
+          generateMore: true,
+          offset: results.length,
+          count,
+        }),
+      })
+
+      if (res.ok) {
+        const data = await res.json()
+        if (data.items && Array.isArray(data.items) && data.items.length > 0) {
+          appendResults(data.items)
+          return data.items.length
+        }
+      }
+    } catch (err) {
+      console.warn("loadMoreViralContent error:", err)
+    }
+    return 0
+  }
+
   // Search API caller
   const searchViralContent = async (params: ViralSearchParams) => {
     setIsLoading(true)
@@ -135,6 +171,9 @@ export function useViralResearch() {
 
   return {
     results,
+    setResults,
+    appendResults,
+    loadMoreViralContent,
     bookmarks,
     isLoading,
     error,
