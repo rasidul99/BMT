@@ -70,6 +70,7 @@ export default function SafeLayout({ children }: { children: React.ReactNode }) 
       category: "Audience & Growth",
       items: [
         { label: "Friend Automation", icon: UserPlus, path: `/workspace/${workspaceId}/safe/friend-automation` },
+        { label: "Unfriend Inactive", icon: UserMinus, path: `/workspace/${workspaceId}/safe/unfriend-inactive` },
       ],
     },
     {
