@@ -29,6 +29,7 @@ import {
   Lock,
   Ghost,
   UserX,
+  UserCheck,
   Scan,
 } from "lucide-react"
 import {
