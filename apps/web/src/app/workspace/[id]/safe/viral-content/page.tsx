@@ -492,6 +492,56 @@ export default function SafeViralContentPage() {
             </div>
           )}
 
+          {/* Platform Account Connection / Live Status Notices */}
+          {activeTab === "Feed" && selectedPlatform === "facebook" && (
+            <div className="p-4 rounded-xl border border-blue-500/30 bg-blue-500/10 text-xs space-y-2">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                <div className="flex items-center space-x-2 font-black text-blue-500 text-sm">
+                  <span>📘 Facebook Meta Graph API Integration</span>
+                </div>
+                <button
+                  onClick={() => router.push(`/workspace/${workspaceId}/safe/connect-fb`)}
+                  className="bg-blue-600 hover:bg-blue-700 text-white font-bold px-3 py-1.5 rounded-lg transition text-xs shrink-0"
+                >
+                  🔗 Connect FB Pages
+                </button>
+              </div>
+              <p className="text-muted-foreground text-[11px] leading-relaxed">
+                ফেসবুকের কঠোর প্রাইভেসি পলিসির কারণে পাবলিক রিলস অননুমোদিতভাবে স্ক্র্যাপ করা যায় না। আপনার ফেসবুক পেজ কানেক্ট করলে অফিশিয়াল Meta Graph API দিয়ে আপনার ইন্ডাস্ট্রির রিয়েল-টাইম লাইভ রিলস ও মেট্রিক্স আনলক হবে। নিচে বর্তমানে পাবলিকলি ভেরিফাইড ফেসবুক রিলস প্রদর্শিত হচ্ছে।
+              </p>
+            </div>
+          )}
+
+          {activeTab === "Feed" && selectedPlatform === "tiktok" && (
+            <div className="p-4 rounded-xl border border-teal-500/30 bg-teal-500/10 text-xs space-y-2">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                <div className="flex items-center space-x-2 font-black text-teal-400 text-sm">
+                  <span>🎵 TikTok Creator API Integration</span>
+                </div>
+                <button
+                  onClick={() => alert("TikTok Creator API কানেকশন অপশন শীঘ্রই যুক্ত হচ্ছে।")}
+                  className="bg-teal-600 hover:bg-teal-700 text-white font-bold px-3 py-1.5 rounded-lg transition text-xs shrink-0"
+                >
+                  🔗 Connect TikTok Account
+                </button>
+              </div>
+              <p className="text-muted-foreground text-[11px] leading-relaxed">
+                টিকটক পলিসি অনুযায়ী বট বা স্ক্র্যাপারদের মাধ্যমে আনঅথেনটিকেটেড ভিডিও ফেচ ব্লক থাকে। আপনার টিকটক ক্রিয়েটর অ্যাকাউন্ট কানেক্ট করলে ট্রেন্ডিং ক্রিয়েটর ও সাউন্ড অ্যানালাইসিস আনলক হবে। নিচে বর্তমানে ভেরিফাইড গ্লোবাল টিকটক ট্রেন্ড প্রদর্শিত হচ্ছে।
+              </p>
+            </div>
+          )}
+
+          {activeTab === "Feed" && selectedPlatform === "youtube" && (
+            <div className="p-3 rounded-xl border border-red-500/20 bg-red-500/5 text-xs flex items-center justify-between text-muted-foreground">
+              <span className="flex items-center space-x-2">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
+                <span className="text-[11px] font-semibold text-foreground">
+                  ▶️ YouTube Live Shorts & Video Engine: ১০০% ওপেন পাবলিক সার্চ সক্রিয় রয়েছে (কোনো লগইন ছাড়াই লাইভ ট্রেন্ড লোড হচ্ছে)।
+                </span>
+              </span>
+            </div>
+          )}
+
           {/* Active Results Summary Banner */}
           <div className="flex items-center justify-between text-xs px-1">
             <div className="flex items-center space-x-2">
