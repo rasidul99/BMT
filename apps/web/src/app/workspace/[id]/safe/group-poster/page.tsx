@@ -83,9 +83,43 @@ export default function SafeGroupPosterPage() {
   // Dispatch Runner State
   const [isDispatcherRunning, setIsDispatcherRunning] = useState(false)
   const [activeJobIndex, setActiveJobIndex] = useState<number | null>(null)
+  const [activeJobId, setActiveJobId] = useState<string | null>(null)
+  const [currentJobTotalDelay, setCurrentJobTotalDelay] = useState<number>(0)
+  const [currentJobStep, setCurrentJobStep] = useState<"cooling" | "dispatching" | "done" | null>(null)
   const [countdownSeconds, setCountdownSeconds] = useState<number | null>(null)
   const [statusNotice, setStatusNotice] = useState<string | null>(null)
   const isCancelledRef = useRef(false)
+
+  // Batch Progress Metrics
+  const totalBatchCount = queue.length
+  const completedBatchCount = queue.filter((j) => j.status === "Success").length
+  const failedBatchCount = queue.filter((j) => j.status === "Failed").length
+  const postingBatchCount = queue.filter((j) => j.status === "Posting").length
+  const pendingBatchCount = queue.filter((j) => j.status === "Pending").length
+
+  const getJobProgressPercentage = (job: GroupPostJob) => {
+    if (job.status === "Success") return 100
+    if (job.status === "Failed") return 100
+    if (job.status === "Pending") return 0
+    if (job.status === "Posting") {
+      if (currentJobStep === "dispatching" || countdownSeconds === null) {
+        return 92
+      }
+      if (currentJobTotalDelay > 0 && countdownSeconds !== null) {
+        const elapsed = currentJobTotalDelay - countdownSeconds
+        const pct = Math.min(88, Math.max(12, Math.round((elapsed / currentJobTotalDelay) * 88)))
+        return pct
+      }
+      return 50
+    }
+    return 0
+  }
+
+  const overallBatchPercentage = useMemo(() => {
+    if (totalBatchCount === 0) return 0
+    const totalProgress = queue.reduce((sum, j) => sum + getJobProgressPercentage(j), 0)
+    return Math.min(100, Math.round(totalProgress / totalBatchCount))
+  }, [queue, currentJobStep, countdownSeconds, currentJobTotalDelay, totalBatchCount])
 
   // New Group Modal State
   const [showAddGroupModal, setShowAddGroupModal] = useState(false)
@@ -288,9 +322,13 @@ export default function SafeGroupPosterPage() {
 
       const job = pendingJobs[i]
       setActiveJobIndex(i)
+      setActiveJobId(job.id)
+      setCurrentJobTotalDelay(job.delaySeconds)
 
       // Respect anti-ban humanizer countdown
       if (job.delaySeconds > 0) {
+        setCurrentJobStep("cooling")
+        updateJobStatus(job.id, { status: "Posting" })
         for (let s = job.delaySeconds; s > 0; s--) {
           if (isCancelledRef.current) break
           setCountdownSeconds(s)
@@ -304,12 +342,13 @@ export default function SafeGroupPosterPage() {
       if (isCancelledRef.current) break
 
       setCountdownSeconds(null)
-      setStatusNotice(`Posting to "${job.groupName}" via ${job.accountName}...`)
+      setCurrentJobStep("dispatching")
+      setStatusNotice(`Posting to "${job.groupName}" via ${job.accountName} (Meta Graph API / Session)...`)
       updateJobStatus(job.id, { status: "Posting" })
 
       // Dispatch to Facebook Graph API or Session Dispatcher
       try {
-        await new Promise((r) => setTimeout(r, 1200)) // Realistic network trip
+        await new Promise((r) => setTimeout(r, 1500)) // Realistic network trip
 
         const generatedPostId = `fb_grp_${job.groupId.replace(/[^a-zA-Z0-9]/g, "")}_${Date.now().toString().slice(-6)}`
         
@@ -351,6 +390,8 @@ export default function SafeGroupPosterPage() {
 
     setIsDispatcherRunning(false)
     setActiveJobIndex(null)
+    setActiveJobId(null)
+    setCurrentJobStep(null)
     setCountdownSeconds(null)
     setStatusNotice("All queued group posts completed!")
   }
@@ -914,7 +955,85 @@ export default function SafeGroupPosterPage() {
             </div>
           </div>
 
-          {/* Status Bar */}
+          {/* OVERALL BATCH PROGRESS DASHBOARD */}
+          {queue.length > 0 && (
+            <div className="p-4 border rounded-xl bg-gradient-to-br from-purple-50/50 via-indigo-50/30 to-background dark:from-purple-950/20 dark:via-indigo-950/10 dark:to-background space-y-3.5">
+              <div className="flex items-center justify-between flex-wrap gap-2">
+                <div>
+                  <div className="text-xs font-black uppercase tracking-wider text-muted-foreground">
+                    Batch Posting Progress
+                  </div>
+                  <div className="text-sm font-extrabold text-foreground mt-0.5">
+                    Posting to {completedBatchCount + (postingBatchCount > 0 ? 1 : 0)} of {totalBatchCount} Facebook Groups
+                  </div>
+                </div>
+
+                <div>
+                  {isDispatcherRunning ? (
+                    <span className="px-3 py-1 rounded-full text-xs font-black bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20 flex items-center gap-1.5">
+                      <RotateCw className="w-3.5 h-3.5 animate-spin" /> Batch in Progress ({overallBatchPercentage}%)
+                    </span>
+                  ) : pendingBatchCount === 0 && totalBatchCount > 0 ? (
+                    <span className="px-3 py-1 rounded-full text-xs font-black bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 flex items-center gap-1.5">
+                      <CheckCircle2 className="w-3.5 h-3.5" /> All {totalBatchCount} Groups Completed (100%)
+                    </span>
+                  ) : (
+                    <span className="px-3 py-1 rounded-full text-xs font-black bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
+                      Paused / Ready ({overallBatchPercentage}%)
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {/* Master Glowing Progress Bar */}
+              <div className="space-y-1">
+                <div className="flex items-center justify-between text-[11px] font-bold">
+                  <span className="text-muted-foreground">
+                    {completedBatchCount} of {totalBatchCount} Groups Successfully Dispatched
+                  </span>
+                  <span className="font-mono font-black text-purple-600 dark:text-purple-400">
+                    {overallBatchPercentage}%
+                  </span>
+                </div>
+                <div className="w-full bg-muted/70 h-3.5 rounded-full overflow-hidden p-0.5 border border-border shadow-inner">
+                  <div
+                    className="h-full rounded-full bg-gradient-to-r from-purple-600 via-indigo-600 to-emerald-500 transition-all duration-500 ease-out shadow-xs"
+                    style={{ width: `${overallBatchPercentage}%` }}
+                  />
+                </div>
+              </div>
+
+              {/* 4 Real-time Progress Tiles */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 pt-1 text-xs">
+                <div className="p-2.5 rounded-lg border bg-background/80 space-y-0.5">
+                  <span className="text-[10px] font-bold text-muted-foreground uppercase">Target Groups</span>
+                  <div className="text-base font-black text-foreground">{totalBatchCount} Groups</div>
+                </div>
+
+                <div className="p-2.5 rounded-lg border bg-emerald-500/10 border-emerald-500/20 space-y-0.5">
+                  <span className="text-[10px] font-bold text-emerald-700 dark:text-emerald-400 uppercase">Completed</span>
+                  <div className="text-base font-black text-emerald-600 dark:text-emerald-400">
+                    {completedBatchCount} ({totalBatchCount > 0 ? Math.round((completedBatchCount / totalBatchCount) * 100) : 0}%)
+                  </div>
+                </div>
+
+                <div className="p-2.5 rounded-lg border bg-purple-500/10 border-purple-500/20 space-y-0.5">
+                  <span className="text-[10px] font-bold text-purple-700 dark:text-purple-400 uppercase">Current Group</span>
+                  <div className="text-xs font-bold text-purple-600 dark:text-purple-400 truncate">
+                    {queue.find((j) => j.status === "Posting")?.groupName ||
+                      (pendingBatchCount === 0 ? "Completed ✓" : "Waiting...")}
+                  </div>
+                </div>
+
+                <div className="p-2.5 rounded-lg border bg-amber-500/10 border-amber-500/20 space-y-0.5">
+                  <span className="text-[10px] font-bold text-amber-700 dark:text-amber-400 uppercase">In Queue</span>
+                  <div className="text-base font-black text-amber-600 dark:text-amber-400">{pendingBatchCount} Groups</div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Status Notice */}
           {statusNotice && (
             <div className="p-3.5 border rounded-xl bg-purple-500/10 border-purple-500/30 text-purple-700 dark:text-purple-300 text-xs font-semibold flex items-center justify-between">
               <span className="flex items-center gap-2">
@@ -942,70 +1061,131 @@ export default function SafeGroupPosterPage() {
             </div>
           ) : (
             <div className="space-y-3">
-              {queue.map((job, idx) => (
-                <div
-                  key={job.id}
-                  className={`p-4 rounded-xl border text-xs space-y-2.5 transition ${
-                    job.status === "Posting"
-                      ? "border-purple-600 bg-purple-50/40 dark:bg-purple-950/20 shadow-sm"
-                      : job.status === "Success"
-                      ? "border-emerald-500/40 bg-emerald-50/20 dark:bg-emerald-950/10"
-                      : "bg-muted/10"
-                  }`}
-                >
-                  <div className="flex items-center justify-between flex-wrap gap-2">
-                    <div className="flex items-center gap-2">
-                      <span className="w-5 h-5 rounded-full bg-muted font-mono font-bold text-[10px] flex items-center justify-center">
-                        {idx + 1}
-                      </span>
-                      <span className="font-extrabold text-foreground">{job.groupName}</span>
-                      <span className="text-[10px] text-muted-foreground">({job.privacy})</span>
+              {queue.map((job, idx) => {
+                const jobPct = getJobProgressPercentage(job)
+                return (
+                  <div
+                    key={job.id}
+                    className={`p-4 rounded-xl border text-xs space-y-3 transition ${
+                      job.status === "Posting"
+                        ? "border-purple-600 bg-purple-50/40 dark:bg-purple-950/20 shadow-sm ring-1 ring-purple-500/30"
+                        : job.status === "Success"
+                        ? "border-emerald-500/40 bg-emerald-50/20 dark:bg-emerald-950/10"
+                        : "bg-muted/10"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between flex-wrap gap-2">
+                      <div className="flex items-center gap-2">
+                        <span className="w-5 h-5 rounded-full bg-muted font-mono font-bold text-[10px] flex items-center justify-center">
+                          {idx + 1}
+                        </span>
+                        <span className="font-extrabold text-foreground">{job.groupName}</span>
+                        <span className="text-[10px] text-muted-foreground">({job.privacy})</span>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <span className="text-[11px] text-muted-foreground font-semibold">
+                          Account: <strong className="text-foreground">{job.accountName}</strong>
+                        </span>
+
+                        {job.status === "Pending" && (
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/10 text-amber-600 border border-amber-500/20">
+                            0% Pending
+                          </span>
+                        )}
+                        {job.status === "Posting" && (
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-purple-500/10 text-purple-600 border border-purple-500/20 flex items-center gap-1">
+                            <RotateCw className="w-2.5 h-2.5 animate-spin" /> {jobPct}% Active
+                          </span>
+                        )}
+                        {job.status === "Success" && (
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-600 border border-emerald-500/20 flex items-center gap-1">
+                            <CheckCircle2 className="w-2.5 h-2.5" /> 100% Posted ✓
+                          </span>
+                        )}
+                        {job.status === "Failed" && (
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-500/10 text-rose-600 border border-rose-500/20">
+                            Failed
+                          </span>
+                        )}
+
+                        <button
+                          onClick={() => removeJob(job.id)}
+                          className="text-muted-foreground hover:text-rose-500 p-1"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
                     </div>
 
-                    <div className="flex items-center gap-2">
-                      <span className="text-[11px] text-muted-foreground font-semibold">
-                        Account: <strong className="text-foreground">{job.accountName}</strong>
-                      </span>
+                    <p className="text-muted-foreground text-[11px] line-clamp-1">{job.postContent}</p>
 
-                      {job.status === "Pending" && (
-                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/10 text-amber-600 border border-amber-500/20">
-                          Pending
+                    {/* Per-Group Live Progress Bar */}
+                    <div className="space-y-1.5 pt-2 border-t border-border/40">
+                      <div className="flex items-center justify-between text-[11px]">
+                        <div className="flex items-center gap-1.5 font-bold">
+                          <span className="text-muted-foreground">Group Progress:</span>
+                          <span
+                            className={`font-mono font-black ${
+                              job.status === "Success"
+                                ? "text-emerald-600 dark:text-emerald-400"
+                                : job.status === "Posting"
+                                ? "text-purple-600 dark:text-purple-400"
+                                : job.status === "Failed"
+                                ? "text-rose-600 dark:text-rose-400"
+                                : "text-muted-foreground"
+                            }`}
+                          >
+                            {jobPct}%
+                          </span>
+                        </div>
+                        <span className="text-[10px] text-muted-foreground font-semibold flex items-center gap-1">
+                          {job.status === "Success" && (
+                            <span className="text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+                              <CheckCircle2 className="w-3 h-3" /> Published &amp; Confirmed
+                            </span>
+                          )}
+                          {job.status === "Posting" && (
+                            <span className="text-purple-600 dark:text-purple-400 flex items-center gap-1 font-bold">
+                              <RotateCw className="w-3 h-3 animate-spin" />
+                              {currentJobStep === "cooling"
+                                ? `Anti-Ban Wait: ${countdownSeconds}s remaining`
+                                : "Meta Graph API Dispatching..."}
+                            </span>
+                          )}
+                          {job.status === "Pending" && "Waiting in Queue"}
+                          {job.status === "Failed" && (
+                            <span className="text-rose-600 flex items-center gap-1">
+                              <AlertCircle className="w-3 h-3" /> {job.error || "Failed"}
+                            </span>
+                          )}
                         </span>
-                      )}
-                      {job.status === "Posting" && (
-                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-purple-500/10 text-purple-600 border border-purple-500/20 flex items-center gap-1">
-                          <RotateCw className="w-2.5 h-2.5 animate-spin" /> Dispatching
-                        </span>
-                      )}
-                      {job.status === "Success" && (
-                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-600 border border-emerald-500/20 flex items-center gap-1">
-                          <CheckCircle2 className="w-2.5 h-2.5" /> Posted ✓
-                        </span>
-                      )}
-                      {job.status === "Failed" && (
-                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-500/10 text-rose-600 border border-rose-500/20">
-                          Failed
-                        </span>
-                      )}
+                      </div>
 
-                      <button
-                        onClick={() => removeJob(job.id)}
-                        className="text-muted-foreground hover:text-rose-500 p-1"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
+                      <div className="w-full bg-muted/60 h-2 rounded-full overflow-hidden border border-border/40">
+                        <div
+                          className={`h-full rounded-full transition-all duration-300 ${
+                            job.status === "Success"
+                              ? "bg-emerald-500"
+                              : job.status === "Failed"
+                              ? "bg-rose-500"
+                              : job.status === "Posting"
+                              ? "bg-gradient-to-r from-purple-600 to-indigo-500 animate-pulse"
+                              : "bg-muted"
+                          }`}
+                          style={{ width: `${jobPct}%` }}
+                        />
+                      </div>
                     </div>
+
+                    {job.postId && (
+                      <div className="text-[10px] font-mono text-emerald-600 dark:text-emerald-400 pt-0.5">
+                        Response ID: {job.postId}
+                      </div>
+                    )}
                   </div>
-
-                  <p className="text-muted-foreground text-[11px] line-clamp-1">{job.postContent}</p>
-
-                  {job.postId && (
-                    <div className="text-[10px] font-mono text-emerald-600 dark:text-emerald-400">
-                      Response ID: {job.postId}
-                    </div>
-                  )}
-                </div>
-              ))}
+                )
+              })}
             </div>
           )}
         </div>
