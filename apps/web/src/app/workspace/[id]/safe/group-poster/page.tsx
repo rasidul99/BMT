@@ -309,6 +309,31 @@ export default function SafeGroupPosterPage() {
     startQueueExecution(jobs)
   }
 
+  // Load Demo Batch (3 Groups) for Instant Testing
+  const handleLoadDemoQueue = () => {
+    const activeAccounts = fbAccounts.filter((a) => a.status === "Active")
+    const sampleGroups = allAvailableGroups.slice(0, 3)
+    const demoJobs: GroupPostJob[] = sampleGroups.map((grp, idx) => ({
+      id: `job-demo-${Date.now()}-${idx}`,
+      groupId: grp.id,
+      groupName: grp.name,
+      privacy: grp.privacy,
+      memberCount: grp.memberCount,
+      accountId: activeAccounts[idx % (activeAccounts.length || 1)]?.id || "acc-101",
+      accountName: activeAccounts[idx % (activeAccounts.length || 1)]?.name || "Tariqul Islam",
+      accountAvatar: activeAccounts[idx % (activeAccounts.length || 1)]?.avatarUrl,
+      postTitle: "Eid Special Flash Sale 2026",
+      postContent: "🔥 স্পেশাল ডিসকাউন্ট অফার! বিস্তারিত জানতে ইনবক্স করুন।",
+      mediaUrl: "https://images.unsplash.com/photo-1522335789203-aabd1fc54bc9?w=600&auto=format&fit=crop&q=80",
+      postFormat: "Image",
+      status: "Pending",
+      delaySeconds: idx === 0 ? 0 : 15,
+      scheduledAt: new Date().toISOString(),
+    }))
+    addJobsToQueue(demoJobs)
+    startQueueExecution(demoJobs)
+  }
+
   // Queue Processing Runner
   const startQueueExecution = async (jobsToRun?: GroupPostJob[]) => {
     isCancelledRef.current = false
@@ -1050,14 +1075,27 @@ export default function SafeGroupPosterPage() {
 
           {/* Queue Tasks Table */}
           {queue.length === 0 ? (
-            <div className="p-10 text-center text-muted-foreground text-xs space-y-2">
-              <div>No posts currently queued.</div>
-              <button
-                onClick={() => setActiveTab("composer")}
-                className="text-purple-600 font-bold hover:underline"
-              >
-                Go to Composer &amp; Select Groups
-              </button>
+            <div className="p-8 text-center text-muted-foreground text-xs space-y-3 border rounded-xl bg-muted/10">
+              <div className="text-sm font-bold text-foreground">No posts currently active in queue.</div>
+              <p className="text-xs text-muted-foreground max-w-md mx-auto">
+                Go to the &ldquo;Composer &amp; Dispatch&rdquo; tab, select groups, and click &ldquo;Launch Multi-Group Auto Dispatch&rdquo;, or load a test batch to see the live progress bars in action.
+              </p>
+              <div className="flex items-center justify-center gap-3 pt-1 flex-wrap">
+                <button
+                  type="button"
+                  onClick={() => setActiveTab("composer")}
+                  className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white font-bold rounded-lg shadow-sm transition flex items-center gap-1.5"
+                >
+                  <Send className="w-3.5 h-3.5" /> Go to Composer &amp; Select Groups
+                </button>
+                <button
+                  type="button"
+                  onClick={handleLoadDemoQueue}
+                  className="px-4 py-2 border border-purple-500/30 bg-purple-500/10 hover:bg-purple-500/20 text-purple-700 dark:text-purple-300 font-bold rounded-lg transition flex items-center gap-1.5"
+                >
+                  <Sparkles className="w-3.5 h-3.5" /> ⚡ Load Test Batch (3 Groups)
+                </button>
+              </div>
             </div>
           ) : (
             <div className="space-y-3">

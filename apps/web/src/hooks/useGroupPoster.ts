@@ -170,57 +170,72 @@ export function useGroupPoster() {
     }
   }, [])
 
-  // Save helpers
-  const saveQueue = useCallback((newQueue: GroupPostJob[]) => {
-    setQueue(newQueue)
-    try {
-      localStorage.setItem(STORAGE_KEY_QUEUE, JSON.stringify(newQueue))
-    } catch (e) {
-      console.error("Failed to save queue", e)
-    }
-  }, [])
+  // Save helpers with functional state updates (prevents stale closure wipes)
+  const saveQueue = useCallback(
+    (updater: GroupPostJob[] | ((prev: GroupPostJob[]) => GroupPostJob[])) => {
+      setQueue((prev) => {
+        const next = typeof updater === "function" ? updater(prev) : updater
+        try {
+          localStorage.setItem(STORAGE_KEY_QUEUE, JSON.stringify(next))
+        } catch (e) {
+          console.error("Failed to save queue", e)
+        }
+        return next
+      })
+    },
+    []
+  )
 
-  const saveLogs = useCallback((newLogs: GroupPostLog[]) => {
-    setLogs(newLogs)
-    try {
-      localStorage.setItem(STORAGE_KEY_LOGS, JSON.stringify(newLogs))
-    } catch (e) {
-      console.error("Failed to save logs", e)
-    }
-  }, [])
+  const saveLogs = useCallback(
+    (updater: GroupPostLog[] | ((prev: GroupPostLog[]) => GroupPostLog[])) => {
+      setLogs((prev) => {
+        const next = typeof updater === "function" ? updater(prev) : updater
+        try {
+          localStorage.setItem(STORAGE_KEY_LOGS, JSON.stringify(next))
+        } catch (e) {
+          console.error("Failed to save logs", e)
+        }
+        return next
+      })
+    },
+    []
+  )
 
-  const saveGroups = useCallback((newGroups: CustomGroupItem[]) => {
-    setGroups(newGroups)
-    try {
-      localStorage.setItem(STORAGE_KEY_CUSTOM_GROUPS, JSON.stringify(newGroups))
-    } catch (e) {
-      console.error("Failed to save custom groups", e)
-    }
-  }, [])
+  const saveGroups = useCallback(
+    (updater: CustomGroupItem[] | ((prev: CustomGroupItem[]) => CustomGroupItem[])) => {
+      setGroups((prev) => {
+        const next = typeof updater === "function" ? updater(prev) : updater
+        try {
+          localStorage.setItem(STORAGE_KEY_CUSTOM_GROUPS, JSON.stringify(next))
+        } catch (e) {
+          console.error("Failed to save custom groups", e)
+        }
+        return next
+      })
+    },
+    []
+  )
 
-  // Queue actions
+  // Queue actions (safe against concurrent execution)
   const addJobsToQueue = useCallback(
     (newJobs: GroupPostJob[]) => {
-      const updated = [...newJobs, ...queue]
-      saveQueue(updated)
+      saveQueue((prev) => [...newJobs, ...prev])
     },
-    [queue, saveQueue]
+    [saveQueue]
   )
 
   const updateJobStatus = useCallback(
     (jobId: string, updates: Partial<GroupPostJob>) => {
-      const updated = queue.map((j) => (j.id === jobId ? { ...j, ...updates } : j))
-      saveQueue(updated)
+      saveQueue((prev) => prev.map((j) => (j.id === jobId ? { ...j, ...updates } : j)))
     },
-    [queue, saveQueue]
+    [saveQueue]
   )
 
   const removeJob = useCallback(
     (jobId: string) => {
-      const updated = queue.filter((j) => j.id !== jobId)
-      saveQueue(updated)
+      saveQueue((prev) => prev.filter((j) => j.id !== jobId))
     },
-    [queue, saveQueue]
+    [saveQueue]
   )
 
   const clearQueue = useCallback(() => {
