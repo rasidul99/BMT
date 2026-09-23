@@ -26,6 +26,7 @@ import {
   Lightbulb,
   ArrowRight,
   Filter,
+  PlusCircle,
 } from "lucide-react"
 import { useViralResearch, ViralContentItem } from "../../../../../hooks/useViralResearch"
 import { useAssetLibrary } from "../../../../../hooks/useAssetLibrary"
@@ -58,6 +59,10 @@ export default function SafeViralContentPage() {
   const [minLikesFilter, setMinLikesFilter] = useState<number>(0)
   const [sortBy, setSortBy] = useState<"score" | "views" | "likes" | "shares">("score")
 
+  // Pagination: Show 5 videos initially, add 5 more on 'See More'
+  const [visibleCount, setVisibleCount] = useState<number>(5)
+  const [isLoadingMore, setIsLoadingMore] = useState<boolean>(false)
+
   // Feedback State for Library saves
   const [savedLibraryIds, setSavedLibraryIds] = useState<Record<string, boolean>>({})
 
@@ -74,6 +79,7 @@ export default function SafeViralContentPage() {
 
   const handleSearch = (e?: React.FormEvent) => {
     if (e) e.preventDefault()
+    setVisibleCount(5)
     searchViralContent({
       platform: selectedPlatform,
       country: selectedCountry,
@@ -81,6 +87,14 @@ export default function SafeViralContentPage() {
       keyword: searchKeyword,
       minLikes: minLikesFilter,
     })
+  }
+
+  const handleLoadMoreVideos = () => {
+    setIsLoadingMore(true)
+    setTimeout(() => {
+      setVisibleCount((prev) => prev + 5)
+      setIsLoadingMore(false)
+    }, 400)
   }
 
   const handleSaveToAssetLibrary = (item: ViralContentItem) => {
@@ -131,6 +145,9 @@ export default function SafeViralContentPage() {
     if (sortBy === "shares") return b.shares - a.shares
     return 0
   })
+
+  // Visible items for progressive 'See More' loading
+  const visibleItems = activeTab === "Bookmarks" ? sortedItems : sortedItems.slice(0, visibleCount)
 
   // Quick preset keywords
   const presetKeywords = [
@@ -305,6 +322,7 @@ export default function SafeViralContentPage() {
                       key={p.id}
                       onClick={() => {
                         setSelectedPlatform(p.id as any)
+                        setVisibleCount(5)
                         searchViralContent({
                           platform: p.id as any,
                           country: selectedCountry,
@@ -543,8 +561,9 @@ export default function SafeViralContentPage() {
 
           {/* Viral Items Grid */}
           {!isLoading && sortedItems.length > 0 && (
-            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-              {sortedItems.map((item) => {
+            <>
+              <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+              {visibleItems.map((item) => {
                 const bookmarked = isBookmarked(item.id)
                 const isLibrarySaved = !!savedLibraryIds[item.id]
 
@@ -565,23 +584,19 @@ export default function SafeViralContentPage() {
 
                         {/* Top Badges */}
                         <div className="absolute top-2.5 left-2.5 right-2.5 flex items-center justify-between">
-                          {(() => {
-                            const isFb = item.url.includes("facebook.com")
-                            const isTt = item.url.includes("tiktok.com")
-                            const isYt = item.url.includes("youtube.com") || item.url.includes("youtu.be")
-                            const badgeColor = isFb
-                              ? "bg-blue-600 text-white"
-                              : isTt
-                              ? "bg-black/90 text-teal-300 border border-teal-500/40"
-                              : "bg-red-600 text-white"
-                            const badgeLabel = isFb ? "📘 Facebook Reel" : isTt ? "🎵 TikTok" : "▶️ YouTube"
-
-                            return (
-                              <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-md shadow-sm ${badgeColor}`}>
-                                {badgeLabel}
-                              </span>
-                            )
-                          })()}
+                          <span
+                            className={`text-[10px] font-extrabold px-2 py-0.5 rounded-md shadow-sm ${
+                              item.platform === "Facebook"
+                                ? "bg-blue-600 text-white"
+                                : item.platform === "TikTok"
+                                ? "bg-black/90 text-teal-300 border border-teal-500/40"
+                                : "bg-red-600 text-white"
+                            }`}
+                          >
+                            {item.platform === "Facebook" && "📘 Facebook Reel"}
+                            {item.platform === "TikTok" && "🎵 TikTok Viral"}
+                            {item.platform === "YouTube" && "▶️ YouTube"}
+                          </span>
 
                           <button
                             onClick={() => toggleBookmark(item)}
@@ -723,32 +738,44 @@ export default function SafeViralContentPage() {
                       </button>
 
                       {/* View Original External Link */}
-                      {(() => {
-                        const targetSource = item.url.includes("facebook.com")
-                          ? "Facebook"
-                          : item.url.includes("tiktok.com")
-                          ? "TikTok"
-                          : item.url.includes("youtube.com") || item.url.includes("youtu.be")
-                          ? "YouTube"
-                          : item.platform
-
-                        return (
-                          <a
-                            href={item.url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="w-full text-center block text-[10px] text-muted-foreground hover:text-foreground font-semibold pt-1"
-                          >
-                            🔗 View original on {targetSource} &rarr;
-                          </a>
-                        )
-                      })()}
+                      <a
+                        href={item.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="w-full text-center block text-[10px] text-muted-foreground hover:text-foreground font-semibold pt-1"
+                      >
+                        🔗 View original on {item.platform} &rarr;
+                      </a>
                     </div>
                   </div>
                 )
               })}
             </div>
-          )}
+
+            {/* See More Videos Button (+5 Videos) */}
+            {activeTab === "Feed" && visibleItems.length < sortedItems.length && (
+              <div className="flex justify-center pt-8 pb-4">
+                <button
+                  onClick={handleLoadMoreVideos}
+                  disabled={isLoadingMore}
+                  className="bg-rose-600 hover:bg-rose-700 disabled:opacity-50 text-white font-black px-8 py-3 rounded-2xl shadow-lg transition flex items-center space-x-2 text-xs hover:scale-[1.02] active:scale-[0.98]"
+                >
+                  {isLoadingMore ? (
+                    <>
+                      <RefreshCw className="w-4 h-4 animate-spin" />
+                      <span>Loading 5 more viral videos...</span>
+                    </>
+                  ) : (
+                    <>
+                      <PlusCircle className="w-4 h-4" />
+                      <span>➕ See More Viral Videos (+5 Videos)</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            )}
+          </>
+        )}
         </div>
       )}
     </div>
