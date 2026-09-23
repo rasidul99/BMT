@@ -633,6 +633,13 @@ export default function SafePostSchedulerPage() {
               <span>🔑</span>
               <span>Manage FB Page Token</span>
             </button>
+            <a
+              href={`/workspace/workspace-1/safe/ai-variations`}
+              className="bg-purple-100 hover:bg-purple-200 dark:bg-purple-950 dark:hover:bg-purple-900 text-purple-700 dark:text-purple-300 font-extrabold text-xs px-3 py-1.5 rounded-lg border border-purple-300 dark:border-purple-800 transition flex items-center space-x-1.5"
+            >
+              <Sparkles className="w-3.5 h-3.5" />
+              <span>Generate AI Variations</span>
+            </a>
           </div>
           <p className="text-xs text-muted-foreground mt-1">
             Master Post Creator, Gemini Pro Variations, Bull Queue Delay Engine (Min 5m delay), and Drag & Drop Calendar.

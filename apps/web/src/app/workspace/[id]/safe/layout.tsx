@@ -19,6 +19,7 @@ import {
   Search,
   Activity,
   Zap,
+  Sparkles,
 } from "lucide-react"
 import { useWorkspace } from "../../../../hooks/useWorkspace"
 import { TopPlatformHeader } from "../../../../components/layout/TopPlatformHeader"
@@ -47,6 +48,7 @@ export default function SafeLayout({ children }: { children: React.ReactNode }) 
       category: "Post Suite & Content",
       items: [
         { label: "AI Post Scheduler", icon: CalendarClock, path: `/workspace/${workspaceId}/safe/post-scheduler` },
+        { label: "AI Post Variations", icon: Sparkles, path: `/workspace/${workspaceId}/safe/ai-variations` },
         { label: "Clickable Image Generator", icon: ImageIcon, path: `/workspace/${workspaceId}/safe/clickable-image` },
         { label: "Landing Page Builder", icon: PanelTop, path: `/workspace/${workspaceId}/safe/landing-page` },
         { label: "Media Downloader", icon: Download, path: `/workspace/${workspaceId}/safe/downloader` },
