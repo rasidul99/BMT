@@ -162,6 +162,22 @@ export function FriendAutomationCenter({ currentMode }: Props) {
     triggerNotification("Exported audit ledger to CSV successfully!")
   }
 
+  const exportSentRequestsToCSV = () => {
+    const headers = ["Target Profile,Country,City,Niche,Mutual Friends,Dispatched Via Account,Residential Proxy,Sent At,Status\n"]
+    const rows = sentLeads.map(l =>
+      `"${l.name}","${l.country}","${l.city}","${l.niche}","${l.mutualFriends}","${l.assignedAccountName || "Facebook Account"}","${l.assignedProxy || "Residential Proxy"}","${l.sentAt || l.addedAt}","${l.status}"`
+    )
+    const blob = new Blob([headers.concat(rows).join("\n")], { type: "text/csv;charset=utf-8;" })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement("a")
+    link.href = url
+    link.setAttribute("download", `bmt_sent_friend_requests_${Date.now()}.csv`)
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    triggerNotification("Exported Sent Friend Requests to CSV successfully!")
+  }
+
   if (!isLoaded) {
     return (
       <div className="flex items-center justify-center h-64 text-sm text-muted-foreground">
@@ -234,17 +250,27 @@ export function FriendAutomationCenter({ currentMode }: Props) {
               </button>
             </>
           ) : (
-            <button
-              onClick={() => {
-                setActiveTab("outgoing")
-                startRunner()
-                triggerNotification("Launched Friend Automation Engine with human simulation!")
-              }}
-              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold transition flex items-center gap-2 shadow-xs shadow-blue-500/20"
-            >
-              <Play className="w-3.5 h-3.5" />
-              Launch Automation ({metrics.queuedLeads} Queued)
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={exportSentRequestsToCSV}
+                className="px-3.5 py-2 bg-muted hover:bg-muted/80 text-foreground border border-border rounded-lg text-xs font-semibold transition flex items-center gap-1.5 shadow-xs"
+                title="Download Sent Friend Requests as CSV"
+              >
+                <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600" />
+                <span>Export CSV</span>
+              </button>
+              <button
+                onClick={() => {
+                  setActiveTab("outgoing")
+                  startRunner()
+                  triggerNotification("Launched Friend Automation Engine with human simulation!")
+                }}
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold transition flex items-center gap-2 shadow-xs shadow-blue-500/20"
+              >
+                <Play className="w-3.5 h-3.5" />
+                Launch Automation ({metrics.queuedLeads} Queued)
+              </button>
+            </div>
           )}
         </div>
       </div>
@@ -311,29 +337,29 @@ export function FriendAutomationCenter({ currentMode }: Props) {
       </div>
 
       {/* Tabs */}
-      <div className="flex border-b border-border space-x-1 overflow-x-auto text-xs font-medium">
+      <div className="flex border-b border-border space-x-1 overflow-x-auto text-xs font-medium no-scrollbar">
         <button
           onClick={() => setActiveTab("leads")}
-          className={`px-4 py-2.5 border-b-2 font-bold transition flex items-center gap-2 shrink-0 ${
+          className={`px-3.5 py-2.5 border-b-2 font-bold transition flex items-center gap-1.5 shrink-0 ${
             activeTab === "leads"
               ? "border-blue-600 text-blue-600 dark:text-blue-400"
               : "border-transparent text-muted-foreground hover:text-foreground"
           }`}
         >
           <Search className="w-3.5 h-3.5" />
-          Target Audience & Lead Studio ({filteredLeads.length})
+          <span>Audience Leads ({filteredLeads.length})</span>
         </button>
 
         <button
           onClick={() => setActiveTab("outgoing")}
-          className={`px-4 py-2.5 border-b-2 font-bold transition flex items-center gap-2 shrink-0 ${
+          className={`px-3.5 py-2.5 border-b-2 font-bold transition flex items-center gap-1.5 shrink-0 ${
             activeTab === "outgoing"
               ? "border-blue-600 text-blue-600 dark:text-blue-400"
               : "border-transparent text-muted-foreground hover:text-foreground"
           }`}
         >
           <Play className="w-3.5 h-3.5" />
-          Outgoing Request Runner
+          <span>Outgoing Runner</span>
           {metrics.queuedLeads > 0 && (
             <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-blue-600 text-white font-bold">
               {metrics.queuedLeads}
@@ -343,50 +369,53 @@ export function FriendAutomationCenter({ currentMode }: Props) {
 
         <button
           onClick={() => setActiveTab("incoming")}
-          className={`px-4 py-2.5 border-b-2 font-bold transition flex items-center gap-2 shrink-0 ${
+          className={`px-3.5 py-2.5 border-b-2 font-bold transition flex items-center gap-1.5 shrink-0 ${
             activeTab === "incoming"
               ? "border-blue-600 text-blue-600 dark:text-blue-400"
               : "border-transparent text-muted-foreground hover:text-foreground"
           }`}
         >
           <UserCheck className="w-3.5 h-3.5" />
-          Auto-Accept Engine ({metrics.pendingIncoming})
+          <span>Auto-Accept ({metrics.pendingIncoming})</span>
         </button>
 
         <button
           onClick={() => setActiveTab("sent")}
-          className={`px-4 py-2.5 border-b-2 font-bold transition flex items-center gap-2 shrink-0 ${
+          className={`px-3.5 py-2.5 border-b-2 font-bold transition flex items-center gap-1.5 shrink-0 ${
             activeTab === "sent"
               ? "border-blue-600 text-blue-600 dark:text-blue-400"
               : "border-transparent text-muted-foreground hover:text-foreground"
           }`}
         >
           <Clock className="w-3.5 h-3.5" />
-          Sent Backlog & Cancel Manager ({sentLeads.length})
+          <span>Sent Backlog ({sentLeads.length})</span>
         </button>
 
         <button
           onClick={() => setActiveTab("settings")}
-          className={`px-4 py-2.5 border-b-2 font-bold transition flex items-center gap-2 shrink-0 ${
+          className={`px-3.5 py-2.5 border-b-2 font-bold transition flex items-center gap-1.5 shrink-0 ${
             activeTab === "settings"
               ? "border-blue-600 text-blue-600 dark:text-blue-400"
               : "border-transparent text-muted-foreground hover:text-foreground"
           }`}
         >
           <Sliders className="w-3.5 h-3.5" />
-          Safety Limits & Delays
+          <span>Safety & Limits</span>
         </button>
 
         <button
           onClick={() => setActiveTab("logs")}
-          className={`px-4 py-2.5 border-b-2 font-bold transition flex items-center gap-2 shrink-0 ${
+          className={`px-3.5 py-2.5 border-b-2 font-bold transition flex items-center gap-1.5 shrink-0 ${
             activeTab === "logs"
-              ? "border-blue-600 text-blue-600 dark:text-blue-400"
+              ? "border-emerald-600 text-emerald-600 dark:text-emerald-400"
               : "border-transparent text-muted-foreground hover:text-foreground"
           }`}
         >
-          <FileSpreadsheet className="w-3.5 h-3.5" />
-          Audit Ledger ({logs.length})
+          <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600" />
+          <span>Audit Ledger (CSV)</span>
+          <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 font-bold">
+            {logs.length}
+          </span>
         </button>
       </div>
 
@@ -1002,17 +1031,26 @@ export function FriendAutomationCenter({ currentMode }: Props) {
                 </p>
               </div>
 
-              <button
-                onClick={() => {
-                  const pendingSent = leads.filter(l => l.status === "Sent")
-                  pendingSent.forEach(l => cancelSentRequest(l.id))
-                  triggerNotification(`Cleaned up ${pendingSent.length} pending sent requests!`)
-                }}
-                className="px-3.5 py-1.5 bg-muted hover:bg-muted/80 text-foreground border border-border rounded-lg text-xs font-bold transition flex items-center gap-1.5"
-              >
-                <Trash2 className="w-3.5 h-3.5 text-red-600" />
-                Cancel All Pending Requests
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={exportSentRequestsToCSV}
+                  className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition flex items-center gap-1.5 shadow-xs"
+                >
+                  <FileSpreadsheet className="w-3.5 h-3.5" />
+                  Download Sent CSV
+                </button>
+                <button
+                  onClick={() => {
+                    const pendingSent = leads.filter(l => l.status === "Sent")
+                    pendingSent.forEach(l => cancelSentRequest(l.id))
+                    triggerNotification(`Cleaned up ${pendingSent.length} pending sent requests!`)
+                  }}
+                  className="px-3.5 py-1.5 bg-muted hover:bg-muted/80 text-foreground border border-border rounded-lg text-xs font-bold transition flex items-center gap-1.5"
+                >
+                  <Trash2 className="w-3.5 h-3.5 text-red-600" />
+                  Cancel All Pending Requests
+                </button>
+              </div>
             </div>
           </div>
 
