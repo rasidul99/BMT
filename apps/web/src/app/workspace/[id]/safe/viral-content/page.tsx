@@ -27,6 +27,7 @@ import {
   ArrowRight,
   Filter,
   PlusCircle,
+  X,
 } from "lucide-react"
 import { useViralResearch, ViralContentItem } from "../../../../../hooks/useViralResearch"
 import { useAssetLibrary } from "../../../../../hooks/useAssetLibrary"
@@ -58,6 +59,25 @@ export default function SafeViralContentPage() {
   const [searchKeyword, setSearchKeyword] = useState<string>("")
   const [minLikesFilter, setMinLikesFilter] = useState<number>(0)
   const [sortBy, setSortBy] = useState<"score" | "views" | "likes" | "shares">("score")
+
+  // In-Card Video Player State
+  const [playingVideoId, setPlayingVideoId] = useState<string | null>(null)
+
+  // Helper to generate platform-specific embed iframe URLs
+  const getEmbedUrl = (item: ViralContentItem) => {
+    if (item.platform === "Facebook" || item.url.includes("facebook.com")) {
+      return `https://www.facebook.com/plugins/video.php?href=${encodeURIComponent(item.url)}&show_text=false&autoplay=true`
+    }
+    if (item.platform === "TikTok" || item.url.includes("tiktok.com")) {
+      const match = item.url.match(/video\/(\d+)/)
+      const tiktokId = match ? match[1] : "6718335390845095173"
+      return `https://www.tiktok.com/embed/v2/${tiktokId}`
+    }
+    // YouTube
+    const match = item.url.match(/(?:v=|\/embed\/|\/watch\?v=|youtu\.be\/|\/shorts\/)([a-zA-Z0-9_-]{11})/)
+    const ytId = match ? match[1] : "ugqmPWp8bzc"
+    return `https://www.youtube.com/embed/${ytId}?autoplay=1&rel=0`
+  }
 
   // Pagination: Show 5 videos initially, add 5 more on 'See More'
   const [visibleCount, setVisibleCount] = useState<number>(5)
@@ -624,60 +644,102 @@ export default function SafeViralContentPage() {
                     className="border bg-card rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition flex flex-col justify-between group hover:border-rose-500/40"
                   >
                     <div>
-                      {/* Media Header & Thumbnail */}
-                      <div className="relative aspect-video w-full bg-slate-900 overflow-hidden">
-                        <img
-                          src={item.thumbnailUrl}
-                          alt={item.title}
-                          className="w-full h-full object-cover group-hover:scale-105 transition duration-300 opacity-90"
-                        />
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/30"></div>
-
-                        {/* Top Badges */}
-                        <div className="absolute top-2.5 left-2.5 right-2.5 flex items-center justify-between">
-                          <span
-                            className={`text-[10px] font-extrabold px-2 py-0.5 rounded-md shadow-sm ${
-                              item.platform === "Facebook"
-                                ? "bg-blue-600 text-white"
-                                : item.platform === "TikTok"
-                                ? "bg-black/90 text-teal-300 border border-teal-500/40"
-                                : "bg-red-600 text-white"
-                            }`}
+                      {/* Media Header & Thumbnail / In-Card Player */}
+                      <div className="relative aspect-video w-full bg-slate-950 overflow-hidden">
+                        {playingVideoId === item.id ? (
+                          <div className="relative w-full h-full bg-black">
+                            <iframe
+                              src={getEmbedUrl(item)}
+                              title={item.title}
+                              className="w-full h-full border-0"
+                              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                              allowFullScreen
+                            />
+                            {/* Floating Close Player Button */}
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                setPlayingVideoId(null)
+                              }}
+                              className="absolute top-2 right-2 z-30 bg-black/80 hover:bg-rose-600 text-white text-[11px] font-bold px-2.5 py-1 rounded-lg backdrop-blur-md transition flex items-center space-x-1 shadow-xl border border-white/10"
+                              title="Close In-Card Player"
+                            >
+                              <X className="w-3.5 h-3.5" />
+                              <span>Close</span>
+                            </button>
+                          </div>
+                        ) : (
+                          <div
+                            onClick={() => setPlayingVideoId(item.id)}
+                            className="relative w-full h-full cursor-pointer group/player select-none"
                           >
-                            {item.platform === "Facebook" && "📘 Facebook Reel"}
-                            {item.platform === "TikTok" && "🎵 TikTok Viral"}
-                            {item.platform === "YouTube" && "▶️ YouTube"}
-                          </span>
+                            <img
+                              src={item.thumbnailUrl}
+                              alt={item.title}
+                              className="w-full h-full object-cover group-hover/player:scale-105 transition duration-300 opacity-90"
+                            />
+                            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-black/40"></div>
 
-                          <button
-                            onClick={() => toggleBookmark(item)}
-                            className={`p-1.5 rounded-full backdrop-blur-md transition ${
-                              bookmarked
-                                ? "bg-amber-500 text-white shadow-md"
-                                : "bg-black/40 text-white/80 hover:bg-black/70 hover:text-white"
-                            }`}
-                            title={bookmarked ? "Remove Bookmark" : "Save to Bookmarks"}
-                          >
-                            {bookmarked ? (
-                              <BookmarkCheck className="w-4 h-4" />
-                            ) : (
-                              <Bookmark className="w-4 h-4" />
-                            )}
-                          </button>
-                        </div>
+                            {/* Centered Glowing Play Icon */}
+                            <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                              <div className="w-13 h-13 sm:w-14 sm:h-14 rounded-full bg-rose-600 group-hover/player:bg-rose-500 text-white flex items-center justify-center shadow-xl shadow-rose-600/50 group-hover/player:scale-115 transition duration-300 ring-4 ring-white/30">
+                                <Play className="w-6 h-6 fill-white translate-x-0.5" />
+                              </div>
+                              <span className="mt-2 text-[10px] font-extrabold text-white bg-black/70 px-2.5 py-0.5 rounded-full backdrop-blur-md shadow tracking-wide group-hover/player:bg-rose-600/90 transition duration-300">
+                                ▶ Play in App
+                              </span>
+                            </div>
 
-                        {/* AI Viral Index Badge */}
-                        <div className="absolute bottom-2.5 left-2.5 flex items-center space-x-1.5">
-                          <span className="bg-gradient-to-r from-rose-600 to-amber-600 text-white font-black text-[10px] px-2 py-0.5 rounded-md shadow-md flex items-center space-x-1">
-                            <Flame className="w-3 h-3 fill-current" />
-                            <span>{item.viralScore}/100 VIRAL INDEX</span>
-                          </span>
-                        </div>
+                            {/* Top Badges */}
+                            <div className="absolute top-2.5 left-2.5 right-2.5 flex items-center justify-between">
+                              <span
+                                className={`text-[10px] font-extrabold px-2 py-0.5 rounded-md shadow-sm ${
+                                  item.platform === "Facebook"
+                                    ? "bg-blue-600 text-white"
+                                    : item.platform === "TikTok"
+                                    ? "bg-black/90 text-teal-300 border border-teal-500/40"
+                                    : "bg-red-600 text-white"
+                                }`}
+                              >
+                                {item.platform === "Facebook" && "📘 Facebook Reel"}
+                                {item.platform === "TikTok" && "🎵 TikTok Viral"}
+                                {item.platform === "YouTube" && "▶️ YouTube"}
+                              </span>
 
-                        {/* Posted Time */}
-                        <div className="absolute bottom-2.5 right-2.5 text-[10px] font-semibold text-white/90 bg-black/60 backdrop-blur-md px-2 py-0.5 rounded">
-                          {item.postedTime}
-                        </div>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  toggleBookmark(item)
+                                }}
+                                className={`p-1.5 rounded-full backdrop-blur-md transition pointer-events-auto ${
+                                  bookmarked
+                                    ? "bg-amber-500 text-white shadow-md"
+                                    : "bg-black/40 text-white/80 hover:bg-black/70 hover:text-white"
+                                }`}
+                                title={bookmarked ? "Remove Bookmark" : "Save to Bookmarks"}
+                              >
+                                {bookmarked ? (
+                                  <BookmarkCheck className="w-4 h-4" />
+                                ) : (
+                                  <Bookmark className="w-4 h-4" />
+                                )}
+                              </button>
+                            </div>
+
+                            {/* AI Viral Index Badge */}
+                            <div className="absolute bottom-2.5 left-2.5 flex items-center space-x-1.5">
+                              <span className="bg-gradient-to-r from-rose-600 to-amber-600 text-white font-black text-[10px] px-2 py-0.5 rounded-md shadow-md flex items-center space-x-1">
+                                <Flame className="w-3 h-3 fill-current" />
+                                <span>{item.viralScore}/100 VIRAL INDEX</span>
+                              </span>
+                            </div>
+
+                            {/* Posted Time */}
+                            <div className="absolute bottom-2.5 right-2.5 text-[10px] font-semibold text-white/90 bg-black/60 backdrop-blur-md px-2 py-0.5 rounded">
+                              {item.postedTime}
+                            </div>
+                          </div>
+                        )}
                       </div>
 
                       {/* Content Details */}
@@ -793,9 +855,10 @@ export default function SafeViralContentPage() {
                         href={item.url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="w-full text-center block text-[10px] text-muted-foreground hover:text-foreground font-semibold pt-1"
+                        className="w-full text-center py-2 px-3 rounded-xl bg-muted/60 hover:bg-muted text-[11px] text-foreground font-bold border border-border/80 hover:border-rose-500/50 transition flex items-center justify-center space-x-1.5 group/link shadow-sm"
                       >
-                        🔗 View original on {item.platform} &rarr;
+                        <ExternalLink className="w-3.5 h-3.5 text-rose-500 group-hover/link:translate-x-0.5 transition" />
+                        <span>View Original on {item.platform} ↗</span>
                       </a>
                     </div>
                   </div>
