@@ -20,6 +20,8 @@ import {
   Activity,
   Zap,
   Sparkles,
+  UserPlus,
+  UserMinus,
 } from "lucide-react"
 import { useWorkspace } from "../../../../hooks/useWorkspace"
 import { TopPlatformHeader } from "../../../../components/layout/TopPlatformHeader"
@@ -62,6 +64,12 @@ export default function SafeLayout({ children }: { children: React.ReactNode }) 
         { label: "AI Comment Assistant", icon: MessageSquareText, path: `/workspace/${workspaceId}/safe/comment-assistant` },
         { label: "Link Comment Block", icon: ShieldAlert, path: `/workspace/${workspaceId}/safe/link-comment-block` },
         { label: "AI Inbox Reply Assistant", icon: Inbox, path: `/workspace/${workspaceId}/safe/inbox-assistant` },
+      ],
+    },
+    {
+      category: "Audience & Growth",
+      items: [
+        { label: "Friend Automation", icon: UserPlus, path: `/workspace/${workspaceId}/safe/friend-automation` },
       ],
     },
     {
