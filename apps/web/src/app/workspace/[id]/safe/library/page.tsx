@@ -19,6 +19,11 @@ import {
   Sparkles,
   Layers,
   Download,
+  Upload,
+  HardDrive,
+  Globe,
+  CheckCircle2,
+  Loader2,
 } from "lucide-react"
 import { useAssetLibrary, LibraryAsset } from "../../../../../hooks/useAssetLibrary"
 
@@ -43,6 +48,14 @@ export default function SafeLibraryPage() {
   const [newTargetUrl, setNewTargetUrl] = useState("")
   const [newTags, setNewTags] = useState("facebook, marketing, campaign")
   const [pollOptions, setPollOptions] = useState(["Option 1", "Option 2", "Option 3", "Option 4"])
+
+  // Local Media Upload State
+  const [uploadMode, setUploadMode] = useState<"local" | "url">("local")
+  const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  const [filePreview, setFilePreview] = useState<string | null>(null)
+  const [isUploading, setIsUploading] = useState<boolean>(false)
+  const [isDragging, setIsDragging] = useState<boolean>(false)
+  const fileInputRef = React.useRef<HTMLInputElement | null>(null)
 
   const showToast = (msg: string) => {
     setToastMsg(msg)
@@ -113,10 +126,67 @@ export default function SafeLibraryPage() {
     return matchesCategory && matchesSearch
   })
 
+  const handleFileSelect = (file: File) => {
+    setSelectedFile(file)
+    const preview = URL.createObjectURL(file)
+    setFilePreview(preview)
+
+    // Auto-fill title if empty
+    if (!newTitle.trim()) {
+      const nameWithoutExt = file.name.substring(0, file.name.lastIndexOf(".")) || file.name
+      setNewTitle(nameWithoutExt.replace(/[-_]/g, " "))
+    }
+  }
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault()
+    setIsDragging(false)
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      handleFileSelect(e.dataTransfer.files[0])
+    }
+  }
+
   // Handle Form Submission
-  const handleCreateAsset = (e: React.FormEvent) => {
+  const handleCreateAsset = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!newTitle.trim()) return
+
+    let finalMediaUrl = newUrl
+    let finalSize = newType === "Video" ? "14.2 MB" : newType === "Image" || newType === "Link" ? "2.1 MB" : "1.5 KB"
+
+    // If uploading local file from device for Image, Video, or Link
+    if ((newType === "Image" || newType === "Video" || newType === "Link") && uploadMode === "local") {
+      if (selectedFile) {
+        setIsUploading(true)
+        try {
+          const formData = new FormData()
+          formData.append("file", selectedFile)
+
+          const res = await fetch("/api/media/upload", {
+            method: "POST",
+            body: formData,
+          })
+
+          if (res.ok) {
+            const data = await res.json()
+            finalMediaUrl = data.url
+            if (data.size) finalSize = `${data.size} (Local Storage)`
+          } else {
+            finalMediaUrl = filePreview || URL.createObjectURL(selectedFile)
+            const mb = (selectedFile.size / (1024 * 1024)).toFixed(1)
+            finalSize = `${mb} MB (Local Device)`
+          }
+        } catch (err) {
+          console.warn("Upload fallback triggered:", err)
+          finalMediaUrl = filePreview || URL.createObjectURL(selectedFile)
+        } finally {
+          setIsUploading(false)
+        }
+      } else if (!finalMediaUrl) {
+        showToast("⚠️ Please select a file from your device or switch to Web URL.")
+        return
+      }
+    }
 
     const fallbackImage = "https://images.unsplash.com/photo-1522335789203-aabd1fc54bc9?w=600&auto=format&fit=crop"
 
@@ -125,11 +195,13 @@ export default function SafeLibraryPage() {
       type: newType,
       folder: newFolder,
       content: newType === "Text" || newType === "Poll" ? newContent : undefined,
-      url: newType === "Text" ? undefined : newUrl || fallbackImage,
+      url: newType === "Text" ? undefined : finalMediaUrl || fallbackImage,
+      videoUrl: newType === "Video" ? finalMediaUrl || "/sample-video.mp4" : undefined,
+      thumbnailUrl: newType === "Video" ? (finalMediaUrl?.endsWith(".mp4") ? undefined : finalMediaUrl) : undefined,
       targetUrl: newType === "Link" ? newTargetUrl || "https://bmt.cards/product-offer" : undefined,
       pollOptions: newType === "Poll" ? pollOptions.filter((o) => o.trim().length > 0) : undefined,
       tags: newTags.split(",").map((t) => t.trim()).filter(Boolean),
-      size: newType === "Video" ? "14.2 MB" : newType === "Image" || newType === "Link" ? "2.1 MB" : "1.5 KB",
+      size: finalSize,
     })
 
     setShowUploadModal(false)
@@ -137,6 +209,8 @@ export default function SafeLibraryPage() {
     setNewContent("")
     setNewUrl("")
     setNewTargetUrl("")
+    setSelectedFile(null)
+    setFilePreview(null)
     showToast(`✓ New ${newType} asset saved persistently to Central Library!`)
   }
 
@@ -546,15 +620,123 @@ export default function SafeLibraryPage() {
               )}
 
               {(newType === "Image" || newType === "Video" || newType === "Link") && (
-                <div>
-                  <label className="font-bold block mb-1 text-foreground">Media URL (CDN, Cloudflare R2, Unsplash) *</label>
-                  <input
-                    type="url"
-                    placeholder="https://images.unsplash.com/..."
-                    value={newUrl}
-                    onChange={(e) => setNewUrl(e.target.value)}
-                    className="w-full px-3 py-2 border border-border rounded-lg bg-background text-foreground"
-                  />
+                <div className="space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <label className="font-bold block text-foreground">Media Source *</label>
+                    {/* Toggle Local vs URL */}
+                    <div className="flex items-center bg-muted/70 p-0.5 rounded-lg border border-border">
+                      <button
+                        type="button"
+                        onClick={() => setUploadMode("local")}
+                        className={`flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-bold transition ${
+                          uploadMode === "local"
+                            ? "bg-card text-foreground shadow-xs"
+                            : "text-muted-foreground hover:text-foreground"
+                        }`}
+                      >
+                        <HardDrive className="w-3 h-3 text-blue-500" />
+                        <span>From Device / PC</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setUploadMode("url")}
+                        className={`flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-bold transition ${
+                          uploadMode === "url"
+                            ? "bg-card text-foreground shadow-xs"
+                            : "text-muted-foreground hover:text-foreground"
+                        }`}
+                      >
+                        <Globe className="w-3 h-3 text-emerald-500" />
+                        <span>Web URL</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {uploadMode === "local" ? (
+                    <div>
+                      <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept={newType === "Video" ? "video/*" : "image/*"}
+                        className="hidden"
+                        onChange={(e) => {
+                          if (e.target.files && e.target.files[0]) {
+                            handleFileSelect(e.target.files[0])
+                          }
+                        }}
+                      />
+
+                      {selectedFile && filePreview ? (
+                        <div className="border border-border bg-muted/30 p-3 rounded-xl flex items-center gap-3">
+                          <div className="w-16 h-16 rounded-lg overflow-hidden border border-border bg-black/5 shrink-0 flex items-center justify-center">
+                            {newType === "Video" ? (
+                              <video src={filePreview} className="w-full h-full object-cover" />
+                            ) : (
+                              <img src={filePreview} alt="Preview" className="w-full h-full object-cover" />
+                            )}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="font-bold text-xs text-foreground truncate">{selectedFile.name}</p>
+                            <p className="text-[10px] text-muted-foreground mt-0.5">
+                              {(selectedFile.size / (1024 * 1024)).toFixed(2)} MB • {selectedFile.type || "Media file"}
+                            </p>
+                            <span className="inline-flex items-center gap-1 text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold mt-0.5">
+                              <CheckCircle2 className="w-3 h-3" /> Ready to upload
+                            </span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => fileInputRef.current?.click()}
+                            className="px-2.5 py-1.5 border border-border rounded-lg bg-card hover:bg-muted text-xs font-semibold text-foreground transition"
+                          >
+                            Change
+                          </button>
+                        </div>
+                      ) : (
+                        <div
+                          onDragOver={(e) => {
+                            e.preventDefault()
+                            setIsDragging(true)
+                          }}
+                          onDragLeave={() => setIsDragging(false)}
+                          onDrop={handleDrop}
+                          onClick={() => fileInputRef.current?.click()}
+                          className={`border-2 border-dashed rounded-xl p-5 text-center cursor-pointer transition flex flex-col items-center justify-center gap-2 ${
+                            isDragging
+                              ? "border-blue-500 bg-blue-500/10"
+                              : "border-border hover:border-blue-500/60 bg-muted/20 hover:bg-muted/40"
+                          }`}
+                        >
+                          <div className="w-10 h-10 rounded-full bg-blue-500/10 text-blue-600 flex items-center justify-center">
+                            <Upload className="w-5 h-5" />
+                          </div>
+                          <div>
+                            <p className="text-xs font-bold text-foreground">
+                              Click to browse or drag & drop {newType === "Video" ? "video" : "image"}
+                            </p>
+                            <p className="text-[10px] text-muted-foreground mt-0.5">
+                              {newType === "Video"
+                                ? "MP4, MOV, WEBM (up to 100MB)"
+                                : "JPG, PNG, WEBP, GIF (up to 25MB)"}
+                            </p>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div>
+                      <input
+                        type="url"
+                        placeholder="https://images.unsplash.com/... or https://cdn..."
+                        value={newUrl}
+                        onChange={(e) => setNewUrl(e.target.value)}
+                        className="w-full px-3 py-2 border border-border rounded-lg bg-background text-foreground"
+                      />
+                      <p className="text-[10px] text-muted-foreground mt-1">
+                        Paste any public image/video URL, CDN link or cloud storage URL.
+                      </p>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -593,9 +775,17 @@ export default function SafeLibraryPage() {
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg shadow-xs"
+                  disabled={isUploading}
+                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-bold rounded-lg shadow-xs flex items-center gap-1.5"
                 >
-                  Save to Library
+                  {isUploading ? (
+                    <>
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      <span>Uploading to Storage...</span>
+                    </>
+                  ) : (
+                    <span>Save to Library</span>
+                  )}
                 </button>
               </div>
             </form>
