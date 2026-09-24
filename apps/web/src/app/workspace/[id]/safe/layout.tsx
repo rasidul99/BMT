@@ -22,6 +22,7 @@ import {
   Sparkles,
   UserPlus,
   UserMinus,
+  MessageCircle,
 } from "lucide-react"
 import { useWorkspace } from "../../../../hooks/useWorkspace"
 import { TopPlatformHeader } from "../../../../components/layout/TopPlatformHeader"
@@ -64,6 +65,7 @@ export default function SafeLayout({ children }: { children: React.ReactNode }) 
         { label: "AI Comment Assistant", icon: MessageSquareText, path: `/workspace/${workspaceId}/safe/comment-assistant` },
         { label: "Link Comment Block", icon: ShieldAlert, path: `/workspace/${workspaceId}/safe/link-comment-block` },
         { label: "AI Inbox Reply Assistant", icon: Inbox, path: `/workspace/${workspaceId}/safe/inbox-assistant` },
+        { label: "AI Messenger Group Assistant", icon: MessageCircle, path: `/workspace/${workspaceId}/safe/messenger-group` },
       ],
     },
     {
