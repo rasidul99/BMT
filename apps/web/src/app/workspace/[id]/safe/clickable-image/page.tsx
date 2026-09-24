@@ -18,6 +18,7 @@ import {
   Share2,
   Info,
   CheckCircle2,
+  Upload,
 } from "lucide-react"
 import { useAssetLibrary } from "../../../../../hooks/useAssetLibrary"
 import { useClickableCards, ClickableCard } from "../../../../../hooks/useClickableCards"
@@ -101,6 +102,37 @@ export default function SafeClickableImagePage() {
       setImageUrl(assetUrl)
       setShowAssetPicker(false)
       showToast("✓ Image selected from Asset Library!")
+    }
+  }
+
+  // Upload Image from PC
+  const localFileInputRef = React.useRef<HTMLInputElement | null>(null)
+  const handleDirectLocalUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files || !e.target.files[0]) return
+    const file = e.target.files[0]
+    showToast("⏳ Uploading image to storage...")
+
+    try {
+      const formData = new FormData()
+      formData.append("file", file)
+      const res = await fetch("/api/media/upload", {
+        method: "POST",
+        body: formData,
+      })
+
+      if (res.ok) {
+        const data = await res.json()
+        setImageUrl(data.url)
+        showToast("✓ Image uploaded from PC successfully!")
+      } else {
+        const localPreview = URL.createObjectURL(file)
+        setImageUrl(localPreview)
+        showToast("✓ Image loaded from PC!")
+      }
+    } catch (err) {
+      const localPreview = URL.createObjectURL(file)
+      setImageUrl(localPreview)
+      showToast("✓ Image loaded from PC!")
     }
   }
 
@@ -231,32 +263,54 @@ export default function SafeClickableImagePage() {
               </p>
             </div>
 
-            {/* Image URL & Asset Library Picker */}
+            {/* Image URL, Asset Library Picker & Direct PC Upload */}
             <div>
-              <div className="flex items-center justify-between mb-1">
+              <div className="flex items-center justify-between mb-1 flex-wrap gap-2">
                 <label className="font-bold text-foreground">
-                  Card Banner Image URL *
+                  Card Banner Image *
                 </label>
-                <button
-                  type="button"
-                  onClick={() => setShowAssetPicker(true)}
-                  className="text-blue-600 dark:text-blue-400 hover:underline font-bold text-[11px] flex items-center gap-1"
-                >
-                  <FolderOpen className="w-3.5 h-3.5" />
-                  <span>Pick from Asset Library</span>
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => localFileInputRef.current?.click()}
+                    className="text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/40 px-2 py-0.5 rounded border border-blue-500/20 font-bold text-[11px] flex items-center gap-1 transition"
+                  >
+                    <Upload className="w-3 h-3" />
+                    <span>Upload from PC</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowAssetPicker(true)}
+                    className="text-foreground hover:bg-muted px-2 py-0.5 rounded border border-border font-bold text-[11px] flex items-center gap-1 transition"
+                  >
+                    <FolderOpen className="w-3 h-3 text-amber-500" />
+                    <span>Pick from Library</span>
+                  </button>
+                </div>
               </div>
+
+              <input
+                ref={localFileInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={handleDirectLocalUpload}
+              />
+
               <div className="relative">
                 <input
-                  type="url"
+                  type="text"
                   required
-                  placeholder="https://images.unsplash.com/..."
+                  placeholder="Paste image URL (https://...) or choose from PC / Library"
                   value={imageUrl}
                   onChange={(e) => setImageUrl(e.target.value)}
-                  className="w-full pl-9 pr-3 py-2 border border-border rounded-lg bg-background text-foreground text-xs focus:ring-1 focus:ring-blue-500"
+                  className="w-full pl-9 pr-3 py-2 border border-border rounded-lg bg-background text-foreground text-xs focus:ring-1 focus:ring-blue-500 font-mono"
                 />
                 <ImageIcon className="w-4 h-4 text-muted-foreground absolute left-3 top-2.5" />
               </div>
+              <p className="text-[10px] text-muted-foreground mt-1">
+                Supports local PC upload, Asset Library photos (/uploads/...), or direct web image URLs.
+              </p>
             </div>
 
             {/* Card Headline / Title */}
