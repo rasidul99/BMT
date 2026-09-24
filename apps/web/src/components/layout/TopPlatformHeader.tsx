@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState } from "react"
+import React, { useState, useRef, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import {
   Facebook,
@@ -15,16 +15,29 @@ import {
   Moon,
   LogOut,
   Sparkles,
+  Shield,
+  Zap,
+  User,
+  ChevronDown,
 } from "lucide-react"
 import { useWorkspace } from "../../hooks/useWorkspace"
 import { useAuth } from "../../hooks/useAuth"
 import { useTheme } from "../../hooks/useTheme"
 import { useSidebarStore } from "../../stores/sidebar.store"
 
+// Custom SVG Icons
 function TikTokIcon({ className = "w-4 h-4" }: { className?: string }) {
   return (
     <svg className={className} viewBox="0 0 24 24" fill="currentColor">
       <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-2.88 2.5 2.89 2.89 0 0 1-2.89-2.89 2.89 2.89 0 0 1 2.89-2.89c.28 0 .54.04.79.1v-3.5a6.37 6.37 0 0 0-.79-.05A6.34 6.34 0 0 0 3 15.28a6.34 6.34 0 0 0 6.34 6.34 6.34 6.34 0 0 0 6.34-6.34V8.41a8.3 8.3 0 0 0 4.91 1.6V6.57a4.85 4.85 0 0 1-1-.02z" />
+    </svg>
+  )
+}
+
+function TelegramSvgIcon({ className = "w-4 h-4" }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="currentColor">
+      <path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/>
     </svg>
   )
 }
@@ -39,59 +52,83 @@ export function TopPlatformHeader({ currentMode = "SAFE" }: TopPlatformHeaderPro
   const { user, logout } = useAuth()
   const { theme, setTheme } = useTheme()
   const { isCollapsed, toggleSidebar } = useSidebarStore()
+
   const [toastMessage, setToastMessage] = useState<string | null>(null)
+  const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false)
+  const profileDropdownRef = useRef<HTMLDivElement>(null)
 
   const workspaceId = activeWorkspace?.id || "workspace-1"
+  const displayName = user?.name || "Julkar Nayeem"
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (
+        profileDropdownRef.current &&
+        !profileDropdownRef.current.contains(event.target as Node)
+      ) {
+        setIsProfileDropdownOpen(false)
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside)
+    return () => document.removeEventListener("mousedown", handleClickOutside)
+  }, [])
 
   const platforms = [
     {
       id: "facebook",
-      name: "FACEBOOK MARKETING",
-      icon: Facebook,
-      color: "text-blue-500",
+      name: "Facebook Marketing",
+      iconComponent: Facebook,
+      bgColor: "bg-blue-600 hover:bg-blue-700 text-white shadow-md shadow-blue-500/20",
+      activeBg: "bg-blue-600 text-white ring-2 ring-blue-400 shadow-lg shadow-blue-500/30",
       isActive: true,
     },
     {
       id: "instagram",
-      name: "INSTAGRAM",
-      icon: Instagram,
-      color: "text-pink-500",
+      name: "Instagram Marketing",
+      iconComponent: Instagram,
+      bgColor: "bg-gradient-to-tr from-amber-500 via-rose-500 to-purple-600 text-white shadow-md shadow-rose-500/20 hover:opacity-90",
+      activeBg: "bg-gradient-to-tr from-amber-500 via-rose-500 to-purple-600 text-white ring-2 ring-rose-400",
       isActive: false,
     },
     {
       id: "youtube",
-      name: "YOUTUBE",
-      icon: Youtube,
-      color: "text-red-500",
+      name: "YouTube Marketing",
+      iconComponent: Youtube,
+      bgColor: "bg-red-600 hover:bg-red-700 text-white shadow-md shadow-red-500/20",
+      activeBg: "bg-red-600 text-white ring-2 ring-red-400",
       isActive: false,
     },
     {
       id: "tiktok",
-      name: "TIKTOK",
-      isCustom: true,
+      name: "TikTok Marketing",
       iconComponent: TikTokIcon,
-      color: "text-cyan-400",
+      bgColor: "bg-slate-900 hover:bg-black text-cyan-400 dark:bg-slate-800 dark:text-cyan-300 border border-slate-700 shadow-md",
+      activeBg: "bg-black text-cyan-400 ring-2 ring-cyan-400",
       isActive: false,
     },
     {
       id: "telegram",
-      name: "TELEGRAM",
-      icon: Send,
-      color: "text-sky-400",
+      name: "Telegram Marketing",
+      iconComponent: TelegramSvgIcon,
+      bgColor: "bg-sky-500 hover:bg-sky-600 text-white shadow-md shadow-sky-500/20",
+      activeBg: "bg-sky-500 text-white ring-2 ring-sky-400",
       isActive: false,
     },
     {
       id: "shope",
-      name: "SHOPE",
-      icon: ShoppingBag,
-      color: "text-amber-400",
+      name: "Shope (E-Commerce)",
+      iconComponent: ShoppingBag,
+      bgColor: "bg-amber-500 hover:bg-amber-600 text-white shadow-md shadow-amber-500/20",
+      activeBg: "bg-amber-500 text-white ring-2 ring-amber-400",
       isActive: false,
     },
     {
       id: "blog",
-      name: "BLOG",
-      icon: BookOpen,
-      color: "text-emerald-400",
+      name: "Blog & Content",
+      iconComponent: BookOpen,
+      bgColor: "bg-emerald-600 hover:bg-emerald-700 text-white shadow-md shadow-emerald-500/20",
+      activeBg: "bg-emerald-600 text-white ring-2 ring-emerald-400",
       isActive: false,
     },
   ]
@@ -121,10 +158,10 @@ export function TopPlatformHeader({ currentMode = "SAFE" }: TopPlatformHeaderPro
   }
 
   return (
-    <header className="w-full border-b border-border bg-card text-foreground shadow-sm sticky top-0 z-50">
+    <header className="w-full border-b border-border bg-card text-foreground shadow-xs sticky top-0 z-50">
       {/* Toast Notification */}
       {toastMessage && (
-        <div className="fixed top-16 right-6 z-50 bg-blue-600 text-white text-xs font-semibold px-4 py-2.5 rounded-lg shadow-xl flex items-center gap-2 border border-blue-400">
+        <div className="fixed top-16 right-6 z-50 bg-blue-600 text-white text-xs font-semibold px-4 py-2.5 rounded-xl shadow-2xl flex items-center gap-2 border border-blue-400 animate-in fade-in slide-in-from-top-2">
           <Sparkles className="w-4 h-4 text-amber-300 shrink-0" />
           <span>{toastMessage}</span>
           <button onClick={() => setToastMessage(null)} className="ml-2 hover:opacity-75 font-bold">
@@ -135,17 +172,17 @@ export function TopPlatformHeader({ currentMode = "SAFE" }: TopPlatformHeaderPro
 
       <div className="flex h-14 items-center justify-between">
         {/* 1. Left Area: Strictly aligns with Sidebar width (w-64 or w-16 when collapsed) */}
+        {/* ONLY Logo & Branding here — NO collapse button in this column */}
         <div
           className={`flex items-center border-r border-border h-full transition-all duration-300 shrink-0 ${
-            isCollapsed ? "w-16 px-2 justify-center" : "w-64 px-4 justify-between"
+            isCollapsed ? "w-16 px-2 justify-center" : "w-64 px-4 justify-start"
           }`}
         >
-          {/* Logo & Branding */}
           <div
             onClick={() => router.push(`/workspace/${workspaceId}/safe/dashboard`)}
             className="flex items-center gap-2.5 cursor-pointer group"
           >
-            <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-blue-600 to-indigo-700 flex items-center justify-center text-white font-black text-xs shadow-md group-hover:scale-105 transition-transform">
+            <div className="h-8 w-8 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-700 flex items-center justify-center text-white font-black text-xs shadow-md group-hover:scale-105 transition-transform">
               BMT
             </div>
             {!isCollapsed && (
@@ -155,89 +192,165 @@ export function TopPlatformHeader({ currentMode = "SAFE" }: TopPlatformHeaderPro
               </div>
             )}
           </div>
+        </div>
 
-          {/* Sidebar Collapse / Expand Button */}
+        {/* 2. Middle: Collapse Button (immediately left of Facebook icon) + Platform Icons */}
+        <div className="flex-1 flex items-center space-x-3 px-4 overflow-x-auto no-scrollbar">
+          {/* Sidebar Collapse Toggle Button (Positioned directly to the left of Facebook icon) */}
           <button
             onClick={toggleSidebar}
             title={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
-            className="p-1.5 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition flex items-center justify-center"
+            className="h-8 w-8 rounded-xl border border-border bg-muted/40 hover:bg-muted text-muted-foreground hover:text-foreground transition flex items-center justify-center shrink-0 shadow-xs group"
           >
-            {isCollapsed ? <PanelLeftOpen className="w-4 h-4" /> : <PanelLeftClose className="w-4 h-4" />}
+            {isCollapsed ? (
+              <PanelLeftOpen className="w-4 h-4 group-hover:text-blue-500 transition-colors" />
+            ) : (
+              <PanelLeftClose className="w-4 h-4 group-hover:text-blue-500 transition-colors" />
+            )}
           </button>
+
+          <div className="h-5 w-px bg-border shrink-0" />
+
+          {/* Platform Icons (Icon only, hover shows name tooltip) */}
+          <nav className="flex items-center space-x-2">
+            {platforms.map((p) => {
+              const isCurrentActive = p.id === "facebook"
+              const IconComponent = p.iconComponent
+              return (
+                <div key={p.id} className="relative group">
+                  <button
+                    onClick={() => handlePlatformClick(p)}
+                    aria-label={p.name}
+                    className={`h-8 w-8 rounded-xl flex items-center justify-center transition-all duration-200 transform group-hover:scale-105 shrink-0 ${
+                      isCurrentActive ? p.activeBg : p.bgColor
+                    } ${!isCurrentActive ? "opacity-75 hover:opacity-100" : ""}`}
+                  >
+                    <IconComponent className="w-4 h-4" />
+                    {isCurrentActive && (
+                      <span className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-emerald-400 ring-2 ring-card animate-pulse" />
+                    )}
+                  </button>
+
+                  {/* Hover Name Tooltip */}
+                  <div className="absolute top-full mt-2 left-1/2 -translate-x-1/2 px-2.5 py-1 bg-slate-900 text-white dark:bg-white dark:text-slate-900 text-[10px] font-black rounded-lg shadow-2xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50 border border-slate-700 dark:border-slate-200">
+                    {p.name}
+                    <div className="absolute -top-1 left-1/2 -translate-x-1/2 border-4 border-transparent border-b-slate-900 dark:border-b-white" />
+                  </div>
+                </div>
+              )
+            })}
+          </nav>
         </div>
 
-        {/* 2. Middle: Platform Switcher Tabs (Aligned with Main Content area, Clean no-scrollbar) */}
-        <nav className="flex-1 flex items-center space-x-1 sm:space-x-2 overflow-x-auto px-4 no-scrollbar">
-          {platforms.map((p) => {
-            const isCurrentActive = p.id === "facebook"
-            return (
-              <button
-                key={p.id}
-                onClick={() => handlePlatformClick(p)}
-                className={`flex items-center space-x-2 px-3 py-1.5 rounded-lg text-xs font-bold transition whitespace-nowrap shrink-0 ${
-                  isCurrentActive
-                    ? "bg-blue-600 text-white shadow-sm ring-1 ring-blue-500"
-                    : "text-muted-foreground hover:text-foreground hover:bg-muted/70"
-                }`}
-              >
-                {p.isCustom && p.iconComponent ? (
-                  <p.iconComponent className={`w-3.5 h-3.5 ${isCurrentActive ? "text-white" : p.color}`} />
-                ) : p.icon ? (
-                  <p.icon className={`w-3.5 h-3.5 ${isCurrentActive ? "text-white" : p.color}`} />
-                ) : null}
-
-                <span>{p.name}</span>
-
-                {isCurrentActive && (
-                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse ml-0.5" />
-                )}
-              </button>
-            )
-          })}
-        </nav>
-
-        {/* 3. Right: Controls (Mode Toggle, Theme, Profile) */}
-        <div className="flex items-center space-x-2 px-4 border-l border-border h-full shrink-0">
-          {/* Mode Switcher Button */}
+        {/* 3. Right: Single Profile Avatar Button & Dropdown Menu */}
+        <div className="px-4 border-l border-border h-full flex items-center shrink-0 relative" ref={profileDropdownRef}>
+          {/* Profile Trigger Button */}
           <button
-            onClick={handleToggleMode}
-            title="Switch between SAFE and ADVANCED Mode"
-            className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition border shadow-xs ${
-              currentMode === "SAFE"
-                ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-300 dark:border-emerald-800 hover:bg-emerald-500/20"
-                : "bg-orange-500/10 text-orange-600 dark:text-orange-400 border-orange-300 dark:border-orange-800 hover:bg-orange-500/20"
-            }`}
+            onClick={() => setIsProfileDropdownOpen(!isProfileDropdownOpen)}
+            className="relative flex items-center space-x-2 p-1 rounded-full hover:bg-muted transition group"
+            title="User Profile & Settings"
           >
-            <span>{currentMode === "SAFE" ? "🟢 SAFE" : "⚡ ADVANCED"}</span>
-            <span className="text-[10px] opacity-75 font-normal">Switch</span>
-          </button>
-
-          {/* Theme Toggle */}
-          <button
-            onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-            className="p-1.5 border border-border rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition"
-            title="Toggle Light/Dark Theme"
-          >
-            {theme === "dark" ? <Sun className="w-3.5 h-3.5 text-amber-400" /> : <Moon className="w-3.5 h-3.5 text-slate-600" />}
-          </button>
-
-          {/* User Profile Info & Logout */}
-          <div className="flex items-center space-x-2 text-xs pl-1">
-            <div className="hidden lg:flex items-center space-x-1.5">
-              <div className="h-6 w-6 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-[10px] shadow-xs">
-                {user?.name ? user.name[0].toUpperCase() : "A"}
-              </div>
-              <span className="font-semibold max-w-[90px] truncate text-foreground">{user?.name || "Admin"}</span>
+            <div className="h-8 w-8 rounded-full bg-gradient-to-tr from-blue-600 to-indigo-600 text-white flex items-center justify-center font-black text-xs shadow-md ring-2 ring-border group-hover:ring-blue-500 transition-all">
+              {displayName.charAt(0).toUpperCase()}
             </div>
-            <button
-              onClick={handleLogout}
-              className="flex items-center space-x-1 px-2.5 py-1 border border-border rounded-md text-xs hover:bg-destructive/10 text-destructive font-semibold transition"
-              title="Logout"
-            >
-              <LogOut className="w-3 h-3" />
-              <span>Logout</span>
-            </button>
-          </div>
+            {/* Active Indicator Dot */}
+            <span className="absolute bottom-1 right-1 w-2.5 h-2.5 rounded-full bg-emerald-500 ring-2 ring-card" />
+          </button>
+
+          {/* Profile Dropdown Popover */}
+          {isProfileDropdownOpen && (
+            <div className="absolute top-14 right-4 w-72 bg-card border border-border rounded-2xl shadow-2xl p-4 space-y-4 animate-in fade-in slide-in-from-top-2 z-50 text-xs">
+              {/* User Header */}
+              <div className="flex items-center space-x-3 border-b border-border pb-3">
+                <div className="h-10 w-10 rounded-full bg-gradient-to-tr from-blue-600 to-indigo-600 text-white flex items-center justify-center font-black text-sm shadow-md">
+                  {displayName.charAt(0).toUpperCase()}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <span className="font-extrabold text-sm text-foreground block truncate">
+                    {displayName}
+                  </span>
+                  <span className="text-[10px] text-muted-foreground block truncate">
+                    {user?.email || "admin@bmt.app"}
+                  </span>
+                  <span className="inline-flex items-center px-1.5 py-0.2 rounded text-[9px] font-bold bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20 mt-0.5">
+                    Super Administrator
+                  </span>
+                </div>
+              </div>
+
+              {/* Setting 1: Mode Switcher (Safe vs Advanced) */}
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider block">
+                  Platform Engine Mode
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    onClick={() => {
+                      if (currentMode !== "SAFE") handleToggleMode()
+                    }}
+                    className={`p-2 rounded-xl border flex flex-col items-center justify-center text-center transition ${
+                      currentMode === "SAFE"
+                        ? "bg-emerald-500/10 border-emerald-500 text-emerald-600 dark:text-emerald-400 font-black shadow-xs"
+                        : "border-border hover:bg-muted text-muted-foreground font-semibold"
+                    }`}
+                  >
+                    <Shield className="w-4 h-4 mb-1 text-emerald-500" />
+                    <span className="text-xs">🟢 SAFE</span>
+                    <span className="text-[9px] opacity-75">Graph API</span>
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      if (currentMode !== "ADVANCED") handleToggleMode()
+                    }}
+                    className={`p-2 rounded-xl border flex flex-col items-center justify-center text-center transition ${
+                      currentMode === "ADVANCED"
+                        ? "bg-orange-500/10 border-orange-500 text-orange-600 dark:text-orange-400 font-black shadow-xs"
+                        : "border-border hover:bg-muted text-muted-foreground font-semibold"
+                    }`}
+                  >
+                    <Zap className="w-4 h-4 mb-1 text-orange-500" />
+                    <span className="text-xs">⚡ ADVANCED</span>
+                    <span className="text-[9px] opacity-75">High-Power</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Setting 2: Theme Toggle */}
+              <div className="space-y-1.5 pt-1">
+                <label className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider block">
+                  Appearance
+                </label>
+                <div className="flex items-center justify-between p-2 rounded-xl border border-border bg-muted/20">
+                  <span className="font-semibold text-foreground flex items-center space-x-2">
+                    {theme === "dark" ? (
+                      <Moon className="w-4 h-4 text-purple-400" />
+                    ) : (
+                      <Sun className="w-4 h-4 text-amber-500" />
+                    )}
+                    <span>{theme === "dark" ? "Dark Mode" : "Light Mode"}</span>
+                  </span>
+                  <button
+                    onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+                    className="px-2.5 py-1 rounded-lg border text-[11px] font-bold bg-background hover:bg-muted transition"
+                  >
+                    Toggle
+                  </button>
+                </div>
+              </div>
+
+              {/* Setting 3: Logout Action */}
+              <div className="pt-2 border-t border-border">
+                <button
+                  onClick={handleLogout}
+                  className="w-full flex items-center justify-center space-x-1.5 p-2 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-600 dark:text-red-400 font-bold transition"
+                >
+                  <LogOut className="w-4 h-4" />
+                  <span>Log Out of BMT OS</span>
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </header>
