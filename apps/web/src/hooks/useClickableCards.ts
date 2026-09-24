@@ -132,6 +132,16 @@ export function useClickableCards(workspaceId?: string) {
 
     const updated = [card, ...currentCards]
     saveToStorage(updated)
+
+    // Sync to server storage for Facebook/Twitter OpenGraph crawlers
+    if (typeof window !== "undefined") {
+      fetch("/api/cards", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(card),
+      }).catch((err) => console.warn("Failed to sync card to server:", err))
+    }
+
     return card
   }
 

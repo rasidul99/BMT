@@ -1,0 +1,34 @@
+[
+  {
+    "id": "c-eid-mega-sale-2026-up-to-50-off-top-7068",
+    "title": "Eid Mega Sale 2026 - Up to 50% Off Top Gadgets!",
+    "destinationUrl": "https://unsplash.com/photos/four-colorful-spheres-against-white-background-AO9_BtD92fc",
+    "description": "Order original tech accessories & smartwatches with instant home delivery across BD.",
+    "displayDomain": "DARAZ.COM",
+    "createdAt": "2026-09-24",
+    "imageUrl": "/uploads/Screenshot_2026-09-12_143238-1790284039215-3677.png",
+    "clickCount": 0
+  },
+  {
+    "id": "card-eid-mega-sale",
+    "title": "Eid Mega Sale 2026 - Up to 50% Off Top Gadgets!",
+    "description": "Get original smartwatches, earbuds & tech accessories with fast home delivery.",
+    "imageUrl": "https://images.unsplash.com/photo-1542744094-3a3172720a8a?w=800&auto=format&fit=crop",
+    "destinationUrl": "https://bmt.cards/eid-mega-offer",
+    "displayDomain": "bmt.cards",
+    "clickCount": 142,
+    "createdAt": "2026-08-01",
+    "workspaceId": "workspace-1"
+  },
+  {
+    "id": "card-wireless-earbuds-pro",
+    "title": "Ultra ANC Wireless Earbuds with 48h Battery Life",
+    "description": "Limited stock offer! Tap to order today with free express shipping across BD.",
+    "imageUrl": "https://images.unsplash.com/photo-1590658268037-6bf12165a8df?w=800&auto=format&fit=crop",
+    "destinationUrl": "https://bmt.cards/earbuds-pro",
+    "displayDomain": "shope.bd",
+    "clickCount": 89,
+    "createdAt": "2026-08-03",
+    "workspaceId": "workspace-1"
+  }
+]
