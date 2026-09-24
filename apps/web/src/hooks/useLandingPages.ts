@@ -15,6 +15,20 @@ export interface AdSlotConfig {
   adHtmlSnippet?: string
 }
 
+export interface SectionVisibility {
+  announcementBar?: boolean
+  categoryBadge?: boolean
+  headline?: boolean
+  subheadline?: boolean
+  heroImage?: boolean
+  features?: boolean
+  pricingBadge?: boolean
+  variantsDropdown?: boolean
+  checkoutForm?: boolean
+  trustBadges?: boolean
+  adSlot?: boolean
+}
+
 export interface LandingPageProject {
   id: string
   slug: string
@@ -32,6 +46,7 @@ export interface LandingPageProject {
   dropdownTitle: string
   dropdownOptions: DropdownOption[]
   adSlot: AdSlotConfig
+  visibleSections?: SectionVisibility
   viewsCount: number
   ordersCount: number
   status: "Published" | "Draft"

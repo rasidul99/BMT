@@ -14,6 +14,7 @@ import {
   Smartphone,
   Monitor,
   Eye,
+  EyeOff,
   ShoppingBag,
   DollarSign,
   Globe,
@@ -27,7 +28,7 @@ import {
   Lock,
 } from "lucide-react"
 import { useAssetLibrary } from "../../../../../hooks/useAssetLibrary"
-import { useLandingPages, LandingPageProject, DropdownOption } from "../../../../../hooks/useLandingPages"
+import { useLandingPages, LandingPageProject, DropdownOption, SectionVisibility } from "../../../../../hooks/useLandingPages"
 
 export default function SafeLandingPageBuilderPage() {
   const router = useRouter()
@@ -36,6 +37,28 @@ export default function SafeLandingPageBuilderPage() {
 
   const { addAsset, assets: libraryAssets } = useAssetLibrary()
   const { pages, createPage, deletePage } = useLandingPages(workspaceId)
+
+  // Section Visibility State (Show / Hide controls for all elements)
+  const [visibleSections, setVisibleSections] = useState<SectionVisibility>({
+    announcementBar: true,
+    categoryBadge: true,
+    headline: true,
+    subheadline: true,
+    heroImage: true,
+    features: true,
+    pricingBadge: true,
+    variantsDropdown: true,
+    checkoutForm: true,
+    trustBadges: true,
+    adSlot: true,
+  })
+
+  const toggleSection = (section: keyof SectionVisibility) => {
+    setVisibleSections((prev) => ({
+      ...prev,
+      [section]: !prev[section],
+    }))
+  }
 
   // Editor states
   const [announcementBar, setAnnouncementBar] = useState("🎉 সীমিত সময়ের ধামাকা অফার • সারাদেশে ক্যাশ অন হোম ডেলিভারি ফ্রি!")
@@ -169,6 +192,7 @@ export default function SafeLandingPageBuilderPage() {
         adTargetUrl: adTargetUrl.trim(),
         adHtmlSnippet: adHtmlSnippet.trim(),
       },
+      visibleSections,
       status: "Published",
       workspaceId,
     })
@@ -342,9 +366,39 @@ export default function SafeLandingPageBuilderPage() {
           <form onSubmit={handlePublishLandingPage} className="space-y-4">
             {/* ================= STEP 1: TOP BAR & BRANDING ================= */}
             <div className="border border-border bg-muted/20 p-4 rounded-xl space-y-3">
-              <div className="flex items-center gap-2 border-b border-border pb-2">
-                <span className="bg-blue-600 text-white text-[10px] font-black w-5 h-5 rounded-full flex items-center justify-center">1</span>
-                <h3 className="font-extrabold text-xs text-foreground">Top Announcement Bar & Branding</h3>
+              <div className="flex items-center justify-between border-b border-border pb-2">
+                <div className="flex items-center gap-2">
+                  <span className="bg-blue-600 text-white text-[10px] font-black w-5 h-5 rounded-full flex items-center justify-center">1</span>
+                  <h3 className="font-extrabold text-xs text-foreground">Top Announcement Bar & Branding</h3>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => toggleSection("announcementBar")}
+                    className={`px-2 py-0.5 rounded text-[10px] font-bold flex items-center gap-1 transition ${
+                      visibleSections.announcementBar
+                        ? "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 border border-blue-300 dark:border-blue-700"
+                        : "bg-muted text-muted-foreground border border-border opacity-70"
+                    }`}
+                    title={visibleSections.announcementBar ? "Click to hide announcement bar" : "Click to show announcement bar"}
+                  >
+                    {visibleSections.announcementBar ? <Eye className="w-3 h-3 text-blue-600" /> : <EyeOff className="w-3 h-3" />}
+                    <span>Announcement</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => toggleSection("categoryBadge")}
+                    className={`px-2 py-0.5 rounded text-[10px] font-bold flex items-center gap-1 transition ${
+                      visibleSections.categoryBadge
+                        ? "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 border border-blue-300 dark:border-blue-700"
+                        : "bg-muted text-muted-foreground border border-border opacity-70"
+                    }`}
+                    title={visibleSections.categoryBadge ? "Click to hide branding badge" : "Click to show branding badge"}
+                  >
+                    {visibleSections.categoryBadge ? <Eye className="w-3 h-3 text-blue-600" /> : <EyeOff className="w-3 h-3" />}
+                    <span>Branding</span>
+                  </button>
+                </div>
               </div>
 
               {/* Announcement Bar Text */}
@@ -400,9 +454,65 @@ export default function SafeLandingPageBuilderPage() {
 
             {/* ================= STEP 2: HOOK, MEDIA & HIGHLIGHTS ================= */}
             <div className="border border-border bg-muted/20 p-4 rounded-xl space-y-3">
-              <div className="flex items-center gap-2 border-b border-border pb-2">
-                <span className="bg-blue-600 text-white text-[10px] font-black w-5 h-5 rounded-full flex items-center justify-center">2</span>
-                <h3 className="font-extrabold text-xs text-foreground">Offer Hook, Product Media & Highlights</h3>
+              <div className="flex items-center justify-between border-b border-border pb-2">
+                <div className="flex items-center gap-2">
+                  <span className="bg-blue-600 text-white text-[10px] font-black w-5 h-5 rounded-full flex items-center justify-center">2</span>
+                  <h3 className="font-extrabold text-xs text-foreground">Offer Hook, Product Media & Highlights</h3>
+                </div>
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <button
+                    type="button"
+                    onClick={() => toggleSection("headline")}
+                    className={`px-2 py-0.5 rounded text-[10px] font-bold flex items-center gap-1 transition ${
+                      visibleSections.headline
+                        ? "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 border border-blue-300 dark:border-blue-700"
+                        : "bg-muted text-muted-foreground border border-border opacity-70"
+                    }`}
+                    title={visibleSections.headline ? "Click to hide headline" : "Click to show headline"}
+                  >
+                    {visibleSections.headline ? <Eye className="w-3 h-3 text-blue-600" /> : <EyeOff className="w-3 h-3" />}
+                    <span>Headline</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => toggleSection("subheadline")}
+                    className={`px-2 py-0.5 rounded text-[10px] font-bold flex items-center gap-1 transition ${
+                      visibleSections.subheadline
+                        ? "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 border border-blue-300 dark:border-blue-700"
+                        : "bg-muted text-muted-foreground border border-border opacity-70"
+                    }`}
+                    title={visibleSections.subheadline ? "Click to hide description" : "Click to show description"}
+                  >
+                    {visibleSections.subheadline ? <Eye className="w-3 h-3 text-blue-600" /> : <EyeOff className="w-3 h-3" />}
+                    <span>Description</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => toggleSection("heroImage")}
+                    className={`px-2 py-0.5 rounded text-[10px] font-bold flex items-center gap-1 transition ${
+                      visibleSections.heroImage
+                        ? "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 border border-blue-300 dark:border-blue-700"
+                        : "bg-muted text-muted-foreground border border-border opacity-70"
+                    }`}
+                    title={visibleSections.heroImage ? "Click to hide photo" : "Click to show photo"}
+                  >
+                    {visibleSections.heroImage ? <Eye className="w-3 h-3 text-blue-600" /> : <EyeOff className="w-3 h-3" />}
+                    <span>Photo</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => toggleSection("features")}
+                    className={`px-2 py-0.5 rounded text-[10px] font-bold flex items-center gap-1 transition ${
+                      visibleSections.features
+                        ? "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 border border-blue-300 dark:border-blue-700"
+                        : "bg-muted text-muted-foreground border border-border opacity-70"
+                    }`}
+                    title={visibleSections.features ? "Click to hide features list" : "Click to show features list"}
+                  >
+                    {visibleSections.features ? <Eye className="w-3 h-3 text-blue-600" /> : <EyeOff className="w-3 h-3" />}
+                    <span>Features</span>
+                  </button>
+                </div>
               </div>
 
               {/* Main Headline */}
@@ -526,9 +636,39 @@ export default function SafeLandingPageBuilderPage() {
 
             {/* ================= STEP 3: PRICING & PACKAGE VARIANTS ================= */}
             <div className="border border-blue-500/30 bg-blue-500/5 p-4 rounded-xl space-y-3">
-              <div className="flex items-center gap-2 border-b border-blue-500/20 pb-2">
-                <span className="bg-blue-600 text-white text-[10px] font-black w-5 h-5 rounded-full flex items-center justify-center">3</span>
-                <h3 className="font-extrabold text-xs text-foreground">Pricing & Package Variants (ভ্যারিয়েন্ট ড্রপডাউন)</h3>
+              <div className="flex items-center justify-between border-b border-blue-500/20 pb-2">
+                <div className="flex items-center gap-2">
+                  <span className="bg-blue-600 text-white text-[10px] font-black w-5 h-5 rounded-full flex items-center justify-center">3</span>
+                  <h3 className="font-extrabold text-xs text-foreground">Pricing & Package Variants (ভ্যারিয়েন্ট ড্রপডাউন)</h3>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => toggleSection("pricingBadge")}
+                    className={`px-2 py-0.5 rounded text-[10px] font-bold flex items-center gap-1 transition ${
+                      visibleSections.pricingBadge
+                        ? "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 border border-blue-300 dark:border-blue-700"
+                        : "bg-muted text-muted-foreground border border-border opacity-70"
+                    }`}
+                    title={visibleSections.pricingBadge ? "Click to hide price badge" : "Click to show price badge"}
+                  >
+                    {visibleSections.pricingBadge ? <Eye className="w-3 h-3 text-blue-600" /> : <EyeOff className="w-3 h-3" />}
+                    <span>Price</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => toggleSection("variantsDropdown")}
+                    className={`px-2 py-0.5 rounded text-[10px] font-bold flex items-center gap-1 transition ${
+                      visibleSections.variantsDropdown
+                        ? "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 border border-blue-300 dark:border-blue-700"
+                        : "bg-muted text-muted-foreground border border-border opacity-70"
+                    }`}
+                    title={visibleSections.variantsDropdown ? "Click to hide variant dropdown" : "Click to show variant dropdown"}
+                  >
+                    {visibleSections.variantsDropdown ? <Eye className="w-3 h-3 text-blue-600" /> : <EyeOff className="w-3 h-3" />}
+                    <span>Variants</span>
+                  </button>
+                </div>
               </div>
 
               {/* Base Price Tag */}
@@ -607,9 +747,24 @@ export default function SafeLandingPageBuilderPage() {
 
             {/* ================= STEP 4: CALL TO ACTION & CHECKOUT ================= */}
             <div className="border border-border bg-muted/20 p-4 rounded-xl space-y-3">
-              <div className="flex items-center gap-2 border-b border-border pb-2">
-                <span className="bg-blue-600 text-white text-[10px] font-black w-5 h-5 rounded-full flex items-center justify-center">4</span>
-                <h3 className="font-extrabold text-xs text-foreground">Call To Action & Checkout Setup</h3>
+              <div className="flex items-center justify-between border-b border-border pb-2">
+                <div className="flex items-center gap-2">
+                  <span className="bg-blue-600 text-white text-[10px] font-black w-5 h-5 rounded-full flex items-center justify-center">4</span>
+                  <h3 className="font-extrabold text-xs text-foreground">Call To Action & Checkout Setup</h3>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => toggleSection("checkoutForm")}
+                  className={`px-2 py-0.5 rounded text-[10px] font-bold flex items-center gap-1 transition ${
+                    visibleSections.checkoutForm
+                      ? "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 border border-blue-300 dark:border-blue-700"
+                      : "bg-muted text-muted-foreground border border-border opacity-70"
+                  }`}
+                  title={visibleSections.checkoutForm ? "Click to hide checkout form" : "Click to show checkout form"}
+                >
+                  {visibleSections.checkoutForm ? <Eye className="w-3 h-3 text-blue-600" /> : <EyeOff className="w-3 h-3" />}
+                  <span>COD Form</span>
+                </button>
               </div>
 
               <div>
@@ -664,6 +819,38 @@ export default function SafeLandingPageBuilderPage() {
                   <span className="bg-amber-600 text-white text-[10px] font-black w-5 h-5 rounded-full flex items-center justify-center">5</span>
                   <h3 className="font-extrabold text-xs text-foreground">Trust Guarantees & Monetization Ads</h3>
                 </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => toggleSection("trustBadges")}
+                    className={`px-2 py-0.5 rounded text-[10px] font-bold flex items-center gap-1 transition ${
+                      visibleSections.trustBadges
+                        ? "bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300 border border-purple-300 dark:border-purple-700"
+                        : "bg-muted text-muted-foreground border border-border opacity-70"
+                    }`}
+                    title={visibleSections.trustBadges ? "Click to hide trust badges" : "Click to show trust badges"}
+                  >
+                    {visibleSections.trustBadges ? <Eye className="w-3 h-3 text-purple-600" /> : <EyeOff className="w-3 h-3" />}
+                    <span>Trust Badges</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => toggleSection("adSlot")}
+                    className={`px-2 py-0.5 rounded text-[10px] font-bold flex items-center gap-1 transition ${
+                      visibleSections.adSlot
+                        ? "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300 border border-amber-300 dark:border-amber-700"
+                        : "bg-muted text-muted-foreground border border-border opacity-70"
+                    }`}
+                    title={visibleSections.adSlot ? "Click to hide ad slot" : "Click to show ad slot"}
+                  >
+                    {visibleSections.adSlot ? <Eye className="w-3 h-3 text-amber-600" /> : <EyeOff className="w-3 h-3" />}
+                    <span>Ad Slot</span>
+                  </button>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between pt-1">
+                <span className="text-[11px] text-muted-foreground">Configure monetization ads</span>
                 <label className="flex items-center gap-1.5 cursor-pointer font-bold text-xs text-foreground">
                   <input
                     type="checkbox"
@@ -779,6 +966,50 @@ export default function SafeLandingPageBuilderPage() {
             </div>
           </div>
 
+          {/* Quick Visibility Toolbar */}
+          <div className="w-full bg-muted/40 p-2.5 rounded-xl border border-border space-y-1.5 text-xs">
+            <div className="flex items-center justify-between text-[11px] font-bold text-muted-foreground">
+              <span className="flex items-center gap-1.5 text-foreground">
+                <Eye className="w-3.5 h-3.5 text-blue-500" />
+                <span>Section Show/Hide Controls:</span>
+              </span>
+              <span className="text-[10px] text-muted-foreground">Click chips to toggle</span>
+            </div>
+            <div className="flex flex-wrap gap-1">
+              {[
+                { key: "announcementBar", label: "Announcement" },
+                { key: "categoryBadge", label: "Branding" },
+                { key: "headline", label: "Headline" },
+                { key: "subheadline", label: "Description" },
+                { key: "heroImage", label: "Photo" },
+                { key: "features", label: "Highlights" },
+                { key: "pricingBadge", label: "Price" },
+                { key: "variantsDropdown", label: "Variants" },
+                { key: "checkoutForm", label: "COD Form" },
+                { key: "trustBadges", label: "Trust Badges" },
+                { key: "adSlot", label: "Ad Slot" },
+              ].map(({ key, label }) => {
+                const isVisible = visibleSections[key as keyof SectionVisibility]
+                return (
+                  <button
+                    key={key}
+                    type="button"
+                    onClick={() => toggleSection(key as keyof SectionVisibility)}
+                    className={`px-2 py-0.5 rounded text-[10px] font-bold flex items-center gap-1 transition ${
+                      isVisible
+                        ? "bg-blue-600 text-white shadow-xs"
+                        : "bg-muted text-muted-foreground line-through opacity-60 border border-border"
+                    }`}
+                    title={isVisible ? `Click to hide ${label}` : `Click to show ${label}`}
+                  >
+                    {isVisible ? <Eye className="w-2.5 h-2.5" /> : <EyeOff className="w-2.5 h-2.5" />}
+                    <span>{label}</span>
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+
           {/* Device Mockup Frame */}
           <div
             className={`border rounded-2xl overflow-hidden bg-background shadow-xl transition-all duration-300 ${
@@ -788,43 +1019,55 @@ export default function SafeLandingPageBuilderPage() {
             }`}
           >
             {/* 1. Top Announcement Bar */}
-            <div className="bg-blue-600 text-white p-2.5 text-center space-y-0.5 shadow-xs">
-              <span className="font-bold text-xs block leading-tight">{announcementBar}</span>
-            </div>
+            {visibleSections.announcementBar && (
+              <div className="bg-blue-600 text-white p-2.5 text-center space-y-0.5 shadow-xs">
+                <span className="font-bold text-xs block leading-tight">{announcementBar}</span>
+              </div>
+            )}
 
             {/* Content Body Preview */}
             <div className="p-4 space-y-3.5 text-left">
               {/* 2. Category & Branding */}
-              <div className="flex items-center justify-between">
-                <span className="bg-blue-600/10 text-blue-600 dark:text-blue-400 font-bold text-[10px] px-2 py-0.5 rounded border border-blue-500/20">
-                  {category}
-                </span>
-                <span className="text-[10px] text-muted-foreground font-semibold truncate max-w-[160px]">
-                  {pageTitle}
-                </span>
-              </div>
+              {visibleSections.categoryBadge && (
+                <div className="flex items-center justify-between">
+                  <span className="bg-blue-600/10 text-blue-600 dark:text-blue-400 font-bold text-[10px] px-2 py-0.5 rounded border border-blue-500/20">
+                    {category}
+                  </span>
+                  <span className="text-[10px] text-muted-foreground font-semibold truncate max-w-[160px]">
+                    {pageTitle}
+                  </span>
+                </div>
+              )}
 
               {/* 3. Headline & Sub-headline */}
-              <div className="space-y-1">
-                <h3 className="font-extrabold text-sm text-foreground leading-snug">{headline}</h3>
-                <p className="text-[11px] text-muted-foreground leading-relaxed">{subheadline}</p>
-              </div>
+              {(visibleSections.headline || visibleSections.subheadline) && (
+                <div className="space-y-1">
+                  {visibleSections.headline && (
+                    <h3 className="font-extrabold text-sm text-foreground leading-snug">{headline}</h3>
+                  )}
+                  {visibleSections.subheadline && (
+                    <p className="text-[11px] text-muted-foreground leading-relaxed">{subheadline}</p>
+                  )}
+                </div>
+              )}
 
               {/* 4. Product Hero Banner */}
-              <div className="aspect-[16/9] rounded-xl overflow-hidden bg-muted border border-border shadow-xs relative">
-                <img
-                  src={heroImage}
-                  alt={headline}
-                  className="w-full h-full object-cover"
-                />
-                <span className="absolute bottom-2 left-2 bg-black/75 backdrop-blur text-white font-bold text-[9px] px-2 py-0.5 rounded flex items-center gap-1">
-                  <CheckCircle2 className="w-2.5 h-2.5 text-emerald-400" />
-                  <span>100% Original Product</span>
-                </span>
-              </div>
+              {visibleSections.heroImage && (
+                <div className="aspect-[16/9] rounded-xl overflow-hidden bg-muted border border-border shadow-xs relative">
+                  <img
+                    src={heroImage}
+                    alt={headline}
+                    className="w-full h-full object-cover"
+                  />
+                  <span className="absolute bottom-2 left-2 bg-black/75 backdrop-blur text-white font-bold text-[9px] px-2 py-0.5 rounded flex items-center gap-1">
+                    <CheckCircle2 className="w-2.5 h-2.5 text-emerald-400" />
+                    <span>100% Original Product</span>
+                  </span>
+                </div>
+              )}
 
               {/* 5. Key Highlights / Bullet Points */}
-              {features.length > 0 && (
+              {visibleSections.features && features.length > 0 && (
                 <div className="bg-muted/40 p-2.5 rounded-lg border border-border space-y-1.5">
                   <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">
                     Key Features & Advantages:
@@ -841,20 +1084,22 @@ export default function SafeLandingPageBuilderPage() {
               )}
 
               {/* 6. Pricing & Savings Badge */}
-              <div className="flex items-center justify-between p-2.5 border border-emerald-500/30 bg-emerald-500/10 rounded-xl">
-                <div>
-                  <span className="text-[9px] uppercase font-bold text-emerald-700 dark:text-emerald-400 block">Special Offer Price</span>
-                  <div className="text-sm font-black text-emerald-600 dark:text-emerald-400">
-                    {dropdownOptions[selectedPreviewOptionIdx]?.price || productPrice}
+              {visibleSections.pricingBadge && (
+                <div className="flex items-center justify-between p-2.5 border border-emerald-500/30 bg-emerald-500/10 rounded-xl">
+                  <div>
+                    <span className="text-[9px] uppercase font-bold text-emerald-700 dark:text-emerald-400 block">Special Offer Price</span>
+                    <div className="text-sm font-black text-emerald-600 dark:text-emerald-400">
+                      {dropdownOptions[selectedPreviewOptionIdx]?.price || productPrice}
+                    </div>
                   </div>
+                  <span className="bg-emerald-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-xs">
+                    🔥 স্টক সীমিত
+                  </span>
                 </div>
-                <span className="bg-emerald-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-xs">
-                  🔥 স্টক সীমিত
-                </span>
-              </div>
+              )}
 
               {/* 7. Interactive Dropdown */}
-              {dropdownOptions.length > 0 && (
+              {visibleSections.variantsDropdown && dropdownOptions.length > 0 && (
                 <div className="space-y-1 bg-muted/40 p-2.5 rounded-lg border border-border">
                   <span className="text-[10px] font-bold text-foreground block">
                     {dropdownTitle}
@@ -874,64 +1119,68 @@ export default function SafeLandingPageBuilderPage() {
               )}
 
               {/* 8. Real 1-Click COD Checkout Box Mockup */}
-              <div className="border border-blue-500/30 bg-blue-500/5 p-3 rounded-xl space-y-2">
-                <span className="font-extrabold text-[11px] text-blue-700 dark:text-blue-400 block">
-                  📝 ১-ক্লিক ক্যাশ অন ডেলিভারি অর্ডার ফরম
-                </span>
-                <div className="space-y-1.5 text-xs">
-                  <input
-                    type="text"
-                    placeholder="আপনার সম্পূর্ণ নাম"
-                    disabled
-                    className="w-full p-1.5 border border-border rounded bg-background/80 text-[11px] text-muted-foreground"
-                  />
-                  <input
-                    type="text"
-                    placeholder="আপনার সচল মোবাইল নম্বর (017...)"
-                    disabled
-                    className="w-full p-1.5 border border-border rounded bg-background/80 text-[11px] text-muted-foreground"
-                  />
-                  <input
-                    type="text"
-                    placeholder="সম্পূর্ণ ডেলিভারি ঠিকানা (জেলা ও থানা সহ)"
-                    disabled
-                    className="w-full p-1.5 border border-border rounded bg-background/80 text-[11px] text-muted-foreground"
-                  />
-                </div>
+              {visibleSections.checkoutForm && (
+                <div className="border border-blue-500/30 bg-blue-500/5 p-3 rounded-xl space-y-2">
+                  <span className="font-extrabold text-[11px] text-blue-700 dark:text-blue-400 block">
+                    📝 ১-ক্লিক ক্যাশ অন ডেলিভারি অর্ডার ফরম
+                  </span>
+                  <div className="space-y-1.5 text-xs">
+                    <input
+                      type="text"
+                      placeholder="আপনার সম্পূর্ণ নাম"
+                      disabled
+                      className="w-full p-1.5 border border-border rounded bg-background/80 text-[11px] text-muted-foreground"
+                    />
+                    <input
+                      type="text"
+                      placeholder="আপনার সচল মোবাইল নম্বর (017...)"
+                      disabled
+                      className="w-full p-1.5 border border-border rounded bg-background/80 text-[11px] text-muted-foreground"
+                    />
+                    <input
+                      type="text"
+                      placeholder="সম্পূর্ণ ডেলিভারি ঠিকানা (জেলা ও থানা সহ)"
+                      disabled
+                      className="w-full p-1.5 border border-border rounded bg-background/80 text-[11px] text-muted-foreground"
+                    />
+                  </div>
 
-                <button
-                  type="button"
-                  className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold py-2.5 rounded-xl shadow-md text-xs transition flex items-center justify-center gap-1.5 mt-2"
-                >
-                  <ShoppingBag className="w-3.5 h-3.5" />
-                  <span>{ctaText}</span>
-                </button>
-                <span className="text-[9px] text-center text-muted-foreground block">
-                  🔒 ১০০% নিরাপদ ক্যাশ অন ডেলিভারি (পণ্য হাতে পেয়ে টাকা পরিশোধ)
-                </span>
-              </div>
+                  <button
+                    type="button"
+                    className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold py-2.5 rounded-xl shadow-md text-xs transition flex items-center justify-center gap-1.5 mt-2"
+                  >
+                    <ShoppingBag className="w-3.5 h-3.5" />
+                    <span>{ctaText}</span>
+                  </button>
+                  <span className="text-[9px] text-center text-muted-foreground block">
+                    🔒 ১০০% নিরাপদ ক্যাশ অন ডেলিভারি (পণ্য হাতে পেয়ে টাকা পরিশোধ)
+                  </span>
+                </div>
+              )}
 
               {/* 9. Trust Badges Row */}
-              <div className="grid grid-cols-3 gap-1.5 pt-1 text-center">
-                <div className="bg-muted/40 p-1.5 rounded-lg border border-border flex flex-col items-center">
-                  <Truck className="w-3.5 h-3.5 text-blue-500" />
-                  <span className="text-[9px] font-bold text-foreground mt-0.5">হোম ডেলিভারি</span>
-                  <span className="text-[8px] text-muted-foreground">সারা দেশে</span>
+              {visibleSections.trustBadges && (
+                <div className="grid grid-cols-3 gap-1.5 pt-1 text-center">
+                  <div className="bg-muted/40 p-1.5 rounded-lg border border-border flex flex-col items-center">
+                    <Truck className="w-3.5 h-3.5 text-blue-500" />
+                    <span className="text-[9px] font-bold text-foreground mt-0.5">হোম ডেলিভারি</span>
+                    <span className="text-[8px] text-muted-foreground">সারা দেশে</span>
+                  </div>
+                  <div className="bg-muted/40 p-1.5 rounded-lg border border-border flex flex-col items-center">
+                    <DollarSign className="w-3.5 h-3.5 text-emerald-500" />
+                    <span className="text-[9px] font-bold text-foreground mt-0.5">ক্যাশ অন ডেলিভারি</span>
+                    <span className="text-[8px] text-muted-foreground">হাতে পেয়ে পেমেন্ট</span>
+                  </div>
+                  <div className="bg-muted/40 p-1.5 rounded-lg border border-border flex flex-col items-center">
+                    <ShieldCheck className="w-3.5 h-3.5 text-purple-500" />
+                    <span className="text-[9px] font-bold text-foreground mt-0.5">ওয়ারেন্টি গ্যারান্টি</span>
+                    <span className="text-[8px] text-muted-foreground">১০০% অরিজিনাল</span>
+                  </div>
                 </div>
-                <div className="bg-muted/40 p-1.5 rounded-lg border border-border flex flex-col items-center">
-                  <DollarSign className="w-3.5 h-3.5 text-emerald-500" />
-                  <span className="text-[9px] font-bold text-foreground mt-0.5">ক্যাশ অন ডেলিভারি</span>
-                  <span className="text-[8px] text-muted-foreground">হাতে পেয়ে পেমেন্ট</span>
-                </div>
-                <div className="bg-muted/40 p-1.5 rounded-lg border border-border flex flex-col items-center">
-                  <ShieldCheck className="w-3.5 h-3.5 text-purple-500" />
-                  <span className="text-[9px] font-bold text-foreground mt-0.5">ওয়ারেন্টি গ্যারান্টি</span>
-                  <span className="text-[8px] text-muted-foreground">১০০% অরিজিনাল</span>
-                </div>
-              </div>
+              )}
 
               {/* 10. Working Ad Slot */}
-              {adEnabled && (
+              {visibleSections.adSlot && adEnabled && (
                 <div className="border border-amber-500/30 bg-amber-500/10 p-2 rounded-lg text-left space-y-1">
                   <span className="text-[9px] font-bold text-amber-700 dark:text-amber-400 uppercase block">
                     Sponsored Ad Slot
