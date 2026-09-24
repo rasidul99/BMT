@@ -20,9 +20,11 @@ export interface LandingPageProject {
   slug: string
   title: string
   category: "E-Commerce & Gadgets" | "Health & Beauty" | "Courses & Education" | "Affiliate Offers" | "Services & Real Estate"
+  announcementBar?: string
   headline: string
   subheadline: string
   heroImage: string
+  features?: string[]
   productPrice: string
   ctaText: string
   ctaAction: "Order Form" | "WhatsApp Checkout"
@@ -49,9 +51,16 @@ export function useLandingPages(workspaceId?: string) {
       slug: "smart-watch-ultra-eid-offer",
       title: "Ultra Smart Watch Series 9 Eid Offer",
       category: "E-Commerce & Gadgets",
+      announcementBar: "🎉 সীমিত সময়ের ধামাকা অফার • সারাদেশে ক্যাশ অন হোম ডেলিভারি ফ্রি!",
       headline: "ঈদের সেরা ধামাকা অফারে কিনুন অরিজিনাল আল্ট্রা স্মার্ট ওয়াচ!",
       subheadline: "অরিজিনাল অ্যামোলেড ডিসপ্লে, ব্লুটুথ কলিং ও ১ বছরের অফিসিয়াল ব্র্যান্ড ওয়ারেন্টি সহ। স্টক সীমিত!",
       heroImage: "https://images.unsplash.com/photo-1522335789203-aabd1fc54bc9?w=800&auto=format&fit=crop",
+      features: [
+        "অরিজিনাল ২.০২ ইঞ্চি সুপার অ্যামোলেড কালার ডিসপ্লে",
+        "হাই-ডেফিনিশন ব্লুটুথ কলিং ও লাউড স্পিকার",
+        "এক চার্জে টানা ৫ থেকে ৭ দিন ব্যাটারি ব্যাকআপ",
+        "১ বছরের অফিসিয়াল ব্র্যান্ড রিপ্লেসমেন্ট ওয়ারেন্টি",
+      ],
       productPrice: "২,৪৯০ টাকা (রেগুলার ৩,৯৯০ টাকা)",
       ctaText: "এখনই ক্যাশ অন ডেলিভারিতে অর্ডার করুন",
       ctaAction: "Order Form",
@@ -193,6 +202,16 @@ export function useLandingPages(workspaceId?: string) {
 
     const updated = [page, ...currentPages]
     saveToStorage(updated)
+
+    // Sync to server storage for live page and OpenGraph crawlers
+    if (typeof window !== "undefined") {
+      fetch("/api/landing-pages", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(page),
+      }).catch((err) => console.warn("Failed to sync landing page to server:", err))
+    }
+
     return page
   }
 

@@ -103,7 +103,7 @@ export default function PublicLandingPageView() {
       {/* Top Announcement Bar */}
       <div className="bg-gradient-to-r from-blue-700 via-indigo-700 to-blue-700 text-white py-2 px-4 text-center text-xs font-bold tracking-wide shadow-md flex items-center justify-center gap-2">
         <Truck className="w-4 h-4 animate-bounce" />
-        <span>সারা বাংলাদেশে ক্যাশ অন হোম ডেলিভারি ফ্রি • ১০০% পণ্য দেখে মূল্য পরিশোধ করুন</span>
+        <span>{page?.announcementBar || "সারা বাংলাদেশে ক্যাশ অন হোম ডেলিভারি ফ্রি • ১০০% পণ্য দেখে মূল্য পরিশোধ করুন"}</span>
       </div>
 
       {/* Main Container */}
@@ -161,6 +161,25 @@ export default function PublicLandingPageView() {
                 <span>{activeOption ? activeOption.price : page.productPrice}</span>
               </div>
             </div>
+
+            {/* Key Features & Advantages */}
+            {page.features && page.features.length > 0 && (
+              <div className="px-4 sm:px-6">
+                <div className="bg-slate-50 dark:bg-slate-800/60 p-4 sm:p-5 rounded-2xl border border-slate-200 dark:border-slate-700/60 space-y-2.5 shadow-xs">
+                  <span className="text-[11px] font-extrabold text-slate-500 uppercase tracking-wider block">
+                    প্রোডাক্টের বিশেষ সুবিধাসমূহ (Key Highlights):
+                  </span>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs sm:text-sm font-semibold text-slate-800 dark:text-slate-200">
+                    {page.features.map((feat, idx) => (
+                      <div key={idx} className="flex items-start gap-2">
+                        <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
+                        <span className="leading-tight">{feat}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* CLIENT SPECIFICATION: Interactive Offer Dropdown */}
             {page.dropdownOptions && page.dropdownOptions.length > 0 && (

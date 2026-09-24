@@ -21,6 +21,10 @@ import {
   Share2,
   CheckCircle2,
   Link2,
+  Upload,
+  Truck,
+  ShieldCheck,
+  Lock,
 } from "lucide-react"
 import { useAssetLibrary } from "../../../../../hooks/useAssetLibrary"
 import { useLandingPages, LandingPageProject, DropdownOption } from "../../../../../hooks/useLandingPages"
@@ -34,11 +38,18 @@ export default function SafeLandingPageBuilderPage() {
   const { pages, createPage, deletePage } = useLandingPages(workspaceId)
 
   // Editor states
+  const [announcementBar, setAnnouncementBar] = useState("🎉 সীমিত সময়ের ধামাকা অফার • সারাদেশে ক্যাশ অন হোম ডেলিভারি ফ্রি!")
   const [category, setCategory] = useState<LandingPageProject["category"]>("E-Commerce & Gadgets")
   const [pageTitle, setPageTitle] = useState("Eid Special Premium Watch Landing Page")
   const [headline, setHeadline] = useState("ঈদের সেরা ধামাকা অফারে কিনুন অরিজিনাল আল্ট্রা স্মার্ট ওয়াচ!")
   const [subheadline, setSubheadline] = useState("অরিজিনাল অ্যামোলেড ডিসপ্লে, ব্লুটুথ কলিং ও ১ বছরের অফিসিয়াল ব্র্যান্ড ওয়ারেন্টি সহ। স্টক সীমিত!")
   const [heroImage, setHeroImage] = useState("https://images.unsplash.com/photo-1522335789203-aabd1fc54bc9?w=800&auto=format&fit=crop")
+  const [features, setFeatures] = useState<string[]>([
+    "অরিজিনাল ২.০২ ইঞ্চি সুপার অ্যামোলেড কালার ডিসপ্লে",
+    "হাই-ডেফিনিশন ব্লুটুথ কলিং ও লাউড স্পিকার",
+    "এক চার্জে টানা ৫ থেকে ৭ দিন ব্যাটারি ব্যাকআপ",
+    "১ বছরের অফিসিয়াল ব্র্যান্ড রিপ্লেসমেন্ট ওয়ারেন্টি",
+  ])
   const [productPrice, setProductPrice] = useState("২,৪৯০ টাকা (রেগুলার ৩,৯৯০ টাকা)")
   const [ctaText, setCtaText] = useState("এখনই ক্যাশ অন ডেলিভারিতে অর্ডার করুন")
   const [ctaAction, setCtaAction] = useState<"Order Form" | "WhatsApp Checkout">("Order Form")
@@ -67,9 +78,52 @@ export default function SafeLandingPageBuilderPage() {
   const [showAssetPicker, setShowAssetPicker] = useState(false)
   const [toastMsg, setToastMsg] = useState<string | null>(null)
 
+  // Direct PC Upload ref
+  const localImageInputRef = React.useRef<HTMLInputElement | null>(null)
+  const handleDirectImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files || !e.target.files[0]) return
+    const file = e.target.files[0]
+    showToast("⏳ Uploading hero image...")
+    try {
+      const formData = new FormData()
+      formData.append("file", file)
+      const res = await fetch("/api/media/upload", {
+        method: "POST",
+        body: formData,
+      })
+      if (res.ok) {
+        const data = await res.json()
+        setHeroImage(data.url)
+        showToast("✓ Hero image uploaded from PC!")
+      } else {
+        const localPreview = URL.createObjectURL(file)
+        setHeroImage(localPreview)
+        showToast("✓ Hero image loaded from PC!")
+      }
+    } catch {
+      const localPreview = URL.createObjectURL(file)
+      setHeroImage(localPreview)
+      showToast("✓ Hero image loaded from PC!")
+    }
+  }
+
   const showToast = (msg: string) => {
     setToastMsg(msg)
     setTimeout(() => setToastMsg(null), 3000)
+  }
+
+  // Feature Bullet Points handlers
+  const handleAddFeature = () => {
+    setFeatures([...features, "নতুন বিশেষ সুবিধা বা অফার"])
+  }
+  const handleRemoveFeature = (index: number) => {
+    if (features.length <= 1) return
+    setFeatures(features.filter((_, i) => i !== index))
+  }
+  const handleFeatureChange = (index: number, val: string) => {
+    const next = [...features]
+    next[index] = val
+    setFeatures(next)
   }
 
   // Add new dropdown option
@@ -97,9 +151,11 @@ export default function SafeLandingPageBuilderPage() {
     const newPage = createPage({
       title: pageTitle.trim(),
       category,
+      announcementBar: announcementBar.trim(),
       headline: headline.trim(),
       subheadline: subheadline.trim(),
       heroImage: heroImage.trim() || "https://images.unsplash.com/photo-1522335789203-aabd1fc54bc9?w=800&auto=format&fit=crop",
+      features: features.map((f) => f.trim()).filter(Boolean),
       productPrice: productPrice.trim(),
       ctaText: ctaText.trim(),
       ctaAction,
@@ -284,96 +340,198 @@ export default function SafeLandingPageBuilderPage() {
           </div>
 
           <form onSubmit={handlePublishLandingPage} className="space-y-4">
-            {/* CLIENT SPECIFICATION: Category Dropdown */}
-            <div>
-              <label className="font-bold text-foreground block mb-1">
-                Client Category (Select Industry / Offer Template) *
-              </label>
-              <select
-                value={category}
-                onChange={(e) => setCategory(e.target.value as any)}
-                className="w-full px-3 py-2 border border-border rounded-lg bg-background text-foreground text-xs font-semibold focus:ring-1 focus:ring-blue-500"
-              >
-                <option value="E-Commerce & Gadgets">🛍️ E-Commerce & Gadgets (Physical Products, Watches, Electronics)</option>
-                <option value="Health & Beauty">🌿 Health & Beauty (Cosmetics, Herbal, Skincare)</option>
-                <option value="Courses & Education">🎓 Courses & Education (Digital Courses, Webinars, E-books)</option>
-                <option value="Affiliate Offers">🔥 Affiliate Offers (CPA Networks, High-Payout Lead Magnets)</option>
-                <option value="Services & Real Estate">🏢 Services & Real Estate (Agencies, Consultations, Properties)</option>
-              </select>
-            </div>
-
-            {/* Project Name */}
-            <div>
-              <label className="font-bold text-foreground block mb-1">
-                Project Name / Internal Title *
-              </label>
-              <input
-                type="text"
-                required
-                placeholder="Eid Special Premium Watch Landing Page"
-                value={pageTitle}
-                onChange={(e) => setPageTitle(e.target.value)}
-                className="w-full px-3 py-2 border border-border rounded-lg bg-background text-foreground text-xs focus:ring-1 focus:ring-blue-500"
-              />
-            </div>
-
-            {/* Main Headline */}
-            <div>
-              <label className="font-bold text-foreground block mb-1">
-                Main Headline (High-Converting Hook) *
-              </label>
-              <input
-                type="text"
-                required
-                placeholder="ঈদের সেরা ধামাকা অফারে কিনুন অরিজিনাল ওয়াচ!"
-                value={headline}
-                onChange={(e) => setHeadline(e.target.value)}
-                className="w-full px-3 py-2 border border-border rounded-lg bg-background text-foreground text-xs focus:ring-1 focus:ring-blue-500"
-              />
-            </div>
-
-            {/* Sub-Headline */}
-            <div>
-              <label className="font-bold text-foreground block mb-1">
-                Sub-Headline / Offer Description *
-              </label>
-              <textarea
-                rows={2}
-                required
-                placeholder="ফ্রি হোম ডেলিভারি ও ১ বছরের ব্র্যান্ড ওয়ারেন্টি সহ।"
-                value={subheadline}
-                onChange={(e) => setSubheadline(e.target.value)}
-                className="w-full px-3 py-2 border border-border rounded-lg bg-background text-foreground text-xs focus:ring-1 focus:ring-blue-500 resize-none"
-              />
-            </div>
-
-            {/* Hero Image + Asset Library Picker */}
-            <div>
-              <div className="flex items-center justify-between mb-1">
-                <label className="font-bold text-foreground">
-                  Hero Image / Product Photo URL *
-                </label>
-                <button
-                  type="button"
-                  onClick={() => setShowAssetPicker(true)}
-                  className="text-blue-600 dark:text-blue-400 hover:underline font-bold text-[11px] flex items-center gap-1"
-                >
-                  <FolderOpen className="w-3.5 h-3.5" />
-                  <span>Pick from Asset Library</span>
-                </button>
+            {/* ================= STEP 1: TOP BAR & BRANDING ================= */}
+            <div className="border border-border bg-muted/20 p-4 rounded-xl space-y-3">
+              <div className="flex items-center gap-2 border-b border-border pb-2">
+                <span className="bg-blue-600 text-white text-[10px] font-black w-5 h-5 rounded-full flex items-center justify-center">1</span>
+                <h3 className="font-extrabold text-xs text-foreground">Top Announcement Bar & Branding</h3>
               </div>
-              <input
-                type="url"
-                required
-                placeholder="https://images.unsplash.com/..."
-                value={heroImage}
-                onChange={(e) => setHeroImage(e.target.value)}
-                className="w-full px-3 py-2 border border-border rounded-lg bg-background text-foreground text-xs focus:ring-1 focus:ring-blue-500"
-              />
+
+              {/* Announcement Bar Text */}
+              <div>
+                <label className="font-bold text-foreground block mb-1">
+                  Top Announcement Bar (Urgency Hook)
+                </label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    placeholder="🎉 সীমিত সময়ের ধামাকা অফার • সারাদেশে ক্যাশ অন হোম ডেলিভারি ফ্রি!"
+                    value={announcementBar}
+                    onChange={(e) => setAnnouncementBar(e.target.value)}
+                    className="w-full pl-8 pr-3 py-2 border border-border rounded-lg bg-background text-foreground text-xs focus:ring-1 focus:ring-blue-500 font-medium"
+                  />
+                  <Radio className="w-3.5 h-3.5 text-blue-500 absolute left-2.5 top-2.5 animate-pulse" />
+                </div>
+              </div>
+
+              {/* Category Dropdown */}
+              <div>
+                <label className="font-bold text-foreground block mb-1">
+                  Client Category (Select Industry / Offer Template) *
+                </label>
+                <select
+                  value={category}
+                  onChange={(e) => setCategory(e.target.value as any)}
+                  className="w-full px-3 py-2 border border-border rounded-lg bg-background text-foreground text-xs font-semibold focus:ring-1 focus:ring-blue-500"
+                >
+                  <option value="E-Commerce & Gadgets">🛍️ E-Commerce & Gadgets (Physical Products, Watches, Electronics)</option>
+                  <option value="Health & Beauty">🌿 Health & Beauty (Cosmetics, Herbal, Skincare)</option>
+                  <option value="Courses & Education">🎓 Courses & Education (Digital Courses, Webinars, E-books)</option>
+                  <option value="Affiliate Offers">🔥 Affiliate Offers (CPA Networks, High-Payout Lead Magnets)</option>
+                  <option value="Services & Real Estate">🏢 Services & Real Estate (Agencies, Consultations, Properties)</option>
+                </select>
+              </div>
+
+              {/* Project Name / Internal Title */}
+              <div>
+                <label className="font-bold text-foreground block mb-1">
+                  Project Name / Internal Title *
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="Eid Special Premium Watch Landing Page"
+                  value={pageTitle}
+                  onChange={(e) => setPageTitle(e.target.value)}
+                  className="w-full px-3 py-2 border border-border rounded-lg bg-background text-foreground text-xs focus:ring-1 focus:ring-blue-500"
+                />
+              </div>
             </div>
 
-            {/* Price Tag & CTA button */}
-            <div className="grid grid-cols-2 gap-3">
+            {/* ================= STEP 2: HOOK, MEDIA & HIGHLIGHTS ================= */}
+            <div className="border border-border bg-muted/20 p-4 rounded-xl space-y-3">
+              <div className="flex items-center gap-2 border-b border-border pb-2">
+                <span className="bg-blue-600 text-white text-[10px] font-black w-5 h-5 rounded-full flex items-center justify-center">2</span>
+                <h3 className="font-extrabold text-xs text-foreground">Offer Hook, Product Media & Highlights</h3>
+              </div>
+
+              {/* Main Headline */}
+              <div>
+                <label className="font-bold text-foreground block mb-1">
+                  Main Headline (High-Converting Hook) *
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="ঈদের সেরা ধামাকা অফারে কিনুন অরিজিনাল ওয়াচ!"
+                  value={headline}
+                  onChange={(e) => setHeadline(e.target.value)}
+                  className="w-full px-3 py-2 border border-border rounded-lg bg-background text-foreground text-xs font-bold focus:ring-1 focus:ring-blue-500"
+                />
+              </div>
+
+              {/* Sub-Headline */}
+              <div>
+                <label className="font-bold text-foreground block mb-1">
+                  Sub-Headline / Offer Description *
+                </label>
+                <textarea
+                  rows={2}
+                  required
+                  placeholder="ফ্রি হোম ডেলিভারি ও ১ বছরের ব্র্যান্ড ওয়ারেন্টি সহ।"
+                  value={subheadline}
+                  onChange={(e) => setSubheadline(e.target.value)}
+                  className="w-full px-3 py-2 border border-border rounded-lg bg-background text-foreground text-xs focus:ring-1 focus:ring-blue-500 resize-none"
+                />
+              </div>
+
+              {/* Hero Image + Direct PC Upload + Asset Library */}
+              <div>
+                <div className="flex items-center justify-between mb-1 flex-wrap gap-2">
+                  <label className="font-bold text-foreground">
+                    Hero Image / Product Photo *
+                  </label>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => localImageInputRef.current?.click()}
+                      className="text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/40 px-2 py-0.5 rounded border border-blue-500/20 font-bold text-[11px] flex items-center gap-1 transition"
+                    >
+                      <Upload className="w-3 h-3" />
+                      <span>Upload from PC</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setShowAssetPicker(true)}
+                      className="text-foreground hover:bg-muted px-2 py-0.5 rounded border border-border font-bold text-[11px] flex items-center gap-1 transition"
+                    >
+                      <FolderOpen className="w-3 h-3 text-amber-500" />
+                      <span>Pick from Library</span>
+                    </button>
+                  </div>
+                </div>
+
+                <input
+                  ref={localImageInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handleDirectImageUpload}
+                />
+
+                <div className="relative">
+                  <input
+                    type="text"
+                    required
+                    placeholder="https://images.unsplash.com/... or /uploads/..."
+                    value={heroImage}
+                    onChange={(e) => setHeroImage(e.target.value)}
+                    className="w-full pl-9 pr-3 py-2 border border-border rounded-lg bg-background text-foreground text-xs focus:ring-1 focus:ring-blue-500 font-mono"
+                  />
+                  <Globe className="w-4 h-4 text-muted-foreground absolute left-3 top-2.5" />
+                </div>
+              </div>
+
+              {/* Key Highlights / Feature Bullet Points */}
+              <div className="space-y-2 pt-2 border-t border-border">
+                <div className="flex items-center justify-between">
+                  <label className="font-bold text-foreground block text-[11px]">
+                    Product Highlights (কী কী সুবিধা পাবেন - বুলেট পয়েন্ট)
+                  </label>
+                  <button
+                    type="button"
+                    onClick={handleAddFeature}
+                    className="text-blue-600 dark:text-blue-400 hover:underline font-bold text-[11px] flex items-center gap-1"
+                  >
+                    <Plus className="w-3 h-3" />
+                    <span>Add Bullet Point</span>
+                  </button>
+                </div>
+
+                <div className="space-y-1.5">
+                  {features.map((feat, fIdx) => (
+                    <div key={fIdx} className="flex items-center gap-2">
+                      <span className="text-emerald-500 font-bold text-xs">✓</span>
+                      <input
+                        type="text"
+                        value={feat}
+                        onChange={(e) => handleFeatureChange(fIdx, e.target.value)}
+                        placeholder="Feature advantage e.g. ১ বছরের ওয়ারেন্টি"
+                        className="flex-1 px-2.5 py-1.5 border border-border rounded-lg bg-background text-foreground text-xs"
+                      />
+                      {features.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveFeature(fIdx)}
+                          className="p-1 text-muted-foreground hover:text-destructive transition"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* ================= STEP 3: PRICING & PACKAGE VARIANTS ================= */}
+            <div className="border border-blue-500/30 bg-blue-500/5 p-4 rounded-xl space-y-3">
+              <div className="flex items-center gap-2 border-b border-blue-500/20 pb-2">
+                <span className="bg-blue-600 text-white text-[10px] font-black w-5 h-5 rounded-full flex items-center justify-center">3</span>
+                <h3 className="font-extrabold text-xs text-foreground">Pricing & Package Variants (ভ্যারিয়েন্ট ড্রপডাউন)</h3>
+              </div>
+
+              {/* Base Price Tag */}
               <div>
                 <label className="font-bold text-foreground block mb-1">
                   Base Price Tag / Offer Badge
@@ -383,8 +541,75 @@ export default function SafeLandingPageBuilderPage() {
                   placeholder="২,৪৯০ টাকা (রেগুলার ৩,৯৯০ টাকা)"
                   value={productPrice}
                   onChange={(e) => setProductPrice(e.target.value)}
-                  className="w-full px-3 py-2 border border-border rounded-lg bg-background text-foreground text-xs"
+                  className="w-full px-3 py-2 border border-border rounded-lg bg-background text-foreground text-xs font-bold text-emerald-600 dark:text-emerald-400"
                 />
+              </div>
+
+              {/* Interactive Offer Dropdown Builder */}
+              <div className="space-y-2 pt-1 border-t border-blue-500/20">
+                <div className="flex items-center justify-between">
+                  <label className="font-bold text-foreground text-[11px]">
+                    Dropdown Selector Label
+                  </label>
+                  <button
+                    type="button"
+                    onClick={handleAddDropdownOption}
+                    className="bg-blue-600 hover:bg-blue-700 text-white font-bold px-2 py-0.5 rounded text-[10px] flex items-center gap-1 transition"
+                  >
+                    <Plus className="w-2.5 h-2.5" />
+                    <span>Add Variant</span>
+                  </button>
+                </div>
+                <input
+                  type="text"
+                  value={dropdownTitle}
+                  onChange={(e) => setDropdownTitle(e.target.value)}
+                  className="w-full px-3 py-1.5 border border-border rounded-lg bg-background text-foreground text-xs"
+                />
+
+                <div className="space-y-1.5 pt-1">
+                  {dropdownOptions.map((opt, idx) => (
+                    <div key={idx} className="flex items-center gap-2 bg-card p-1.5 rounded-lg border border-border">
+                      <input
+                        type="text"
+                        placeholder="Option Name (e.g. 1x Watch - Black)"
+                        value={opt.label}
+                        onChange={(e) => {
+                          const next = [...dropdownOptions]
+                          next[idx].label = e.target.value
+                          setDropdownOptions(next)
+                        }}
+                        className="flex-1 px-2.5 py-1 border border-border rounded bg-background text-foreground text-xs"
+                      />
+                      <input
+                        type="text"
+                        placeholder="Price"
+                        value={opt.price}
+                        onChange={(e) => {
+                          const next = [...dropdownOptions]
+                          next[idx].price = e.target.value
+                          setDropdownOptions(next)
+                        }}
+                        className="w-32 px-2.5 py-1 border border-border rounded bg-background text-foreground text-xs font-semibold text-emerald-600 dark:text-emerald-400"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveDropdownOption(idx)}
+                        className="p-1 text-muted-foreground hover:text-destructive transition"
+                      >
+                        <Trash2 className="w-3 h-3" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* ================= STEP 4: CALL TO ACTION & CHECKOUT ================= */}
+            <div className="border border-border bg-muted/20 p-4 rounded-xl space-y-3">
+              <div className="flex items-center gap-2 border-b border-border pb-2">
+                <span className="bg-blue-600 text-white text-[10px] font-black w-5 h-5 rounded-full flex items-center justify-center">4</span>
+                <h3 className="font-extrabold text-xs text-foreground">Call To Action & Checkout Setup</h3>
               </div>
 
               <div>
@@ -393,91 +618,51 @@ export default function SafeLandingPageBuilderPage() {
                 </label>
                 <input
                   type="text"
-                  placeholder="এখনই অর্ডার কনফার্ম করুন"
+                  placeholder="এখনই ক্যাশ অন ডেলিভারিতে অর্ডার করুন"
                   value={ctaText}
                   onChange={(e) => setCtaText(e.target.value)}
-                  className="w-full px-3 py-2 border border-border rounded-lg bg-background text-foreground text-xs"
+                  className="w-full px-3 py-2 border border-border rounded-lg bg-background text-foreground text-xs font-bold"
                 />
               </div>
-            </div>
 
-            {/* CLIENT SPECIFICATION: Interactive Offer Dropdown Builder */}
-            <div className="border border-blue-500/30 bg-blue-500/5 rounded-xl p-4 space-y-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <ShoppingBag className="w-4 h-4 text-blue-500" />
-                  <span className="font-extrabold text-sm text-foreground">
-                    Interactive Offer Dropdown (ড্রপডাউন কনফিগারেশন)
-                  </span>
+              <div className="grid grid-cols-2 gap-3 pt-1">
+                <div>
+                  <label className="font-bold text-foreground block mb-1">
+                    Checkout Mode
+                  </label>
+                  <select
+                    value={ctaAction}
+                    onChange={(e) => setCtaAction(e.target.value as any)}
+                    className="w-full px-3 py-2 border border-border rounded-lg bg-background text-foreground text-xs font-semibold"
+                  >
+                    <option value="Order Form">📝 1-Click COD Order Form (Recommended)</option>
+                    <option value="WhatsApp Checkout">💬 Direct WhatsApp Checkout</option>
+                  </select>
                 </div>
-                <button
-                  type="button"
-                  onClick={handleAddDropdownOption}
-                  className="bg-blue-600 hover:bg-blue-700 text-white font-bold px-2.5 py-1 rounded-md text-[11px] flex items-center gap-1 transition shadow-xs"
-                >
-                  <Plus className="w-3 h-3" />
-                  <span>Add Option</span>
-                </button>
-              </div>
 
-              <div>
-                <label className="text-muted-foreground block text-[11px] mb-1 font-semibold">
-                  Dropdown Label on Landing Page
-                </label>
-                <input
-                  type="text"
-                  value={dropdownTitle}
-                  onChange={(e) => setDropdownTitle(e.target.value)}
-                  className="w-full px-3 py-1.5 border border-border rounded-lg bg-background text-foreground text-xs"
-                />
-              </div>
-
-              <div className="space-y-2">
-                {dropdownOptions.map((opt, idx) => (
-                  <div key={idx} className="flex items-center gap-2 bg-card p-2 rounded-lg border border-border">
+                {ctaAction === "WhatsApp Checkout" && (
+                  <div>
+                    <label className="font-bold text-foreground block mb-1">
+                      WhatsApp Number
+                    </label>
                     <input
                       type="text"
-                      placeholder="Option Name (e.g. 1x Watch - Black)"
-                      value={opt.label}
-                      onChange={(e) => {
-                        const next = [...dropdownOptions]
-                        next[idx].label = e.target.value
-                        setDropdownOptions(next)
-                      }}
-                      className="flex-1 px-2.5 py-1.5 border border-border rounded bg-background text-foreground text-xs"
+                      placeholder="01700000000"
+                      value={whatsappNumber}
+                      onChange={(e) => setWhatsappNumber(e.target.value)}
+                      className="w-full px-3 py-2 border border-border rounded-lg bg-background text-foreground text-xs font-mono"
                     />
-                    <input
-                      type="text"
-                      placeholder="Price (২,৪৯০ টাকা)"
-                      value={opt.price}
-                      onChange={(e) => {
-                        const next = [...dropdownOptions]
-                        next[idx].price = e.target.value
-                        setDropdownOptions(next)
-                      }}
-                      className="w-32 px-2.5 py-1.5 border border-border rounded bg-background text-foreground text-xs font-semibold text-emerald-600 dark:text-emerald-400"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => handleRemoveDropdownOption(idx)}
-                      className="p-1.5 text-muted-foreground hover:text-destructive transition"
-                      title="Remove option"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
                   </div>
-                ))}
+                )}
               </div>
             </div>
 
-            {/* CLIENT SPECIFICATION: Monetization Ad Slot */}
-            <div className="border border-amber-500/30 bg-amber-500/5 rounded-xl p-4 space-y-3">
-              <div className="flex items-center justify-between">
+            {/* ================= STEP 5: TRUST BADGES & ADS ================= */}
+            <div className="border border-amber-500/30 bg-amber-500/5 p-4 rounded-xl space-y-3">
+              <div className="flex items-center justify-between border-b border-amber-500/20 pb-2">
                 <div className="flex items-center gap-2">
-                  <DollarSign className="w-4 h-4 text-amber-500" />
-                  <span className="font-extrabold text-sm text-foreground">
-                    Monetization Ad Slot (বিজ্ঞাপন স্লট)
-                  </span>
+                  <span className="bg-amber-600 text-white text-[10px] font-black w-5 h-5 rounded-full flex items-center justify-center">5</span>
+                  <h3 className="font-extrabold text-xs text-foreground">Trust Guarantees & Monetization Ads</h3>
                 </div>
                 <label className="flex items-center gap-1.5 cursor-pointer font-bold text-xs text-foreground">
                   <input
@@ -486,7 +671,7 @@ export default function SafeLandingPageBuilderPage() {
                     onChange={(e) => setAdEnabled(e.target.checked)}
                     className="rounded border-border text-amber-600 focus:ring-amber-500"
                   />
-                  <span>Enable ADS</span>
+                  <span>Enable Ads</span>
                 </label>
               </div>
 
@@ -564,15 +749,34 @@ export default function SafeLandingPageBuilderPage() {
           </form>
         </div>
 
-        {/* Live Device Preview (5 cols) */}
+        {/* Live Device Preview (5 cols) - EXACT 1-TO-1 VISUAL SERIAL ALIGNMENT */}
         <div className="lg:col-span-5 border border-border bg-card p-5 rounded-xl space-y-4 shadow-xs flex flex-col items-center">
           <div className="w-full flex items-center justify-between border-b border-border pb-3">
             <h2 className="font-extrabold text-sm text-foreground">
               Live {previewDevice} Viewport
             </h2>
-            <span className="bg-muted text-muted-foreground text-[10px] font-bold px-2 py-0.5 rounded">
-              Interactive Preview
-            </span>
+            <div className="flex items-center gap-1 bg-muted p-0.5 rounded-lg border border-border">
+              <button
+                type="button"
+                onClick={() => setPreviewDevice("Desktop")}
+                className={`px-2 py-0.5 rounded text-[11px] font-bold flex items-center gap-1 transition ${
+                  previewDevice === "Desktop" ? "bg-card text-foreground shadow-xs" : "text-muted-foreground"
+                }`}
+              >
+                <Monitor className="w-3 h-3" />
+                <span>Desktop</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setPreviewDevice("Mobile")}
+                className={`px-2 py-0.5 rounded text-[11px] font-bold flex items-center gap-1 transition ${
+                  previewDevice === "Mobile" ? "bg-card text-foreground shadow-xs" : "text-muted-foreground"
+                }`}
+              >
+                <Smartphone className="w-3 h-3" />
+                <span>Mobile</span>
+              </button>
+            </div>
           </div>
 
           {/* Device Mockup Frame */}
@@ -583,44 +787,82 @@ export default function SafeLandingPageBuilderPage() {
                 : "w-full border border-border"
             }`}
           >
-            {/* Top Bar */}
-            <div className="bg-blue-600 text-white p-3 text-center space-y-0.5 shadow-xs">
-              <span className="font-black text-xs block truncate">{pageTitle}</span>
-              <span className="text-[10px] opacity-90 block">সারা দেশে ক্যাশ অন হোম ডেলিভারি ফ্রি</span>
+            {/* 1. Top Announcement Bar */}
+            <div className="bg-blue-600 text-white p-2.5 text-center space-y-0.5 shadow-xs">
+              <span className="font-bold text-xs block leading-tight">{announcementBar}</span>
             </div>
 
             {/* Content Body Preview */}
-            <div className="p-4 space-y-3.5 text-center">
-              <div className="aspect-[16/9] rounded-xl overflow-hidden bg-muted border border-border shadow-xs">
-                <img
-                  src={heroImage}
-                  alt="Hero Banner"
-                  className="w-full h-full object-cover"
-                />
-              </div>
-
-              <div className="space-y-1">
-                <span className="bg-blue-600/10 text-blue-600 dark:text-blue-400 font-bold text-[10px] px-2 py-0.5 rounded">
+            <div className="p-4 space-y-3.5 text-left">
+              {/* 2. Category & Branding */}
+              <div className="flex items-center justify-between">
+                <span className="bg-blue-600/10 text-blue-600 dark:text-blue-400 font-bold text-[10px] px-2 py-0.5 rounded border border-blue-500/20">
                   {category}
                 </span>
-                <h3 className="font-black text-sm text-foreground leading-snug">{headline}</h3>
-                <p className="text-[11px] text-muted-foreground leading-tight">{subheadline}</p>
+                <span className="text-[10px] text-muted-foreground font-semibold truncate max-w-[160px]">
+                  {pageTitle}
+                </span>
               </div>
 
-              <div className="p-2 border border-emerald-500/30 bg-emerald-500/10 rounded-lg text-emerald-600 dark:text-emerald-400 font-extrabold text-xs">
-                {dropdownOptions[selectedPreviewOptionIdx]?.price || productPrice}
+              {/* 3. Headline & Sub-headline */}
+              <div className="space-y-1">
+                <h3 className="font-extrabold text-sm text-foreground leading-snug">{headline}</h3>
+                <p className="text-[11px] text-muted-foreground leading-relaxed">{subheadline}</p>
               </div>
 
-              {/* Working Dropdown in Preview */}
+              {/* 4. Product Hero Banner */}
+              <div className="aspect-[16/9] rounded-xl overflow-hidden bg-muted border border-border shadow-xs relative">
+                <img
+                  src={heroImage}
+                  alt={headline}
+                  className="w-full h-full object-cover"
+                />
+                <span className="absolute bottom-2 left-2 bg-black/75 backdrop-blur text-white font-bold text-[9px] px-2 py-0.5 rounded flex items-center gap-1">
+                  <CheckCircle2 className="w-2.5 h-2.5 text-emerald-400" />
+                  <span>100% Original Product</span>
+                </span>
+              </div>
+
+              {/* 5. Key Highlights / Bullet Points */}
+              {features.length > 0 && (
+                <div className="bg-muted/40 p-2.5 rounded-lg border border-border space-y-1.5">
+                  <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">
+                    Key Features & Advantages:
+                  </span>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 text-[11px]">
+                    {features.map((feat, idx) => (
+                      <div key={idx} className="flex items-start gap-1.5 text-foreground font-medium">
+                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0 mt-0.5" />
+                        <span className="leading-tight">{feat}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* 6. Pricing & Savings Badge */}
+              <div className="flex items-center justify-between p-2.5 border border-emerald-500/30 bg-emerald-500/10 rounded-xl">
+                <div>
+                  <span className="text-[9px] uppercase font-bold text-emerald-700 dark:text-emerald-400 block">Special Offer Price</span>
+                  <div className="text-sm font-black text-emerald-600 dark:text-emerald-400">
+                    {dropdownOptions[selectedPreviewOptionIdx]?.price || productPrice}
+                  </div>
+                </div>
+                <span className="bg-emerald-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-xs">
+                  🔥 স্টক সীমিত
+                </span>
+              </div>
+
+              {/* 7. Interactive Dropdown */}
               {dropdownOptions.length > 0 && (
-                <div className="space-y-1 text-left bg-muted/40 p-2.5 rounded-lg border border-border">
+                <div className="space-y-1 bg-muted/40 p-2.5 rounded-lg border border-border">
                   <span className="text-[10px] font-bold text-foreground block">
                     {dropdownTitle}
                   </span>
                   <select
                     value={selectedPreviewOptionIdx}
                     onChange={(e) => setSelectedPreviewOptionIdx(Number(e.target.value))}
-                    className="w-full p-1.5 border border-border rounded bg-background text-foreground text-xs font-medium cursor-pointer"
+                    className="w-full p-1.5 border border-border rounded bg-background text-foreground text-xs font-semibold cursor-pointer"
                   >
                     {dropdownOptions.map((opt, i) => (
                       <option key={i} value={i}>
@@ -631,7 +873,64 @@ export default function SafeLandingPageBuilderPage() {
                 </div>
               )}
 
-              {/* Working Ad Slot in Preview */}
+              {/* 8. Real 1-Click COD Checkout Box Mockup */}
+              <div className="border border-blue-500/30 bg-blue-500/5 p-3 rounded-xl space-y-2">
+                <span className="font-extrabold text-[11px] text-blue-700 dark:text-blue-400 block">
+                  📝 ১-ক্লিক ক্যাশ অন ডেলিভারি অর্ডার ফরম
+                </span>
+                <div className="space-y-1.5 text-xs">
+                  <input
+                    type="text"
+                    placeholder="আপনার সম্পূর্ণ নাম"
+                    disabled
+                    className="w-full p-1.5 border border-border rounded bg-background/80 text-[11px] text-muted-foreground"
+                  />
+                  <input
+                    type="text"
+                    placeholder="আপনার সচল মোবাইল নম্বর (017...)"
+                    disabled
+                    className="w-full p-1.5 border border-border rounded bg-background/80 text-[11px] text-muted-foreground"
+                  />
+                  <input
+                    type="text"
+                    placeholder="সম্পূর্ণ ডেলিভারি ঠিকানা (জেলা ও থানা সহ)"
+                    disabled
+                    className="w-full p-1.5 border border-border rounded bg-background/80 text-[11px] text-muted-foreground"
+                  />
+                </div>
+
+                <button
+                  type="button"
+                  className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold py-2.5 rounded-xl shadow-md text-xs transition flex items-center justify-center gap-1.5 mt-2"
+                >
+                  <ShoppingBag className="w-3.5 h-3.5" />
+                  <span>{ctaText}</span>
+                </button>
+                <span className="text-[9px] text-center text-muted-foreground block">
+                  🔒 ১০০% নিরাপদ ক্যাশ অন ডেলিভারি (পণ্য হাতে পেয়ে টাকা পরিশোধ)
+                </span>
+              </div>
+
+              {/* 9. Trust Badges Row */}
+              <div className="grid grid-cols-3 gap-1.5 pt-1 text-center">
+                <div className="bg-muted/40 p-1.5 rounded-lg border border-border flex flex-col items-center">
+                  <Truck className="w-3.5 h-3.5 text-blue-500" />
+                  <span className="text-[9px] font-bold text-foreground mt-0.5">হোম ডেলিভারি</span>
+                  <span className="text-[8px] text-muted-foreground">সারা দেশে</span>
+                </div>
+                <div className="bg-muted/40 p-1.5 rounded-lg border border-border flex flex-col items-center">
+                  <DollarSign className="w-3.5 h-3.5 text-emerald-500" />
+                  <span className="text-[9px] font-bold text-foreground mt-0.5">ক্যাশ অন ডেলিভারি</span>
+                  <span className="text-[8px] text-muted-foreground">হাতে পেয়ে পেমেন্ট</span>
+                </div>
+                <div className="bg-muted/40 p-1.5 rounded-lg border border-border flex flex-col items-center">
+                  <ShieldCheck className="w-3.5 h-3.5 text-purple-500" />
+                  <span className="text-[9px] font-bold text-foreground mt-0.5">ওয়ারেন্টি গ্যারান্টি</span>
+                  <span className="text-[8px] text-muted-foreground">১০০% অরিজিনাল</span>
+                </div>
+              </div>
+
+              {/* 10. Working Ad Slot */}
               {adEnabled && (
                 <div className="border border-amber-500/30 bg-amber-500/10 p-2 rounded-lg text-left space-y-1">
                   <span className="text-[9px] font-bold text-amber-700 dark:text-amber-400 uppercase block">
@@ -648,14 +947,6 @@ export default function SafeLandingPageBuilderPage() {
                   )}
                 </div>
               )}
-
-              {/* CTA Button */}
-              <button
-                type="button"
-                className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-black py-2.5 rounded-xl shadow-md text-xs transition"
-              >
-                {ctaText}
-              </button>
             </div>
           </div>
         </div>
