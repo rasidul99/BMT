@@ -29,8 +29,7 @@ export default function SafeLibraryPage() {
 
   const { assets, isLoaded, addAsset, deleteAsset } = useAssetLibrary()
 
-  const [activeFolder, setActiveFolder] = useState<string>("ALL")
-  const [activeTypeFilter, setActiveTypeFilter] = useState<string>("ALL")
+  const [activeCategory, setActiveCategory] = useState<string>("ALL")
   const [searchQuery, setSearchQuery] = useState<string>("")
   const [showUploadModal, setShowUploadModal] = useState<boolean>(false)
   const [toastMsg, setToastMsg] = useState<string | null>(null)
@@ -50,35 +49,68 @@ export default function SafeLibraryPage() {
     setTimeout(() => setToastMsg(null), 3000)
   }
 
-  const folders: ("ALL" | LibraryAsset["folder"])[] = [
-    "ALL",
-    "Product Photos",
-    "Videos & Reels",
-    "Captions & Copy",
-    "Link Cards",
-    "Polls & Surveys",
-  ]
-
-  const types: { id: "ALL" | LibraryAsset["type"]; label: string; icon: any }[] = [
-    { id: "ALL", label: "All Formats", icon: Layers },
-    { id: "Image", label: "Images", icon: ImageIcon },
-    { id: "Video", label: "Videos", icon: Video },
-    { id: "Text", label: "Captions", icon: FileText },
-    { id: "Link", label: "Link Cards", icon: LinkIcon },
-    { id: "Poll", label: "Polls", icon: HelpCircle },
+  const categories: {
+    id: "ALL" | LibraryAsset["type"]
+    label: string
+    icon: any
+    folderName: string
+    count: number
+  }[] = [
+    { id: "ALL", label: "All Assets", icon: Layers, folderName: "ALL", count: assets.length },
+    {
+      id: "Image",
+      label: "Product Photos",
+      icon: ImageIcon,
+      folderName: "Product Photos",
+      count: assets.filter((a) => a.type === "Image" || a.folder === "Product Photos").length,
+    },
+    {
+      id: "Video",
+      label: "Videos & Reels",
+      icon: Video,
+      folderName: "Videos & Reels",
+      count: assets.filter((a) => a.type === "Video" || a.folder === "Videos & Reels").length,
+    },
+    {
+      id: "Text",
+      label: "Captions & Copy",
+      icon: FileText,
+      folderName: "Captions & Copy",
+      count: assets.filter((a) => a.type === "Text" || a.folder === "Captions & Copy").length,
+    },
+    {
+      id: "Link",
+      label: "Link Cards",
+      icon: LinkIcon,
+      folderName: "Link Cards",
+      count: assets.filter((a) => a.type === "Link" || a.folder === "Link Cards").length,
+    },
+    {
+      id: "Poll",
+      label: "Polls & Surveys",
+      icon: HelpCircle,
+      folderName: "Polls & Surveys",
+      count: assets.filter((a) => a.type === "Poll" || a.folder === "Polls & Surveys").length,
+    },
   ]
 
   // Filter Assets
   const filteredItems = assets.filter((item) => {
-    const matchesFolder = activeFolder === "ALL" || item.folder === activeFolder
-    const matchesType = activeTypeFilter === "ALL" || item.type === activeTypeFilter
+    const matchesCategory =
+      activeCategory === "ALL" ||
+      item.type === activeCategory ||
+      (activeCategory === "Image" && item.folder === "Product Photos") ||
+      (activeCategory === "Video" && item.folder === "Videos & Reels") ||
+      (activeCategory === "Text" && item.folder === "Captions & Copy") ||
+      (activeCategory === "Link" && item.folder === "Link Cards") ||
+      (activeCategory === "Poll" && item.folder === "Polls & Surveys")
     const q = searchQuery.toLowerCase()
     const matchesSearch =
       searchQuery === "" ||
       item.title.toLowerCase().includes(q) ||
       (item.content && item.content.toLowerCase().includes(q)) ||
       item.tags.some((t) => t.toLowerCase().includes(q))
-    return matchesFolder && matchesType && matchesSearch
+    return matchesCategory && matchesSearch
   })
 
   // Handle Form Submission
@@ -202,61 +234,49 @@ export default function SafeLibraryPage() {
         </div>
       </div>
 
-      {/* 3. Folder Tabs & Search Bar */}
+      {/* 3. Unified Category Filter & Search Bar */}
       <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 pt-1">
-        {/* Folder Tabs */}
-        <div className="flex items-center space-x-1.5 overflow-x-auto pb-1 no-scrollbar">
-          {folders.map((f) => (
-            <button
-              key={f}
-              onClick={() => setActiveFolder(f)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition whitespace-nowrap flex items-center gap-1.5 ${
-                activeFolder === f
-                  ? "bg-blue-600 text-white shadow-xs"
-                  : "bg-card border border-border hover:bg-muted text-muted-foreground"
-              }`}
-            >
-              <Folder className="w-3.5 h-3.5" />
-              <span>{f === "ALL" ? "All Folders" : f}</span>
-            </button>
-          ))}
-        </div>
-
-        {/* Search & Type Select: 2 rows on mobile (searchbar on top, icons below), 1 row on desktop */}
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full md:w-auto">
-          {/* Row 1: Searchbar */}
-          <div className="relative w-full sm:w-60">
-            <Search className="w-3.5 h-3.5 absolute left-3 top-2.5 text-muted-foreground" />
-            <input
-              type="text"
-              placeholder="Search assets or #tags..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-8 pr-3 py-1.5 border border-border rounded-lg bg-card text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 text-foreground"
-            />
-          </div>
-
-          {/* Row 2: Icons bar below searchbar on mobile */}
-          <div className="flex items-center justify-between sm:justify-start gap-1 bg-muted/60 p-1 rounded-xl overflow-x-auto no-scrollbar w-full sm:w-auto">
-            {types.map((t) => {
-              const Icon = t.icon
-              return (
-                <button
-                  key={t.id}
-                  onClick={() => setActiveTypeFilter(t.id)}
-                  title={t.label}
-                  className={`flex-1 sm:flex-initial px-2.5 py-1 rounded-md text-[11px] font-semibold transition flex items-center justify-center gap-1.5 whitespace-nowrap ${
-                    activeTypeFilter === t.id
-                      ? "bg-card text-foreground shadow-xs font-bold"
-                      : "text-muted-foreground hover:text-foreground"
+        {/* Unified Category Pills */}
+        <div className="flex items-center space-x-1.5 overflow-x-auto pb-1 no-scrollbar order-2 md:order-1">
+          {categories.map((cat) => {
+            const Icon = cat.icon
+            const isActive = activeCategory === cat.id
+            return (
+              <button
+                key={cat.id}
+                onClick={() => setActiveCategory(cat.id)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition whitespace-nowrap flex items-center gap-1.5 ${
+                  isActive
+                    ? "bg-blue-600 text-white shadow-xs font-bold"
+                    : "bg-card border border-border hover:bg-muted text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                <Icon className={`w-3.5 h-3.5 ${isActive ? "text-white" : "text-muted-foreground"}`} />
+                <span>{cat.label}</span>
+                <span
+                  className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold ml-0.5 ${
+                    isActive
+                      ? "bg-blue-700 text-white"
+                      : "bg-muted text-muted-foreground"
                   }`}
                 >
-                  <Icon className="w-3.5 h-3.5" />
-                  <span className="inline">{t.label}</span>
-                </button>
-              )
-            })}
-          </div>
+                  {cat.count}
+                </span>
+              </button>
+            )
+          })}
+        </div>
+
+        {/* Searchbar: On top on mobile, right side on desktop */}
+        <div className="relative w-full md:w-64 order-1 md:order-2">
+          <Search className="w-3.5 h-3.5 absolute left-3 top-2.5 text-muted-foreground" />
+          <input
+            type="text"
+            placeholder="Search assets or #tags..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full pl-8 pr-3 py-1.5 border border-border rounded-lg bg-card text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 text-foreground"
+          />
         </div>
       </div>
 
