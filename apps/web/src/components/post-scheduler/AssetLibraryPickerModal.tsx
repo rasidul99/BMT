@@ -75,12 +75,12 @@ export function AssetLibraryPickerModal({ isOpen, onClose, onSelect }: AssetLibr
             />
           </div>
 
-          <div className="flex items-center space-x-1 overflow-x-auto text-[11px] font-bold">
+          <div className="flex items-center justify-between sm:justify-start space-x-1 overflow-x-auto text-[11px] font-bold p-1 bg-muted/40 rounded-xl w-full sm:w-auto no-scrollbar">
             {["ALL", "Image", "Video", "Text", "Poll", "Link"].map((t) => (
               <button
                 key={t}
                 onClick={() => setSelectedType(t)}
-                className={`px-2.5 py-1 rounded-lg border transition ${
+                className={`flex-1 sm:flex-initial px-2.5 py-1 rounded-lg border transition text-center ${
                   selectedType === t
                     ? "bg-blue-600 text-white border-blue-600 shadow-sm"
                     : "text-muted-foreground hover:bg-muted"
