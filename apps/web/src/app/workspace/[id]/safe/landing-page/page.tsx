@@ -1,4 +1,4 @@
-﻿"use client"
+"use client"
 
 import React, { useState } from "react"
 import { useRouter, useParams } from "next/navigation"
@@ -31,9 +31,6 @@ import {
   ClipboardList,
   Send,
   AlertCircle,
-  ArrowRight,
-  ArrowLeft,
-  Info,
 } from "lucide-react"
 import { useAssetLibrary } from "../../../../../hooks/useAssetLibrary"
 import { useLandingPages, LandingPageProject, DropdownOption, SectionVisibility } from "../../../../../hooks/useLandingPages"
@@ -72,29 +69,29 @@ export default function SafeLandingPageBuilderPage() {
   const [mobileStudioTab, setMobileStudioTab] = useState<"editor" | "preview">("editor")
 
   // Editor states
-  const [announcementBar, setAnnouncementBar] = useState("à¦¸à§€à¦®à¦¿à¦¤ à¦¸à¦®à§Ÿà§‡à¦° à¦§à¦¾à¦®à¦¾à¦•à¦¾ à¦…à¦«à¦¾à¦° â€¢ à¦¸à¦¾à¦°à¦¾à¦¦à§‡à¦¶à§‡ à¦•à§à¦¯à¦¾à¦¶ à¦…à¦¨ à¦¹à§‹à¦® à¦¡à§‡à¦²à¦¿à¦­à¦¾à¦°à¦¿ à¦«à§à¦°à¦¿!")
+  const [announcementBar, setAnnouncementBar] = useState("সীমিত সময়ের ধামাকা অফার • সারাদেশে ক্যাশ অন হোম ডেলিভারি ফ্রি!")
   const [category, setCategory] = useState<LandingPageProject["category"]>("E-Commerce & Gadgets")
   const [pageTitle, setPageTitle] = useState("Eid Special Premium Watch Landing Page")
-  const [headline, setHeadline] = useState("à¦ˆà¦¦à§‡à¦° à¦¸à§‡à¦°à¦¾ à¦§à¦¾à¦®à¦¾à¦•à¦¾ à¦…à¦«à¦¾à¦°à§‡ à¦•à¦¿à¦¨à§à¦¨ à¦…à¦°à¦¿à¦œà¦¿à¦¨à¦¾à¦² à¦†à¦²à§à¦Ÿà§à¦°à¦¾ à¦¸à§à¦®à¦¾à¦°à§à¦Ÿ à¦“à§Ÿà¦¾à¦š!")
-  const [subheadline, setSubheadline] = useState("à¦…à¦°à¦¿à¦œà¦¿à¦¨à¦¾à¦² à¦…à§à¦¯à¦¾à¦®à§‹à¦²à§‡à¦¡ à¦¡à¦¿à¦¸à¦ªà§à¦²à§‡, à¦¬à§à¦²à§à¦Ÿà§à¦¥ à¦•à¦²à¦¿à¦‚ à¦“ à§§ à¦¬à¦›à¦°à§‡à¦° à¦…à¦«à¦¿à¦¸à¦¿à¦¯à¦¼à¦¾à¦² à¦¬à§à¦°à§à¦¯à¦¾à¦¨à§à¦¡ à¦“à¦¯à¦¼à¦¾à¦°à§‡à¦¨à§à¦Ÿà¦¿ à¦¸à¦¹à¥¤ à¦¸à§à¦Ÿà¦• à¦¸à§€à¦®à¦¿à¦¤!")
+  const [headline, setHeadline] = useState("ঈদের সেরা ধামাকা অফারে কিনুন অরিজিনাল আল্ট্রা স্মার্ট ওয়াচ!")
+  const [subheadline, setSubheadline] = useState("অরিজিনাল অ্যামোলেড ডিসপ্লে, ব্লুটুথ কলিং ও ১ বছরের অফিসিয়াল ব্র্যান্ড ওয়ারেন্টি সহ। স্টক সীমিত!")
   const [heroImage, setHeroImage] = useState("https://images.unsplash.com/photo-1522335789203-aabd1fc54bc9?w=800&auto=format&fit=crop")
   const [features, setFeatures] = useState<string[]>([
-    "à¦…à¦°à¦¿à¦œà¦¿à¦¨à¦¾à¦² à§¨.à§¦à§¨ à¦‡à¦žà§à¦šà¦¿ à¦¸à§à¦ªà¦¾à¦° à¦…à§à¦¯à¦¾à¦®à§‹à¦²à§‡à¦¡ à¦•à¦¾à¦²à¦¾à¦° à¦¡à¦¿à¦¸à¦ªà§à¦²à§‡",
-    "à¦¹à¦¾à¦‡-à¦¡à§‡à¦«à¦¿à¦¨à¦¿à¦¶à¦¨ à¦¬à§à¦²à§à¦Ÿà§à¦¥ à¦•à¦²à¦¿à¦‚ à¦“ à¦²à¦¾à¦‰à¦¡ à¦¸à§à¦ªà¦¿à¦•à¦¾à¦°",
-    "à¦à¦• à¦šà¦¾à¦°à§à¦œà§‡ à¦Ÿà¦¾à¦¨à¦¾ à§« à¦¥à§‡à¦•à§‡ à§­ à¦¦à¦¿à¦¨ à¦¬à§à¦¯à¦¾à¦Ÿà¦¾à¦°à¦¿ à¦¬à§à¦¯à¦¾à¦•à¦†à¦ª",
-    "à§§ à¦¬à¦›à¦°à§‡à¦° à¦…à¦«à¦¿à¦¸à¦¿à§Ÿà¦¾à¦² à¦¬à§à¦°à§à¦¯à¦¾à¦¨à§à¦¡ à¦°à¦¿à¦ªà§à¦²à§‡à¦¸à¦®à§‡à¦¨à§à¦Ÿ à¦“à§Ÿà¦¾à¦°à§‡à¦¨à§à¦Ÿà¦¿",
+    "অরিজিনাল ২.০২ ইঞ্চি সুপার অ্যামোলেড কালার ডিসপ্লে",
+    "হাই-ডেফিনিশন ব্লুটুথ কলিং ও লাউড স্পিকার",
+    "এক চার্জে টানা ৫ থেকে ৭ দিন ব্যাটারি ব্যাকআপ",
+    "১ বছরের অফিসিয়াল ব্র্যান্ড রিপ্লেসমেন্ট ওয়ারেন্টি",
   ])
-  const [productPrice, setProductPrice] = useState("à§¨,à§ªà§¯à§¦ à¦Ÿà¦¾à¦•à¦¾ (à¦°à§‡à¦—à§à¦²à¦¾à¦° à§©,à§¯à§¯à§¦ à¦Ÿà¦¾à¦•à¦¾)")
-  const [ctaText, setCtaText] = useState("à¦à¦–à¦¨à¦‡ à¦•à§à¦¯à¦¾à¦¶ à¦…à¦¨ à¦¡à§‡à¦²à¦¿à¦­à¦¾à¦°à¦¿à¦¤à§‡ à¦…à¦°à§à¦¡à¦¾à¦° à¦•à¦°à§à¦¨")
+  const [productPrice, setProductPrice] = useState("২,৪৯০ টাকা (রেগুলার ৩,৯৯০ টাকা)")
+  const [ctaText, setCtaText] = useState("এখনই ক্যাশ অন ডেলিভারিতে অর্ডার করুন")
   const [ctaAction, setCtaAction] = useState<"Order Form" | "WhatsApp Checkout">("Order Form")
   const [whatsappNumber, setWhatsappNumber] = useState("01700000000")
 
   // Client Specification: Interactive Offer Dropdown options
-  const [dropdownTitle, setDropdownTitle] = useState("à¦ªà§à¦¯à¦¾à¦•à§‡à¦œ à¦“ à¦•à¦¾à¦²à¦¾à¦° à¦­à§à¦¯à¦¾à¦°à¦¿à§Ÿà§‡à¦¨à§à¦Ÿ à¦¬à§‡à¦›à§‡ à¦¨à¦¿à¦¨ (Select Variant):")
+  const [dropdownTitle, setDropdownTitle] = useState("প্যাকেজ ও কালার ভ্যারিয়েন্ট বেছে নিন (Select Variant):")
   const [dropdownOptions, setDropdownOptions] = useState<DropdownOption[]>([
-    { label: "1x Ultra Smart Watch - Jet Black (Silver Bezel)", price: "à§¨,à§ªà§¯à§¦ à¦Ÿà¦¾à¦•à¦¾" },
-    { label: "1x Ultra Smart Watch - Ocean Orange (Sport Loop)", price: "à§¨,à§ªà§¯à§¦ à¦Ÿà¦¾à¦•à¦¾" },
-    { label: "2x Combo Pack (Black + Orange) - à¦¸à§à¦ªà§‡à¦¶à¦¾à¦² à¦—à¦¿à¦«à¦Ÿ à¦ªà§à¦¯à¦¾à¦•", price: "à§ª,à§«à§¦à§¦ à¦Ÿà¦¾à¦•à¦¾ (Save à§«à§¦à§¦à§³)" },
+    { label: "1x Ultra Smart Watch - Jet Black (Silver Bezel)", price: "২,৪৯০ টাকা" },
+    { label: "1x Ultra Smart Watch - Ocean Orange (Sport Loop)", price: "২,৪৯০ টাকা" },
+    { label: "2x Combo Pack (Black + Orange) - স্পেশাল গিফট প্যাক", price: "৪,৫০০ টাকা (Save ৫০০৳)" },
   ])
 
   // Client Specification: Monetization Ad Slot
@@ -141,14 +138,14 @@ export default function SafeLandingPageBuilderPage() {
     }
   }
 
-  const showToast = (message: string, type: "success" | "error" | "info" = "success") => {
-    setToast({ message, type })
-    setTimeout(() => setToast(null), 3000)
+  const showToast = (msg: string) => {
+    setToastMsg(msg)
+    setTimeout(() => setToastMsg(null), 3000)
   }
 
   // Feature Bullet Points handlers
   const handleAddFeature = () => {
-    setFeatures([...features, "à¦¨à¦¤à§à¦¨ à¦¬à¦¿à¦¶à§‡à¦· à¦¸à§à¦¬à¦¿à¦§à¦¾ à¦¬à¦¾ à¦…à¦«à¦¾à¦°"])
+    setFeatures([...features, "নতুন বিশেষ সুবিধা বা অফার"])
   }
   const handleRemoveFeature = (index: number) => {
     if (features.length <= 1) return
@@ -247,24 +244,10 @@ export default function SafeLandingPageBuilderPage() {
   return (
     <div className="space-y-6 max-w-7xl pb-24">
       {/* Toast Notification */}
-      {toast && (
-        <div
-          className={`fixed top-4 right-4 z-50 text-white font-semibold text-xs px-4 py-2.5 rounded-xl shadow-2xl flex items-center gap-2 animate-in slide-in-from-top-2 duration-200 ${
-            toast.type === "error"
-              ? "bg-rose-600"
-              : toast.type === "info"
-              ? "bg-slate-800 text-slate-100"
-              : "bg-blue-600 text-white"
-          }`}
-        >
-          {toast.type === "error" ? (
-            <AlertCircle className="w-4 h-4 shrink-0 text-white" />
-          ) : toast.type === "info" ? (
-            <Info className="w-4 h-4 shrink-0 text-blue-300" />
-          ) : (
-            <CheckCircle2 className="w-4 h-4 shrink-0 text-white" />
-          )}
-          <span>{toast.message}</span>
+      {toastMsg && (
+        <div className="fixed top-4 right-4 z-50 bg-blue-600 text-white font-semibold text-xs px-4 py-2.5 rounded-xl shadow-2xl flex items-center gap-2 animate-in slide-in-from-top-2 duration-200">
+          <CheckCircle2 className="w-4 h-4 text-emerald-300" />
+          <span>{toastMsg}</span>
         </div>
       )}
 
@@ -282,6 +265,34 @@ export default function SafeLandingPageBuilderPage() {
           <p className="text-xs text-muted-foreground mt-1.5 max-w-2xl">
             Build high-converting offer landing pages based on client categories. Features interactive variant dropdowns and Monetization Ad Slots.
           </p>
+        </div>
+
+        {/* Device Preview Toggle */}
+        <div className="flex items-center space-x-1.5 bg-muted p-1 rounded-xl text-xs font-bold">
+          <button
+            type="button"
+            onClick={() => setPreviewDevice("Desktop")}
+            className={`px-3 py-1.5 rounded-lg transition flex items-center gap-1.5 ${
+              previewDevice === "Desktop"
+                ? "bg-card text-foreground shadow-xs"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <Monitor className="w-3.5 h-3.5" />
+            <span>Desktop</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setPreviewDevice("Mobile")}
+            className={`px-3 py-1.5 rounded-lg transition flex items-center gap-1.5 ${
+              previewDevice === "Mobile"
+                ? "bg-card text-foreground shadow-xs"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <Smartphone className="w-3.5 h-3.5" />
+            <span>Mobile</span>
+          </button>
         </div>
       </div>
 
@@ -310,8 +321,7 @@ export default function SafeLandingPageBuilderPage() {
                 className="bg-blue-500/10 hover:bg-blue-500/20 text-blue-600 dark:text-blue-400 border border-blue-500/20 font-bold px-3 py-1.5 rounded-lg transition flex items-center gap-1.5"
               >
                 <Link2 className="w-3.5 h-3.5" />
-                <span>Create Clickable Card</span>
-                <ArrowRight className="w-3.5 h-3.5" />
+                <span>Create Clickable Card →</span>
               </button>
             </div>
           </div>
@@ -396,12 +406,12 @@ export default function SafeLandingPageBuilderPage() {
           <form onSubmit={handlePublishLandingPage} className="space-y-4">
             {/* ================= STEP 1: TOP BAR & BRANDING ================= */}
             <div className="border border-border bg-muted/20 p-4 rounded-xl space-y-3">
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-b border-border pb-2">
+              <div className="flex items-center justify-between border-b border-border pb-2">
                 <div className="flex items-center gap-2">
-                  <span className="bg-blue-600 text-white text-[10px] font-black w-5 h-5 rounded-full flex items-center justify-center shrink-0">1</span>
+                  <span className="bg-blue-600 text-white text-[10px] font-black w-5 h-5 rounded-full flex items-center justify-center">1</span>
                   <h3 className="font-extrabold text-xs text-foreground">Top Announcement Bar & Branding</h3>
                 </div>
-                <div className="flex items-center gap-1.5 flex-wrap">
+                <div className="flex items-center gap-1.5">
                   <button
                     type="button"
                     onClick={() => toggleSection("announcementBar")}
@@ -439,7 +449,7 @@ export default function SafeLandingPageBuilderPage() {
                 <div className="relative">
                   <input
                     type="text"
-                    placeholder="à¦¸à§€à¦®à¦¿à¦¤ à¦¸à¦®à§Ÿà§‡à¦° à¦§à¦¾à¦®à¦¾à¦•à¦¾ à¦…à¦«à¦¾à¦° â€¢ à¦¸à¦¾à¦°à¦¾à¦¦à§‡à¦¶à§‡ à¦•à§à¦¯à¦¾à¦¶ à¦…à¦¨ à¦¹à§‹à¦® à¦¡à§‡à¦²à¦¿à¦­à¦¾à¦°à¦¿ à¦«à§à¦°à¦¿!"
+                    placeholder="সীমিত সময়ের ধামাকা অফার • সারাদেশে ক্যাশ অন হোম ডেলিভারি ফ্রি!"
                     value={announcementBar}
                     onChange={(e) => setAnnouncementBar(e.target.value)}
                     className="w-full pl-8 pr-3 py-2 border border-border rounded-lg bg-background text-foreground text-xs focus:ring-1 focus:ring-blue-500 font-medium"
@@ -484,9 +494,9 @@ export default function SafeLandingPageBuilderPage() {
 
             {/* ================= STEP 2: HOOK, MEDIA & HIGHLIGHTS ================= */}
             <div className="border border-border bg-muted/20 p-4 rounded-xl space-y-3">
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-b border-border pb-2">
+              <div className="flex items-center justify-between border-b border-border pb-2">
                 <div className="flex items-center gap-2">
-                  <span className="bg-blue-600 text-white text-[10px] font-black w-5 h-5 rounded-full flex items-center justify-center shrink-0">2</span>
+                  <span className="bg-blue-600 text-white text-[10px] font-black w-5 h-5 rounded-full flex items-center justify-center">2</span>
                   <h3 className="font-extrabold text-xs text-foreground">Offer Hook, Product Media & Highlights</h3>
                 </div>
                 <div className="flex items-center gap-1.5 flex-wrap">
@@ -553,7 +563,7 @@ export default function SafeLandingPageBuilderPage() {
                 <input
                   type="text"
                   required
-                  placeholder="à¦ˆà¦¦à§‡à¦° à¦¸à§‡à¦°à¦¾ à¦§à¦¾à¦®à¦¾à¦•à¦¾ à¦…à¦«à¦¾à¦°à§‡ à¦•à¦¿à¦¨à§à¦¨ à¦…à¦°à¦¿à¦œà¦¿à¦¨à¦¾à¦² à¦“à§Ÿà¦¾à¦š!"
+                  placeholder="ঈদের সেরা ধামাকা অফারে কিনুন অরিজিনাল ওয়াচ!"
                   value={headline}
                   onChange={(e) => setHeadline(e.target.value)}
                   className="w-full px-3 py-2 border border-border rounded-lg bg-background text-foreground text-xs font-bold focus:ring-1 focus:ring-blue-500"
@@ -568,7 +578,7 @@ export default function SafeLandingPageBuilderPage() {
                 <textarea
                   rows={2}
                   required
-                  placeholder="à¦«à§à¦°à¦¿ à¦¹à§‹à¦® à¦¡à§‡à¦²à¦¿à¦­à¦¾à¦°à¦¿ à¦“ à§§ à¦¬à¦›à¦°à§‡à¦° à¦¬à§à¦°à§à¦¯à¦¾à¦¨à§à¦¡ à¦“à¦¯à¦¼à¦¾à¦°à§‡à¦¨à§à¦Ÿà¦¿ à¦¸à¦¹à¥¤"
+                  placeholder="ফ্রি হোম ডেলিভারি ও ১ বছরের ব্র্যান্ড ওয়ারেন্টি সহ।"
                   value={subheadline}
                   onChange={(e) => setSubheadline(e.target.value)}
                   className="w-full px-3 py-2 border border-border rounded-lg bg-background text-foreground text-xs focus:ring-1 focus:ring-blue-500 resize-none"
@@ -626,7 +636,7 @@ export default function SafeLandingPageBuilderPage() {
               <div className="space-y-2 pt-2 border-t border-border">
                 <div className="flex items-center justify-between">
                   <label className="font-bold text-foreground block text-[11px]">
-                    Product Highlights (à¦•à§€ à¦•à§€ à¦¸à§à¦¬à¦¿à¦§à¦¾ à¦ªà¦¾à¦¬à§‡à¦¨ - à¦¬à§à¦²à§‡à¦Ÿ à¦ªà§Ÿà§‡à¦¨à§à¦Ÿ)
+                    Product Highlights (কী কী সুবিধা পাবেন - বুলেট পয়েন্ট)
                   </label>
                   <button
                     type="button"
@@ -646,7 +656,7 @@ export default function SafeLandingPageBuilderPage() {
                         type="text"
                         value={feat}
                         onChange={(e) => handleFeatureChange(fIdx, e.target.value)}
-                        placeholder="Feature advantage e.g. à§§ à¦¬à¦›à¦°à§‡à¦° à¦“à¦¯à¦¼à¦¾à¦°à§‡à¦¨à§à¦Ÿà¦¿"
+                        placeholder="Feature advantage e.g. ১ বছরের ওয়ারেন্টি"
                         className="flex-1 px-2.5 py-1.5 border border-border rounded-lg bg-background text-foreground text-xs"
                       />
                       {features.length > 1 && (
@@ -665,13 +675,13 @@ export default function SafeLandingPageBuilderPage() {
             </div>
 
             {/* ================= STEP 3: PRICING & PACKAGE VARIANTS ================= */}
-            <div className="border border-border bg-muted/20 p-4 rounded-xl space-y-3">
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-b border-border pb-2">
+            <div className="border border-blue-500/30 bg-blue-500/5 p-4 rounded-xl space-y-3">
+              <div className="flex items-center justify-between border-b border-blue-500/20 pb-2">
                 <div className="flex items-center gap-2">
-                  <span className="bg-blue-600 text-white text-[10px] font-black w-5 h-5 rounded-full flex items-center justify-center shrink-0">3</span>
-                  <h3 className="font-extrabold text-xs text-foreground">Pricing & Package Variants</h3>
+                  <span className="bg-blue-600 text-white text-[10px] font-black w-5 h-5 rounded-full flex items-center justify-center">3</span>
+                  <h3 className="font-extrabold text-xs text-foreground">Pricing & Package Variants (ভ্যারিয়েন্ট ড্রপডাউন)</h3>
                 </div>
-                <div className="flex items-center gap-1.5 flex-wrap">
+                <div className="flex items-center gap-1.5">
                   <button
                     type="button"
                     onClick={() => toggleSection("pricingBadge")}
@@ -708,7 +718,7 @@ export default function SafeLandingPageBuilderPage() {
                 </label>
                 <input
                   type="text"
-                  placeholder="à§¨,à§ªà§¯à§¦ à¦Ÿà¦¾à¦•à¦¾ (à¦°à§‡à¦—à§à¦²à¦¾à¦° à§©,à§¯à§¯à§¦ à¦Ÿà¦¾à¦•à¦¾)"
+                  placeholder="২,৪৯০ টাকা (রেগুলার ৩,৯৯০ টাকা)"
                   value={productPrice}
                   onChange={(e) => setProductPrice(e.target.value)}
                   className="w-full px-3 py-2 border border-border rounded-lg bg-background text-foreground text-xs font-bold text-blue-600 dark:text-blue-400"
@@ -780,9 +790,9 @@ export default function SafeLandingPageBuilderPage() {
 
             {/* ================= STEP 4: CALL TO ACTION & CHECKOUT ================= */}
             <div className="border border-border bg-muted/20 p-4 rounded-xl space-y-3">
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-b border-border pb-2">
+              <div className="flex items-center justify-between border-b border-border pb-2">
                 <div className="flex items-center gap-2">
-                  <span className="bg-blue-600 text-white text-[10px] font-black w-5 h-5 rounded-full flex items-center justify-center shrink-0">4</span>
+                  <span className="bg-blue-600 text-white text-[10px] font-black w-5 h-5 rounded-full flex items-center justify-center">4</span>
                   <h3 className="font-extrabold text-xs text-foreground">Call To Action & Checkout Setup</h3>
                 </div>
                 <button
@@ -806,7 +816,7 @@ export default function SafeLandingPageBuilderPage() {
                 </label>
                 <input
                   type="text"
-                  placeholder="à¦à¦–à¦¨à¦‡ à¦•à§à¦¯à¦¾à¦¶ à¦…à¦¨ à¦¡à§‡à¦²à¦¿à¦­à¦¾à¦°à¦¿à¦¤à§‡ à¦…à¦°à§à¦¡à¦¾à¦° à¦•à¦°à§à¦¨"
+                  placeholder="এখনই ক্যাশ অন ডেলিভারিতে অর্ডার করুন"
                   value={ctaText}
                   onChange={(e) => setCtaText(e.target.value)}
                   className="w-full px-3 py-2 border border-border rounded-lg bg-background text-foreground text-xs font-bold"
@@ -846,19 +856,19 @@ export default function SafeLandingPageBuilderPage() {
             </div>
 
             {/* ================= STEP 5: TRUST BADGES & ADS ================= */}
-            <div className="border border-border bg-muted/20 p-4 rounded-xl space-y-3">
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-b border-border pb-2">
+            <div className="border border-amber-500/30 bg-amber-500/5 p-4 rounded-xl space-y-3">
+              <div className="flex items-center justify-between border-b border-border pb-2">
                 <div className="flex items-center gap-2">
-                  <span className="bg-blue-600 text-white text-[10px] font-black w-5 h-5 rounded-full flex items-center justify-center shrink-0">5</span>
+                  <span className="bg-amber-600 text-white text-[10px] font-black w-5 h-5 rounded-full flex items-center justify-center">5</span>
                   <h3 className="font-extrabold text-xs text-foreground">Trust Guarantees & Monetization Ads</h3>
                 </div>
-                <div className="flex items-center gap-1.5 flex-wrap">
+                <div className="flex items-center gap-2">
                   <button
                     type="button"
                     onClick={() => toggleSection("trustBadges")}
                     className={`px-2 py-0.5 rounded text-[10px] font-bold flex items-center gap-1 transition ${
                       visibleSections.trustBadges
-                        ? "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 border border-blue-300 dark:border-blue-700"
+                        ? "bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300 border border-purple-300 dark:border-purple-700"
                         : "bg-muted text-muted-foreground border border-border opacity-70"
                     }`}
                     title={visibleSections.trustBadges ? "Click to hide trust badges" : "Click to show trust badges"}
@@ -871,7 +881,7 @@ export default function SafeLandingPageBuilderPage() {
                     onClick={() => toggleSection("adSlot")}
                     className={`px-2 py-0.5 rounded text-[10px] font-bold flex items-center gap-1 transition ${
                       visibleSections.adSlot
-                        ? "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 border border-blue-300 dark:border-blue-700"
+                        ? "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300 border border-amber-300 dark:border-amber-700"
                         : "bg-muted text-muted-foreground border border-border opacity-70"
                     }`}
                     title={visibleSections.adSlot ? "Click to hide ad slot" : "Click to show ad slot"}
@@ -973,7 +983,7 @@ export default function SafeLandingPageBuilderPage() {
                 onClick={() => setMobileStudioTab("preview")}
                 className="lg:hidden w-full bg-muted hover:bg-muted/80 text-foreground font-bold py-2.5 rounded-xl border border-border transition flex items-center justify-center gap-1.5 text-xs"
               >
-                <Eye className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+                <Eye className="w-3.5 h-3.5 text-emerald-500" />
                 <span>Switch to Live Preview Viewport</span>
                 <ArrowRight className="w-3.5 h-3.5" />
               </button>
@@ -1149,16 +1159,16 @@ export default function SafeLandingPageBuilderPage() {
 
               {/* 6. Pricing & Savings Badge */}
               {visibleSections.pricingBadge && (
-                <div className="flex items-center justify-between p-2.5 border border-blue-200 dark:border-blue-900/40 bg-blue-50/50 dark:bg-blue-950/20 rounded-xl">
+                <div className="flex items-center justify-between p-2.5 border border-emerald-500/30 bg-emerald-500/10 rounded-xl">
                   <div>
-                    <span className="text-[9px] uppercase font-bold text-muted-foreground block">Special Offer Price</span>
-                    <div className="text-sm font-black text-blue-600 dark:text-blue-400">
+                    <span className="text-[9px] uppercase font-bold text-emerald-700 dark:text-emerald-400 block">Special Offer Price</span>
+                    <div className="text-sm font-black text-emerald-600 dark:text-emerald-400">
                       {dropdownOptions[selectedPreviewOptionIdx]?.price || productPrice}
                     </div>
                   </div>
-                  <span className="bg-blue-600 text-white text-[10px] font-bold px-2.5 py-0.5 rounded-full shadow-xs flex items-center gap-1">
-                    <Flame className="w-3 h-3 text-blue-200" />
-                    <span>à¦¸à§à¦Ÿà¦• à¦¸à§€à¦®à¦¿à¦¤</span>
+                  <span className="bg-emerald-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-xs flex items-center gap-1">
+                    <Flame className="w-3 h-3 text-amber-200" />
+                    <span>স্টক সীমিত</span>
                   </span>
                 </div>
               )}
@@ -1188,24 +1198,24 @@ export default function SafeLandingPageBuilderPage() {
                 <div className="border border-blue-500/30 bg-blue-500/5 p-3 rounded-xl space-y-2">
                   <span className="font-extrabold text-[11px] text-blue-700 dark:text-blue-400 flex items-center gap-1.5">
                     <ClipboardList className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
-                    <span>à§§-à¦•à§à¦²à¦¿à¦• à¦•à§à¦¯à¦¾à¦¶ à¦…à¦¨ à¦¡à§‡à¦²à¦¿à¦­à¦¾à¦°à¦¿ à¦…à¦°à§à¦¡à¦¾à¦° à¦«à¦°à¦®</span>
+                    <span>১-ক্লিক ক্যাশ অন ডেলিভারি অর্ডার ফরম</span>
                   </span>
                   <div className="space-y-1.5 text-xs">
                     <input
                       type="text"
-                      placeholder="à¦†à¦ªà¦¨à¦¾à¦° à¦¸à¦®à§à¦ªà§‚à¦°à§à¦£ à¦¨à¦¾à¦®"
+                      placeholder="আপনার সম্পূর্ণ নাম"
                       disabled
                       className="w-full p-1.5 border border-border rounded bg-background/80 text-[11px] text-muted-foreground"
                     />
                     <input
                       type="text"
-                      placeholder="à¦†à¦ªà¦¨à¦¾à¦° à¦¸à¦šà¦² à¦®à§‹à¦¬à¦¾à¦‡à¦² à¦¨à¦®à§à¦¬à¦° (017...)"
+                      placeholder="আপনার সচল মোবাইল নম্বর (017...)"
                       disabled
                       className="w-full p-1.5 border border-border rounded bg-background/80 text-[11px] text-muted-foreground"
                     />
                     <input
                       type="text"
-                      placeholder="à¦¸à¦®à§à¦ªà§‚à¦°à§à¦£ à¦¡à§‡à¦²à¦¿à¦­à¦¾à¦°à¦¿ à¦ à¦¿à¦•à¦¾à¦¨à¦¾ (à¦œà§‡à¦²à¦¾ à¦“ à¦¥à¦¾à¦¨à¦¾ à¦¸à¦¹)"
+                      placeholder="সম্পূর্ণ ডেলিভারি ঠিকানা (জেলা ও থানা সহ)"
                       disabled
                       className="w-full p-1.5 border border-border rounded bg-background/80 text-[11px] text-muted-foreground"
                     />
@@ -1220,7 +1230,7 @@ export default function SafeLandingPageBuilderPage() {
                   </button>
                   <span className="text-[9px] text-center text-muted-foreground flex items-center justify-center gap-1">
                     <Lock className="w-2.5 h-2.5 text-muted-foreground" />
-                    <span>à§§à§¦à§¦% à¦¨à¦¿à¦°à¦¾à¦ªà¦¦ à¦•à§à¦¯à¦¾à¦¶ à¦…à¦¨ à¦¡à§‡à¦²à¦¿à¦­à¦¾à¦°à¦¿ (à¦ªà¦£à§à¦¯ à¦¹à¦¾à¦¤à§‡ à¦ªà§‡à§Ÿà§‡ à¦Ÿà¦¾à¦•à¦¾ à¦ªà¦°à¦¿à¦¶à§‹à¦§)</span>
+                    <span>১০০% নিরাপদ ক্যাশ অন ডেলিভারি (পণ্য হাতে পেয়ে টাকা পরিশোধ)</span>
                   </span>
                 </div>
               )}
@@ -1230,18 +1240,18 @@ export default function SafeLandingPageBuilderPage() {
                 <div className="grid grid-cols-3 gap-1.5 pt-1 text-center">
                   <div className="bg-muted/40 p-1.5 rounded-lg border border-border flex flex-col items-center">
                     <Truck className="w-3.5 h-3.5 text-blue-500" />
-                    <span className="text-[9px] font-bold text-foreground mt-0.5">à¦¹à§‹à¦® à¦¡à§‡à¦²à¦¿à¦­à¦¾à¦°à¦¿</span>
-                    <span className="text-[8px] text-muted-foreground">à¦¸à¦¾à¦°à¦¾ à¦¦à§‡à¦¶à§‡</span>
+                    <span className="text-[9px] font-bold text-foreground mt-0.5">হোম ডেলিভারি</span>
+                    <span className="text-[8px] text-muted-foreground">সারা দেশে</span>
                   </div>
                   <div className="bg-muted/40 p-1.5 rounded-lg border border-border flex flex-col items-center">
                     <DollarSign className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
-                    <span className="text-[9px] font-bold text-foreground mt-0.5">à¦•à§à¦¯à¦¾à¦¶ à¦…à¦¨ à¦¡à§‡à¦²à¦¿à¦­à¦¾à¦°à¦¿</span>
-                    <span className="text-[8px] text-muted-foreground">à¦¹à¦¾à¦¤à§‡ à¦ªà§‡à§Ÿà§‡ à¦ªà§‡à¦®à§‡à¦¨à§à¦Ÿ</span>
+                    <span className="text-[9px] font-bold text-foreground mt-0.5">ক্যাশ অন ডেলিভারি</span>
+                    <span className="text-[8px] text-muted-foreground">হাতে পেয়ে পেমেন্ট</span>
                   </div>
                   <div className="bg-muted/40 p-1.5 rounded-lg border border-border flex flex-col items-center">
                     <ShieldCheck className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
-                    <span className="text-[9px] font-bold text-foreground mt-0.5">à¦“à§Ÿà¦¾à¦°à§‡à¦¨à§à¦Ÿà¦¿ à¦—à§à¦¯à¦¾à¦°à¦¾à¦¨à§à¦Ÿà¦¿</span>
-                    <span className="text-[8px] text-muted-foreground">à§§à§¦à§¦% à¦…à¦°à¦¿à¦œà¦¿à¦¨à¦¾à¦²</span>
+                    <span className="text-[9px] font-bold text-foreground mt-0.5">ওয়ারেন্টি গ্যারান্টি</span>
+                    <span className="text-[8px] text-muted-foreground">১০০% অরিজিনাল</span>
                   </div>
                 </div>
               )}
