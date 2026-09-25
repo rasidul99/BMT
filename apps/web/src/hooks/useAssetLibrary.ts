@@ -52,7 +52,7 @@ export function useAssetLibrary() {
       title: "High-Converting Curiosity Hook Caption (Bengali)",
       type: "Text",
       folder: "Captions & Copy",
-      content: "🔥 আপনি কি জানেন ৯০% মানুষ এই ছোট্ট ভুলের কারণে অনলাইনে সঠিক গ্যাজেট কিনতে পারে না? আজই জেনে নিন সেরা সমাধান। সীমিত সময়ের অফার পেতে ইনবক্স করুন!",
+      content: "আপনি কি জানেন ৯০% মানুষ এই ছোট্ট ভুলের কারণে অনলাইনে সঠিক গ্যাজেট কিনতে পারে না? আজই জেনে নিন সেরা সমাধান। সীমিত সময়ের অফার পেতে ইনবক্স করুন!",
       tags: ["caption", "bengali-hook", "curiosity"],
       size: "1.2 KB",
       uploadedAt: "2026-08-02",
