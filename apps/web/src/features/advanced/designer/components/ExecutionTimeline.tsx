@@ -80,7 +80,7 @@ export default function ExecutionTimeline({ workflowId }: ExecutionTimelineProps
                 <span className="text-slate-400 font-bold">Steps Timeline ({selectedRun})</span>
                 <button
                   onClick={() => handleReplay(selectedRun)}
-                  className="px-2 py-1 bg-orange-600 hover:bg-orange-700 text-white rounded text-[10px] font-sans font-semibold"
+                  className="px-2 py-1 bg-orange-600 hover:bg-orange-700 text-white rounded text-[10px] font-sans font-semibold shadow-xs transition"
                 >
                   Replay Run
                 </button>

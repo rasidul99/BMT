@@ -48,6 +48,10 @@ Thumbs.db
 .nyc_output/
 coverage/
 .jest/
+
+# Temporary Downloaded Media Cache
+apps/web/public/downloads/*
+!apps/web/public/downloads/.gitkeep
 .pnpm-debug.log*
 .npm/
 
