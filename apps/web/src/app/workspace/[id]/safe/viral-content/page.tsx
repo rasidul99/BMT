@@ -192,27 +192,27 @@ export default function SafeViralContentPage() {
 
   // Quick preset keywords
   const presetKeywords = [
-    { label: "🌙 Eid Special", query: "Eid" },
-    { label: "📱 Gadgets", query: "gadget" },
-    { label: "✨ Skincare Glow", query: "skin" },
-    { label: "🍯 Organic Food", query: "food" },
-    { label: "👗 Fashion", query: "fashion" },
+    { label: "Eid Special", query: "Eid" },
+    { label: "Gadgets", query: "gadget" },
+    { label: "Skincare Glow", query: "skin" },
+    { label: "Organic Food", query: "food" },
+    { label: "Fashion", query: "fashion" },
   ]
 
   const platforms = [
-    { id: "all", label: "🌐 All Platforms", badge: "bg-slate-800 text-white" },
-    { id: "facebook", label: "📘 Facebook Reels", badge: "bg-blue-600 text-white" },
-    { id: "youtube", label: "▶️ YouTube Shorts", badge: "bg-red-600 text-white" },
-    { id: "tiktok", label: "🎵 TikTok Viral", badge: "bg-teal-600 text-white" },
+    { id: "all", label: "All Platforms" },
+    { id: "facebook", label: "Facebook Reels" },
+    { id: "youtube", label: "YouTube Shorts" },
+    { id: "tiktok", label: "TikTok Viral" },
   ]
 
   const countries = [
-    { code: "Bangladesh", label: "🇧🇩 Bangladesh" },
-    { code: "United States", label: "🇺🇸 United States" },
-    { code: "United Kingdom", label: "🇬🇧 United Kingdom" },
-    { code: "India", label: "🇮🇳 India" },
-    { code: "United Arab Emirates", label: "🇦🇪 UAE (Dubai)" },
-    { code: "All Countries", label: "🌍 Global Worldwide" },
+    { code: "Bangladesh", label: "Bangladesh" },
+    { code: "United States", label: "United States" },
+    { code: "United Kingdom", label: "United Kingdom" },
+    { code: "India", label: "India" },
+    { code: "United Arab Emirates", label: "UAE (Dubai)" },
+    { code: "All Countries", label: "Global Worldwide" },
   ]
 
   const categories = [
@@ -226,29 +226,29 @@ export default function SafeViralContentPage() {
   ]
 
   return (
-    <div className="max-w-6xl space-y-6 pb-12">
+    <div className="max-w-6xl space-y-6 pb-20">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b pb-4">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-border pb-5">
         <div>
-          <div className="flex items-center space-x-2">
-            <span className="p-2 bg-gradient-to-tr from-rose-500 to-amber-500 text-white rounded-xl shadow-md">
-              <Flame className="w-5 h-5 animate-pulse" />
-            </span>
+          <div className="flex items-center space-x-2.5">
+            <div className="w-9 h-9 rounded-lg bg-blue-600 text-white flex items-center justify-center shadow-xs">
+              <TrendingUp className="w-5 h-5" />
+            </div>
             <div>
-              <h1 className="text-2xl font-black tracking-tight">Viral Content Finder</h1>
-              <p className="text-xs text-muted-foreground">
+              <h1 className="text-2xl font-black tracking-tight text-foreground">Viral Content Finder</h1>
+              <p className="text-xs text-muted-foreground mt-0.5">
                 ভাইরাল কনটেন্ট রিসার্চ ইঞ্জিন: Facebook, YouTube ও TikTok থেকে ট্রেন্ডিং কনটেন্ট বিশ্লেষণ এবং অটোমেশন
               </p>
             </div>
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
-          <div className="flex items-center space-x-1 border rounded-lg p-1 bg-card text-xs shadow-sm">
+        <div className="flex items-center gap-2 overflow-x-auto no-scrollbar flex-nowrap">
+          <div className="flex items-center space-x-1 border border-border rounded-lg p-1 bg-card text-xs shadow-xs">
             <button
               onClick={() => setActiveTab("Feed")}
-              className={`px-3 py-1.5 rounded-md font-bold transition flex items-center space-x-1.5 ${
-                activeTab === "Feed" ? "bg-rose-600 text-white shadow-sm" : "hover:bg-muted text-muted-foreground"
+              className={`px-3.5 py-1.5 rounded-md font-semibold transition flex items-center space-x-1.5 shrink-0 ${
+                activeTab === "Feed" ? "bg-blue-600 text-white shadow-xs" : "hover:bg-muted text-muted-foreground"
               }`}
             >
               <TrendingUp className="w-3.5 h-3.5" />
@@ -257,8 +257,8 @@ export default function SafeViralContentPage() {
 
             <button
               onClick={() => setActiveTab("Bookmarks")}
-              className={`px-3 py-1.5 rounded-md font-bold transition flex items-center space-x-1.5 ${
-                activeTab === "Bookmarks" ? "bg-rose-600 text-white shadow-sm" : "hover:bg-muted text-muted-foreground"
+              className={`px-3.5 py-1.5 rounded-md font-semibold transition flex items-center space-x-1.5 shrink-0 ${
+                activeTab === "Bookmarks" ? "bg-blue-600 text-white shadow-xs" : "hover:bg-muted text-muted-foreground"
               }`}
             >
               <Bookmark className="w-3.5 h-3.5" />
@@ -267,8 +267,8 @@ export default function SafeViralContentPage() {
 
             <button
               onClick={() => setActiveTab("Formulas")}
-              className={`px-3 py-1.5 rounded-md font-bold transition flex items-center space-x-1.5 ${
-                activeTab === "Formulas" ? "bg-rose-600 text-white shadow-sm" : "hover:bg-muted text-muted-foreground"
+              className={`px-3.5 py-1.5 rounded-md font-semibold transition flex items-center space-x-1.5 shrink-0 ${
+                activeTab === "Formulas" ? "bg-blue-600 text-white shadow-xs" : "hover:bg-muted text-muted-foreground"
               }`}
             >
               <BookOpen className="w-3.5 h-3.5" />
@@ -281,12 +281,12 @@ export default function SafeViralContentPage() {
       {activeTab === "Formulas" ? (
         /* Blueprint & Formulas Tab */
         <div className="space-y-6">
-          <div className="border bg-gradient-to-br from-card via-card to-rose-500/5 p-6 rounded-2xl shadow-sm space-y-4">
+          <div className="border border-border bg-card p-6 rounded-2xl shadow-xs space-y-4">
             <div className="flex items-center space-x-2">
-              <span className="p-2 bg-amber-500/10 text-amber-500 rounded-lg">
+              <span className="p-2 bg-blue-50 text-blue-600 dark:bg-blue-950/60 dark:text-blue-400 rounded-lg">
                 <Lightbulb className="w-5 h-5" />
               </span>
-              <h2 className="text-lg font-black tracking-tight">The 2026 Viral Content Architecture</h2>
+              <h2 className="text-lg font-bold tracking-tight text-foreground">The 2026 Viral Content Architecture</h2>
             </div>
             <p className="text-xs text-muted-foreground leading-relaxed">
               Based on algorithmic analysis of over 50,000+ top performing Reels, Shorts, and TikToks in South Asia & Global markets.
@@ -294,41 +294,41 @@ export default function SafeViralContentPage() {
             </p>
 
             <div className="grid gap-4 md:grid-cols-3 pt-2">
-              <div className="border bg-card p-4 rounded-xl space-y-2">
-                <span className="text-[10px] font-black uppercase tracking-wider text-rose-500 bg-rose-500/10 px-2 py-0.5 rounded">
+              <div className="border border-border bg-card p-4 rounded-xl space-y-2 shadow-xs">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-blue-600 bg-blue-50 dark:bg-blue-950/60 dark:text-blue-400 px-2 py-0.5 rounded border border-blue-200/50">
                   Format 01
                 </span>
-                <h3 className="font-bold text-sm">The "Stop-Scrolling" Mystery Hook</h3>
+                <h3 className="font-bold text-sm text-foreground">The "Stop-Scrolling" Mystery Hook</h3>
                 <p className="text-xs text-muted-foreground">
                   The first 1.8 seconds must present an impossible question or a shocking visual demonstration without revealing the answer immediately.
                 </p>
-                <div className="text-[11px] font-mono bg-muted p-2 rounded border">
+                <div className="text-[11px] font-mono bg-muted p-2 rounded border border-border">
                   "৯৯% মানুষ অনলাইনে শপিং করার সময় এই বড় ভুলটি করে..."
                 </div>
               </div>
 
-              <div className="border bg-card p-4 rounded-xl space-y-2">
-                <span className="text-[10px] font-black uppercase tracking-wider text-emerald-500 bg-emerald-500/10 px-2 py-0.5 rounded">
+              <div className="border border-border bg-card p-4 rounded-xl space-y-2 shadow-xs">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-blue-600 bg-blue-50 dark:bg-blue-950/60 dark:text-blue-400 px-2 py-0.5 rounded border border-blue-200/50">
                   Format 02
                 </span>
-                <h3 className="font-bold text-sm">The Pain vs Transformation</h3>
+                <h3 className="font-bold text-sm text-foreground">The Pain vs Transformation</h3>
                 <p className="text-xs text-muted-foreground">
                   Display extreme friction or unboxing problem in frame 1, followed by instantaneous satisfying resolution in frame 2.
                 </p>
-                <div className="text-[11px] font-mono bg-muted p-2 rounded border">
+                <div className="text-[11px] font-mono bg-muted p-2 rounded border border-border">
                   "দাম বেশি দিয়েও নকল পণ্য পেয়ে প্রতারিত হলেন? দেখুন আসল চিনবেন যেভাবে।"
                 </div>
               </div>
 
-              <div className="border bg-card p-4 rounded-xl space-y-2">
-                <span className="text-[10px] font-black uppercase tracking-wider text-blue-500 bg-blue-500/10 px-2 py-0.5 rounded">
+              <div className="border border-border bg-card p-4 rounded-xl space-y-2 shadow-xs">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-blue-600 bg-blue-50 dark:bg-blue-950/60 dark:text-blue-400 px-2 py-0.5 rounded border border-blue-200/50">
                   Format 03
                 </span>
-                <h3 className="font-bold text-sm">The Behind-The-Scenes Proof</h3>
+                <h3 className="font-bold text-sm text-foreground">The Behind-The-Scenes Proof</h3>
                 <p className="text-xs text-muted-foreground">
                   Raw unedited warehouse packing, direct farm harvesting, or live factory manufacturing builds 400% higher buyer trust.
                 </p>
-                <div className="text-[11px] font-mono bg-muted p-2 rounded border">
+                <div className="text-[11px] font-mono bg-muted p-2 rounded border border-border">
                   "সুন্দরবনের গভীর থেকে সরাসরি মৌচাক কাটার দৃশ্য দেখুন লাইভ!"
                 </div>
               </div>
@@ -339,7 +339,7 @@ export default function SafeViralContentPage() {
           <div className="flex justify-center">
             <button
               onClick={() => setActiveTab("Feed")}
-              className="bg-rose-600 hover:bg-rose-700 text-white font-bold px-6 py-2.5 rounded-xl shadow-md transition flex items-center space-x-2 text-xs"
+              className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-6 py-2.5 rounded-xl shadow-xs transition flex items-center space-x-2 text-xs"
             >
               <span>Explore Live Trending Feed</span>
               <ArrowRight className="w-4 h-4" />
@@ -351,10 +351,10 @@ export default function SafeViralContentPage() {
         <div className="space-y-6">
           {/* Search & Filter Studio Bar (Feed only) */}
           {activeTab === "Feed" && (
-            <div className="border bg-card p-5 rounded-2xl shadow-sm space-y-4 text-xs">
+            <div className="border border-border bg-card p-5 rounded-2xl shadow-xs space-y-4 text-xs">
               {/* Platform Selector Buttons */}
               <div className="space-y-1.5">
-                <label className="font-black text-muted-foreground uppercase text-[10px] tracking-wider block">
+                <label className="font-semibold text-muted-foreground uppercase text-[10px] tracking-wider block">
                   Select Social Platform
                 </label>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
@@ -372,9 +372,9 @@ export default function SafeViralContentPage() {
                           minLikes: minLikesFilter,
                         })
                       }}
-                      className={`py-2 px-3 rounded-xl border font-bold text-xs transition flex items-center justify-center space-x-2 ${
+                      className={`py-2 px-3 rounded-xl border font-semibold text-xs transition flex items-center justify-center space-x-2 min-h-[38px] ${
                         selectedPlatform === p.id
-                          ? `${p.badge} shadow-sm border-transparent`
+                          ? "bg-blue-600 text-white shadow-xs border-blue-600"
                           : "bg-background hover:bg-muted text-foreground border-border"
                       }`}
                     >
@@ -388,20 +388,20 @@ export default function SafeViralContentPage() {
               <form onSubmit={handleSearch} className="space-y-2">
                 <div className="flex gap-2">
                   <div className="relative flex-1">
-                    <Search className="absolute left-3 top-2.5 w-4 h-4 text-muted-foreground" />
+                    <Search className="absolute left-3 top-3 w-4 h-4 text-muted-foreground" />
                     <input
                       type="text"
                       placeholder="Search viral keywords (e.g. Eid sale, smart watch, skincare, recipe, honey)..."
                       value={searchKeyword}
                       onChange={(e) => setSearchKeyword(e.target.value)}
-                      className="w-full pl-9 pr-4 py-2 border rounded-xl bg-background font-medium focus:ring-2 focus:ring-rose-500 focus:outline-none"
+                      className="w-full pl-9 pr-4 py-2 border border-border rounded-xl bg-background font-medium text-xs sm:text-sm min-h-[40px] focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition"
                     />
                   </div>
 
                   <button
                     type="submit"
                     disabled={isLoading}
-                    className="bg-rose-600 hover:bg-rose-700 disabled:opacity-50 text-white font-extrabold px-5 py-2 rounded-xl shadow-md transition flex items-center space-x-2 shrink-0"
+                    className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-semibold px-5 py-2 rounded-xl shadow-xs transition flex items-center space-x-2 shrink-0 min-h-[40px]"
                   >
                     {isLoading ? (
                       <>
@@ -410,7 +410,7 @@ export default function SafeViralContentPage() {
                       </>
                     ) : (
                       <>
-                        <Flame className="w-4 h-4" />
+                        <Sparkles className="w-4 h-4" />
                         <span>Find Viral</span>
                       </>
                     )}
@@ -419,7 +419,7 @@ export default function SafeViralContentPage() {
 
                 {/* Preset Chips */}
                 <div className="flex flex-wrap items-center gap-1.5 pt-1">
-                  <span className="text-[10px] font-bold text-muted-foreground mr-1">Hot Trends:</span>
+                  <span className="text-[10px] font-semibold text-muted-foreground mr-1">Hot Trends:</span>
                   {presetKeywords.map((tag) => (
                     <button
                       key={tag.query}
@@ -434,7 +434,7 @@ export default function SafeViralContentPage() {
                           minLikes: minLikesFilter,
                         })
                       }}
-                      className="text-[10px] font-bold px-2 py-0.5 rounded-full border bg-muted/50 hover:bg-rose-500/10 hover:border-rose-500/30 transition text-muted-foreground hover:text-rose-600"
+                      className="text-[11px] font-medium px-2.5 py-0.5 rounded-full border border-border bg-muted/30 hover:bg-blue-50 hover:border-blue-200 hover:text-blue-600 dark:hover:bg-blue-950/40 dark:hover:border-blue-800 dark:hover:text-blue-300 transition text-muted-foreground"
                     >
                       {tag.label}
                     </button>
@@ -443,9 +443,9 @@ export default function SafeViralContentPage() {
               </form>
 
               {/* Country, Category & Engagement Filters */}
-              <div className="grid gap-3 sm:grid-cols-4 pt-2 border-t">
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 pt-2 border-t border-border">
                 <div>
-                  <label className="font-bold block mb-1 text-muted-foreground">Target Country</label>
+                  <label className="font-semibold block mb-1 text-muted-foreground">Target Country</label>
                   <select
                     value={selectedCountry}
                     onChange={(e) => {
@@ -458,7 +458,7 @@ export default function SafeViralContentPage() {
                         minLikes: minLikesFilter,
                       })
                     }}
-                    className="w-full px-3 py-1.5 border rounded-lg bg-background font-semibold"
+                    className="w-full px-3 py-2 border border-border rounded-lg bg-background font-medium text-xs min-h-[38px] focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition"
                   >
                     {countries.map((c) => (
                       <option key={c.code} value={c.code}>
@@ -469,7 +469,7 @@ export default function SafeViralContentPage() {
                 </div>
 
                 <div>
-                  <label className="font-bold block mb-1 text-muted-foreground">Category / Niche</label>
+                  <label className="font-semibold block mb-1 text-muted-foreground">Category / Niche</label>
                   <select
                     value={selectedCategory}
                     onChange={(e) => {
@@ -482,7 +482,7 @@ export default function SafeViralContentPage() {
                         minLikes: minLikesFilter,
                       })
                     }}
-                    className="w-full px-3 py-1.5 border rounded-lg bg-background font-semibold"
+                    className="w-full px-3 py-2 border border-border rounded-lg bg-background font-medium text-xs min-h-[38px] focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition"
                   >
                     {categories.map((cat) => (
                       <option key={cat} value={cat}>
@@ -493,7 +493,7 @@ export default function SafeViralContentPage() {
                 </div>
 
                 <div>
-                  <label className="font-bold block mb-1 text-muted-foreground">Min Likes Threshold</label>
+                  <label className="font-semibold block mb-1 text-muted-foreground">Min Likes Threshold</label>
                   <select
                     value={minLikesFilter}
                     onChange={(e) => {
@@ -507,7 +507,7 @@ export default function SafeViralContentPage() {
                         minLikes: val,
                       })
                     }}
-                    className="w-full px-3 py-1.5 border rounded-lg bg-background font-semibold"
+                    className="w-full px-3 py-2 border border-border rounded-lg bg-background font-medium text-xs min-h-[38px] focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition"
                   >
                     <option value={0}>Any Engagement</option>
                     <option value={10000}>10K+ Likes</option>
@@ -517,16 +517,16 @@ export default function SafeViralContentPage() {
                 </div>
 
                 <div>
-                  <label className="font-bold block mb-1 text-muted-foreground">Sort Results By</label>
+                  <label className="font-semibold block mb-1 text-muted-foreground">Sort Results By</label>
                   <select
                     value={sortBy}
                     onChange={(e) => setSortBy(e.target.value as any)}
-                    className="w-full px-3 py-1.5 border rounded-lg bg-background font-semibold"
+                    className="w-full px-3 py-2 border border-border rounded-lg bg-background font-medium text-xs min-h-[38px] focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition"
                   >
-                    <option value="score">🔥 Highest AI Viral Index</option>
-                    <option value="views">👁️ Most Views</option>
-                    <option value="likes">👍 Most Likes</option>
-                    <option value="shares">🔁 Most Shares</option>
+                    <option value="score">Highest AI Viral Index</option>
+                    <option value="views">Most Views</option>
+                    <option value="likes">Most Likes</option>
+                    <option value="shares">Most Shares</option>
                   </select>
                 </div>
               </div>
@@ -537,14 +537,15 @@ export default function SafeViralContentPage() {
           {activeTab === "Feed" && selectedPlatform === "facebook" && (
             <div className="p-4 rounded-xl border border-blue-500/30 bg-blue-500/10 text-xs space-y-2">
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                <div className="flex items-center space-x-2 font-black text-blue-500 text-sm">
-                  <span>📘 Facebook Meta Graph API Integration</span>
+                <div className="flex items-center space-x-2 font-bold text-blue-600 dark:text-blue-400 text-sm">
+                  <Film className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                  <span>Facebook Meta Graph API Integration</span>
                 </div>
                 <button
                   onClick={() => router.push(`/workspace/${workspaceId}/safe/connect-accounts`)}
-                  className="bg-blue-600 hover:bg-blue-700 text-white font-bold px-3 py-1.5 rounded-lg transition text-xs shrink-0"
+                  className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-3.5 py-1.5 rounded-lg transition text-xs shrink-0 shadow-xs"
                 >
-                  🔗 Connect FB Pages
+                  Connect FB Pages
                 </button>
               </div>
               <p className="text-muted-foreground text-[11px] leading-relaxed">
@@ -554,16 +555,17 @@ export default function SafeViralContentPage() {
           )}
 
           {activeTab === "Feed" && selectedPlatform === "tiktok" && (
-            <div className="p-4 rounded-xl border border-teal-500/30 bg-teal-500/10 text-xs space-y-2">
+            <div className="p-4 rounded-xl border border-blue-500/30 bg-blue-500/10 text-xs space-y-2">
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                <div className="flex items-center space-x-2 font-black text-teal-400 text-sm">
-                  <span>🎵 TikTok Creator API Integration</span>
+                <div className="flex items-center space-x-2 font-bold text-blue-600 dark:text-blue-400 text-sm">
+                  <Film className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                  <span>TikTok Creator API Integration</span>
                 </div>
                 <button
                   onClick={() => setShowTikTokModal(true)}
-                  className="bg-teal-600 hover:bg-teal-700 text-white font-bold px-3 py-1.5 rounded-lg transition text-xs shrink-0"
+                  className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-3.5 py-1.5 rounded-lg transition text-xs shrink-0 shadow-xs"
                 >
-                  🔗 Connect TikTok Account
+                  Connect TikTok Account
                 </button>
               </div>
               <p className="text-muted-foreground text-[11px] leading-relaxed">
@@ -573,11 +575,12 @@ export default function SafeViralContentPage() {
           )}
 
           {activeTab === "Feed" && selectedPlatform === "youtube" && (
-            <div className="p-3 rounded-xl border border-red-500/20 bg-red-500/5 text-xs flex items-center justify-between text-muted-foreground">
+            <div className="p-3 rounded-xl border border-border bg-card text-xs flex items-center justify-between text-muted-foreground shadow-xs">
               <span className="flex items-center space-x-2">
-                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
-                <span className="text-[11px] font-semibold text-foreground">
-                  ▶️ YouTube Live Shorts & Video Engine: ১০০% ওপেন পাবলিক সার্চ সক্রিয় রয়েছে (কোনো লগইন ছাড়াই লাইভ ট্রেন্ড লোড হচ্ছে)।
+                <span className="w-2 h-2 rounded-full bg-blue-600 animate-ping"></span>
+                <span className="text-[11px] font-medium text-foreground flex items-center space-x-1.5">
+                  <Film className="w-3.5 h-3.5 text-blue-600 inline" />
+                  <span>YouTube Live Shorts & Video Engine: ১০০% ওপেন পাবলিক সার্চ সক্রিয় রয়েছে (কোনো লগইন ছাড়াই লাইভ ট্রেন্ড লোড হচ্ছে)।</span>
                 </span>
               </span>
             </div>
@@ -586,17 +589,17 @@ export default function SafeViralContentPage() {
           {/* Active Results Summary Banner */}
           <div className="flex items-center justify-between text-xs px-1">
             <div className="flex items-center space-x-2">
-              <span className="font-extrabold text-foreground">
+              <span className="font-bold text-foreground">
                 {activeTab === "Bookmarks" ? "Saved Bookmarks" : "Discovered Viral Content"}
               </span>
-              <span className="bg-rose-500/10 text-rose-600 font-bold px-2 py-0.5 rounded-full text-[10px]">
+              <span className="bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300 border border-blue-200/50 font-bold px-2 py-0.5 rounded-full text-[10px]">
                 {sortedItems.length} items
               </span>
             </div>
 
             {activeTab === "Feed" && (
               <span className="text-muted-foreground text-[11px] flex items-center space-x-1">
-                <Globe className="w-3.5 h-3.5 text-emerald-500" />
+                <Globe className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
                 <span>
                   Filtering: <b>{selectedCountry}</b> &bull; <b>{selectedCategory}</b>
                 </span>
@@ -606,7 +609,7 @@ export default function SafeViralContentPage() {
 
           {/* Error Banner */}
           {error && (
-            <div className="p-4 border border-rose-500/30 bg-rose-500/10 text-rose-600 rounded-xl text-xs flex items-center justify-between">
+            <div className="p-4 border border-red-200 bg-red-50 text-red-700 dark:bg-red-950/30 dark:border-red-900/50 dark:text-red-300 rounded-xl text-xs flex items-center justify-between">
               <span>{error}</span>
               <button
                 onClick={() => handleSearch()}
@@ -621,7 +624,7 @@ export default function SafeViralContentPage() {
           {isLoading && (
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
               {[1, 2, 3].map((i) => (
-                <div key={i} className="border bg-card p-4 rounded-2xl space-y-4 animate-pulse">
+                <div key={i} className="border border-border bg-card p-4 rounded-2xl space-y-4 animate-pulse">
                   <div className="w-full h-44 bg-muted rounded-xl"></div>
                   <div className="h-4 bg-muted rounded w-3/4"></div>
                   <div className="h-3 bg-muted rounded w-full"></div>
@@ -633,17 +636,17 @@ export default function SafeViralContentPage() {
 
           {/* Empty Bookmarks State */}
           {!isLoading && activeTab === "Bookmarks" && bookmarks.length === 0 && (
-            <div className="text-center py-16 border rounded-2xl bg-card space-y-3">
+            <div className="text-center py-16 border border-border rounded-2xl bg-card space-y-3 shadow-xs">
               <span className="p-3 bg-muted rounded-full inline-block">
                 <Bookmark className="w-8 h-8 text-muted-foreground" />
               </span>
-              <h3 className="font-bold text-sm">No Saved Viral Bookmarks Yet</h3>
+              <h3 className="font-bold text-sm text-foreground">No Saved Viral Bookmarks Yet</h3>
               <p className="text-xs text-muted-foreground max-w-sm mx-auto">
-                Explore the Trending Feed and click the star bookmark icon on any viral reel to save it for your marketing campaigns.
+                Explore the Trending Feed and click the bookmark icon on any viral reel to save it for your marketing campaigns.
               </p>
               <button
                 onClick={() => setActiveTab("Feed")}
-                className="mt-2 bg-rose-600 text-white font-bold text-xs px-4 py-2 rounded-xl shadow-sm"
+                className="mt-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs px-4 py-2 rounded-xl shadow-xs transition"
               >
                 Browse Trending Feed
               </button>
@@ -661,7 +664,7 @@ export default function SafeViralContentPage() {
                 return (
                   <div
                     key={item.id}
-                    className="border bg-card rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition flex flex-col justify-between group hover:border-rose-500/40"
+                    className="border border-border bg-card rounded-2xl overflow-hidden shadow-xs hover:shadow-md transition flex flex-col justify-between group hover:border-blue-500/40"
                   >
                     <div>
                       {/* Media Header & Thumbnail / In-Card Player */}
@@ -681,7 +684,7 @@ export default function SafeViralContentPage() {
                                 e.stopPropagation()
                                 setPlayingVideoId(null)
                               }}
-                              className="absolute top-2 right-2 z-30 bg-black/80 hover:bg-rose-600 text-white text-[11px] font-bold px-2.5 py-1 rounded-lg backdrop-blur-md transition flex items-center space-x-1 shadow-xl border border-white/10"
+                              className="absolute top-2 right-2 z-30 bg-black/80 hover:bg-blue-600 text-white text-[11px] font-semibold px-2.5 py-1 rounded-lg backdrop-blur-md transition flex items-center space-x-1 shadow-xl border border-white/10"
                               title="Close In-Card Player"
                             >
                               <X className="w-3.5 h-3.5" />
@@ -702,28 +705,21 @@ export default function SafeViralContentPage() {
 
                             {/* Centered Glowing Play Icon */}
                             <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                              <div className="w-13 h-13 sm:w-14 sm:h-14 rounded-full bg-rose-600 group-hover/player:bg-rose-500 text-white flex items-center justify-center shadow-xl shadow-rose-600/50 group-hover/player:scale-115 transition duration-300 ring-4 ring-white/30">
+                              <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-blue-600 group-hover/player:bg-blue-500 text-white flex items-center justify-center shadow-lg shadow-blue-600/30 group-hover/player:scale-110 transition duration-300 ring-4 ring-white/30">
                                 <Play className="w-6 h-6 fill-white translate-x-0.5" />
                               </div>
-                              <span className="mt-2 text-[10px] font-extrabold text-white bg-black/70 px-2.5 py-0.5 rounded-full backdrop-blur-md shadow tracking-wide group-hover/player:bg-rose-600/90 transition duration-300">
-                                ▶ Play in App
+                              <span className="mt-2 text-[10px] font-bold text-white bg-slate-900/80 px-2.5 py-0.5 rounded-full backdrop-blur-md shadow tracking-wide group-hover/player:bg-blue-600 transition duration-300 flex items-center space-x-1">
+                                <Play className="w-2.5 h-2.5 fill-white inline" />
+                                <span>Play in App</span>
                               </span>
                             </div>
 
                             {/* Top Badges */}
                             <div className="absolute top-2.5 left-2.5 right-2.5 flex items-center justify-between">
-                              <span
-                                className={`text-[10px] font-extrabold px-2 py-0.5 rounded-md shadow-sm ${
-                                  item.platform === "Facebook"
-                                    ? "bg-blue-600 text-white"
-                                    : item.platform === "TikTok"
-                                    ? "bg-black/90 text-teal-300 border border-teal-500/40"
-                                    : "bg-red-600 text-white"
-                                }`}
-                              >
-                                {item.platform === "Facebook" && "📘 Facebook Reel"}
-                                {item.platform === "TikTok" && "🎵 TikTok Viral"}
-                                {item.platform === "YouTube" && "▶️ YouTube"}
+                              <span className="text-[10px] font-bold px-2 py-0.5 rounded-md shadow-xs bg-slate-900/80 text-white backdrop-blur-md border border-white/10">
+                                {item.platform === "Facebook" && "Facebook Reel"}
+                                {item.platform === "TikTok" && "TikTok Viral"}
+                                {item.platform === "YouTube" && "YouTube Shorts"}
                               </span>
 
                               <button
@@ -733,7 +729,7 @@ export default function SafeViralContentPage() {
                                 }}
                                 className={`p-1.5 rounded-full backdrop-blur-md transition pointer-events-auto ${
                                   bookmarked
-                                    ? "bg-amber-500 text-white shadow-md"
+                                    ? "bg-blue-600 text-white shadow-xs"
                                     : "bg-black/40 text-white/80 hover:bg-black/70 hover:text-white"
                                 }`}
                                 title={bookmarked ? "Remove Bookmark" : "Save to Bookmarks"}
@@ -748,14 +744,14 @@ export default function SafeViralContentPage() {
 
                             {/* AI Viral Index Badge */}
                             <div className="absolute bottom-2.5 left-2.5 flex items-center space-x-1.5">
-                              <span className="bg-gradient-to-r from-rose-600 to-amber-600 text-white font-black text-[10px] px-2 py-0.5 rounded-md shadow-md flex items-center space-x-1">
-                                <Flame className="w-3 h-3 fill-current" />
+                              <span className="bg-blue-600 text-white font-bold text-[10px] px-2 py-0.5 rounded-md shadow-xs flex items-center space-x-1">
+                                <Sparkles className="w-3 h-3" />
                                 <span>{item.viralScore}/100 VIRAL INDEX</span>
                               </span>
                             </div>
 
                             {/* Posted Time */}
-                            <div className="absolute bottom-2.5 right-2.5 text-[10px] font-semibold text-white/90 bg-black/60 backdrop-blur-md px-2 py-0.5 rounded">
+                            <div className="absolute bottom-2.5 right-2.5 text-[10px] font-medium text-white/90 bg-black/60 backdrop-blur-md px-2 py-0.5 rounded">
                               {item.postedTime}
                             </div>
                           </div>
@@ -764,17 +760,17 @@ export default function SafeViralContentPage() {
 
                       {/* Content Details */}
                       <div className="p-4 space-y-3 text-xs">
-                        <div className="flex items-center justify-between text-[11px] text-muted-foreground border-b pb-2">
+                        <div className="flex items-center justify-between text-[11px] text-muted-foreground border-b border-border pb-2">
                           <span className="font-bold text-foreground truncate max-w-[170px]">
                             {item.author}
                           </span>
-                          <span className="bg-muted px-2 py-0.5 rounded text-[10px] font-semibold">
+                          <span className="bg-muted px-2 py-0.5 rounded text-[10px] font-semibold text-muted-foreground">
                             {item.country} &bull; {item.category}
                           </span>
                         </div>
 
                         <div>
-                          <h3 className="font-black text-sm text-foreground line-clamp-2 leading-snug group-hover:text-rose-600 transition">
+                          <h3 className="font-bold text-sm text-foreground line-clamp-2 leading-snug group-hover:text-blue-600 dark:group-hover:text-blue-400 transition">
                             {item.title}
                           </h3>
                           <p className="text-muted-foreground text-xs line-clamp-3 mt-1.5 leading-relaxed">
@@ -783,40 +779,40 @@ export default function SafeViralContentPage() {
                         </div>
 
                         {/* Metrics Bar */}
-                        <div className="grid grid-cols-4 gap-1 text-center py-2 bg-muted/40 rounded-xl border text-[10px] font-bold">
+                        <div className="grid grid-cols-4 gap-1 text-center py-2 bg-muted/40 rounded-xl border border-border text-[10px] font-semibold">
                           <div className="flex flex-col items-center">
                             <span className="text-muted-foreground flex items-center space-x-0.5">
-                              <Eye className="w-3 h-3 text-blue-500" />
+                              <Eye className="w-3 h-3 text-blue-600 dark:text-blue-400" />
                               <span>Views</span>
                             </span>
-                            <span className="font-black text-foreground mt-0.5">
+                            <span className="font-bold text-foreground mt-0.5">
                               {formatCount(item.views)}
                             </span>
                           </div>
                           <div className="flex flex-col items-center">
                             <span className="text-muted-foreground flex items-center space-x-0.5">
-                              <Heart className="w-3 h-3 text-rose-500" />
+                              <Heart className="w-3 h-3 text-blue-600 dark:text-blue-400" />
                               <span>Likes</span>
                             </span>
-                            <span className="font-black text-foreground mt-0.5">
+                            <span className="font-bold text-foreground mt-0.5">
                               {formatCount(item.likes)}
                             </span>
                           </div>
                           <div className="flex flex-col items-center">
                             <span className="text-muted-foreground flex items-center space-x-0.5">
-                              <MessageCircle className="w-3 h-3 text-emerald-500" />
+                              <MessageCircle className="w-3 h-3 text-blue-600 dark:text-blue-400" />
                               <span>Comments</span>
                             </span>
-                            <span className="font-black text-foreground mt-0.5">
+                            <span className="font-bold text-foreground mt-0.5">
                               {formatCount(item.comments)}
                             </span>
                           </div>
                           <div className="flex flex-col items-center">
                             <span className="text-muted-foreground flex items-center space-x-0.5">
-                              <Share2 className="w-3 h-3 text-purple-500" />
+                              <Share2 className="w-3 h-3 text-blue-600 dark:text-blue-400" />
                               <span>Shares</span>
                             </span>
-                            <span className="font-black text-foreground mt-0.5">
+                            <span className="font-bold text-foreground mt-0.5">
                               {formatCount(item.shares)}
                             </span>
                           </div>
@@ -825,26 +821,26 @@ export default function SafeViralContentPage() {
                     </div>
 
                     {/* Cross-Module Pipeline Actions */}
-                    <div className="p-4 pt-0 space-y-2 border-t border-border/50 mt-1">
+                    <div className="p-4 pt-0 space-y-2 border-t border-border mt-1">
                       <div className="grid grid-cols-2 gap-2 text-xs">
                         {/* Action 1: Download Media (Module 7) */}
                         <button
                           onClick={() => handleDownloadInModule7(item)}
-                          className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-2 rounded-xl shadow-sm transition flex items-center justify-center space-x-1 text-[11px]"
+                          className="bg-background hover:bg-muted border border-border text-foreground font-semibold py-2 px-2.5 rounded-xl shadow-xs transition flex items-center justify-center space-x-1.5 text-[11px] min-h-[36px]"
                           title="Open in Public Media Downloader"
                         >
-                          <Download className="w-3.5 h-3.5" />
-                          <span>⬇️ Download</span>
+                          <Download className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+                          <span>Download</span>
                         </button>
 
                         {/* Action 2: Save to Library (Module 3) */}
                         <button
                           onClick={() => handleSaveToAssetLibrary(item)}
                           disabled={isLibrarySaved}
-                          className={`font-bold py-2 px-2 rounded-xl shadow-sm transition flex items-center justify-center space-x-1 text-[11px] ${
+                          className={`font-semibold py-2 px-2.5 rounded-xl shadow-xs transition flex items-center justify-center space-x-1.5 text-[11px] min-h-[36px] ${
                             isLibrarySaved
-                              ? "bg-emerald-600 text-white"
-                              : "bg-muted hover:bg-muted/80 text-foreground border"
+                              ? "bg-blue-600 text-white"
+                              : "bg-background hover:bg-muted text-foreground border border-border"
                           }`}
                         >
                           {isLibrarySaved ? (
@@ -854,8 +850,8 @@ export default function SafeViralContentPage() {
                             </>
                           ) : (
                             <>
-                              <FolderPlus className="w-3.5 h-3.5 text-purple-500" />
-                              <span>📁 Library</span>
+                              <FolderPlus className="w-3.5 h-3.5 text-muted-foreground" />
+                              <span>Library</span>
                             </>
                           )}
                         </button>
@@ -864,10 +860,10 @@ export default function SafeViralContentPage() {
                       {/* Action 3: AI Rewrite in Scheduler (Module 1) */}
                       <button
                         onClick={() => handleImportToScheduler(item)}
-                        className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-extrabold py-2 px-3 rounded-xl shadow-sm transition flex items-center justify-center space-x-1.5 text-xs"
+                        className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-3 rounded-xl shadow-xs transition flex items-center justify-center space-x-1.5 text-xs min-h-[36px]"
                       >
                         <Sparkles className="w-3.5 h-3.5" />
-                        <span>🚀 AI Rewrite in Scheduler</span>
+                        <span>AI Rewrite in Scheduler</span>
                       </button>
 
                       {/* View Original External Link */}
@@ -875,10 +871,10 @@ export default function SafeViralContentPage() {
                         href={item.url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="w-full text-center py-2 px-3 rounded-xl bg-muted/60 hover:bg-muted text-[11px] text-foreground font-bold border border-border/80 hover:border-rose-500/50 transition flex items-center justify-center space-x-1.5 group/link shadow-sm"
+                        className="w-full text-center py-2 px-3 rounded-xl bg-background hover:bg-muted text-[11px] text-foreground font-semibold border border-border hover:border-blue-500/50 transition flex items-center justify-center space-x-1.5 group/link shadow-xs min-h-[36px]"
                       >
-                        <ExternalLink className="w-3.5 h-3.5 text-rose-500 group-hover/link:translate-x-0.5 transition" />
-                        <span>View Original on {item.platform} ↗</span>
+                        <ExternalLink className="w-3.5 h-3.5 text-muted-foreground group-hover/link:text-blue-600 transition" />
+                        <span>View Original on {item.platform}</span>
                       </a>
                     </div>
                   </div>
@@ -892,7 +888,7 @@ export default function SafeViralContentPage() {
                 <button
                   onClick={handleLoadMoreVideos}
                   disabled={isLoadingMore}
-                  className="bg-rose-600 hover:bg-rose-700 disabled:opacity-50 text-white font-black px-8 py-3.5 rounded-2xl shadow-xl transition flex items-center space-x-2 text-xs hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
+                  className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-semibold px-8 py-3 rounded-xl shadow-xs transition flex items-center space-x-2 text-xs cursor-pointer min-h-[44px]"
                 >
                   {isLoadingMore ? (
                     <>
@@ -902,7 +898,7 @@ export default function SafeViralContentPage() {
                   ) : (
                     <>
                       <PlusCircle className="w-4 h-4" />
-                      <span>➕ See More Viral Videos (+5 Videos)</span>
+                      <span>See More Viral Videos (+5 Videos)</span>
                     </>
                   )}
                 </button>
@@ -915,25 +911,25 @@ export default function SafeViralContentPage() {
       {/* TikTok Integration Modal */}
       {showTikTokModal && (
         <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-card border border-teal-500/30 rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl animate-in fade-in zoom-in-95">
-            <div className="flex items-center justify-between border-b pb-3">
+          <div className="bg-card border border-border rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl animate-in fade-in zoom-in-95">
+            <div className="flex items-center justify-between border-b border-border pb-3">
               <div className="flex items-center space-x-2">
-                <span className="p-2 bg-black rounded-lg text-teal-400 border border-teal-500/40">
+                <span className="p-2 bg-blue-50 text-blue-600 dark:bg-blue-950/60 dark:text-blue-400 rounded-lg">
                   <Film className="w-5 h-5" />
                 </span>
-                <h3 className="font-extrabold text-sm text-foreground">TikTok Creator API Integration</h3>
+                <h3 className="font-bold text-sm text-foreground">TikTok Creator API Integration</h3>
               </div>
               <button
                 onClick={() => setShowTikTokModal(false)}
                 className="text-muted-foreground hover:text-foreground text-xs font-bold p-1 rounded-md"
               >
-                ✕
+                <X className="w-4 h-4" />
               </button>
             </div>
 
             <div className="space-y-3 text-xs text-muted-foreground leading-relaxed">
-              <div className="p-3 rounded-xl bg-teal-500/10 border border-teal-500/20 text-teal-400 font-semibold">
-                📌 স্ট্যাটাস: TikTok Business & Creator Login API
+              <div className="p-3 rounded-xl bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-900/50 text-blue-700 dark:text-blue-300 font-semibold">
+                Status: TikTok Business & Creator Login API
               </div>
               <p>
                 BMT মূলত <b>ফেসবুক মার্কেটিং ও অটোমেশন (Meta Graph API)</b> প্ল্যাটফর্ম। ফেসবুক পেজ কানেকশন মডিউলটি এখনই সক্রিয় ও প্রস্তুত রয়েছে।
@@ -946,7 +942,7 @@ export default function SafeViralContentPage() {
             <div className="flex justify-end pt-2">
               <button
                 onClick={() => setShowTikTokModal(false)}
-                className="bg-teal-600 hover:bg-teal-700 text-white font-bold px-4 py-2 rounded-xl text-xs transition"
+                className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-2 rounded-xl text-xs transition shadow-xs min-h-[36px]"
               >
                 ঠিক আছে, বুঝতে পেরেছি
               </button>

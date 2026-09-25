@@ -25,7 +25,7 @@ export interface ViralContentItem {
 // 100% Verified Database: Only genuine working links and authentic thumbnails
 const curatedViralDatabase: ViralContentItem[] = [
   // ==========================================
-  // --- 📘 FACEBOOK REELS (Genuine verified public reels) ---
+  // --- FACEBOOK REELS (Genuine verified public reels) ---
   // ==========================================
   {
     id: "fb-speech-1",
@@ -80,7 +80,7 @@ const curatedViralDatabase: ViralContentItem[] = [
   },
 
   // ==========================================
-  // --- 🎵 TIKTOK VIRAL (Genuine verified public TikTok) ---
+  // --- TIKTOK VIRAL (Genuine verified public TikTok) ---
   // ==========================================
   {
     id: "tt-pet-1",
@@ -101,7 +101,7 @@ const curatedViralDatabase: ViralContentItem[] = [
   },
 
   // ==========================================
-  // --- ▶️ YOUTUBE SHORTS & VIDEOS (100% Real, Public & Working) ---
+  // --- YOUTUBE SHORTS & VIDEOS (100% Real, Public & Working) ---
   // ==========================================
   {
     id: "yt-eid-panjabi-1",
