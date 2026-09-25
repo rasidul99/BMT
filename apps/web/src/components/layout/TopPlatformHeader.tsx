@@ -3,7 +3,6 @@
 import React, { useState, useRef, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import {
-  Facebook,
   Instagram,
   Youtube,
   Send,
@@ -26,7 +25,15 @@ import { useTheme } from "../../hooks/useTheme"
 import { useSidebarStore } from "../../stores/sidebar.store"
 
 // Custom SVG Icons
-function TikTokIcon({ className = "w-4 h-4" }: { className?: string }) {
+function FacebookSvgIcon({ className = "w-5 h-5" }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="currentColor">
+      <path d="M13.397 20.997v-8.196h2.765l.411-3.209h-3.176V7.548c0-.926.258-1.56 1.587-1.56h1.684V3.127A22.336 22.336 0 0 0 14.201 3c-2.444 0-4.122 1.492-4.122 4.231v2.355H7.332v3.209h2.753v8.202h3.312z" />
+    </svg>
+  )
+}
+
+function TikTokIcon({ className = "w-5 h-5" }: { className?: string }) {
   return (
     <svg className={className} viewBox="0 0 24 24" fill="currentColor">
       <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-2.88 2.5 2.89 2.89 0 0 1-2.89-2.89 2.89 2.89 0 0 1 2.89-2.89c.28 0 .54.04.79.1v-3.5a6.37 6.37 0 0 0-.79-.05A6.34 6.34 0 0 0 3 15.28a6.34 6.34 0 0 0 6.34 6.34 6.34 6.34 0 0 0 6.34-6.34V8.41a8.3 8.3 0 0 0 4.91 1.6V6.57a4.85 4.85 0 0 1-1-.02z" />
@@ -34,7 +41,7 @@ function TikTokIcon({ className = "w-4 h-4" }: { className?: string }) {
   )
 }
 
-function TelegramSvgIcon({ className = "w-4 h-4" }: { className?: string }) {
+function TelegramSvgIcon({ className = "w-5 h-5" }: { className?: string }) {
   return (
     <svg className={className} viewBox="0 0 24 24" fill="currentColor">
       <path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/>
@@ -78,7 +85,7 @@ export function TopPlatformHeader({ currentMode = "SAFE" }: TopPlatformHeaderPro
     {
       id: "facebook",
       name: "Facebook Marketing",
-      iconComponent: Facebook,
+      iconComponent: FacebookSvgIcon,
       bgColor: "bg-muted/60 hover:bg-muted text-muted-foreground hover:text-foreground border border-border/60",
       activeBg: "bg-blue-600 text-white shadow-xs font-semibold ring-1 ring-blue-500",
       isActive: true,
@@ -171,22 +178,19 @@ export function TopPlatformHeader({ currentMode = "SAFE" }: TopPlatformHeaderPro
       )}
 
       <div className="flex h-14 items-center justify-between">
-        {/* 1. Left Area: Logo & Branding */}
+        {/* 1. Left Area: Logo & Branding (Clean Icon Only - No Text) */}
         <div
           className={`flex items-center border-r-0 md:border-r border-border h-full transition-all duration-300 shrink-0 ${
-            isCollapsed ? "w-auto md:w-16 px-2 justify-center" : "w-auto md:w-64 px-3 sm:px-4 justify-start"
+            isCollapsed ? "w-auto md:w-16 px-2 justify-center" : "w-auto md:w-64 px-4 justify-start"
           }`}
         >
           <div
             onClick={() => router.push(`/workspace/${workspaceId}/safe/dashboard`)}
-            className="flex items-center gap-2 cursor-pointer group"
+            className="flex items-center justify-center cursor-pointer group"
+            title="BMT OS Dashboard"
           >
-            <div className="h-8 w-8 rounded-xl bg-blue-600 flex items-center justify-center text-white font-black text-xs shadow-xs group-hover:bg-blue-700 transition-colors">
+            <div className="h-9 w-9 rounded-xl bg-blue-600 flex items-center justify-center text-white font-black text-xs shadow-xs group-hover:bg-blue-700 transition-colors">
               BMT
-            </div>
-            <div className="leading-tight hidden sm:block">
-              <span className="font-extrabold text-sm tracking-tight block">BMT OS</span>
-              <span className="text-[10px] text-muted-foreground font-medium">Marketing Suite</span>
             </div>
           </div>
         </div>
@@ -203,12 +207,12 @@ export function TopPlatformHeader({ currentMode = "SAFE" }: TopPlatformHeaderPro
               }
             }}
             title="Toggle Menu / Sidebar"
-            className="h-8 w-8 rounded-xl border border-border bg-muted/40 hover:bg-muted text-muted-foreground hover:text-foreground transition flex items-center justify-center shrink-0 shadow-xs group"
+            className="h-10 w-10 rounded-xl border border-border bg-muted/40 hover:bg-muted text-muted-foreground hover:text-foreground transition flex items-center justify-center shrink-0 shadow-xs group"
           >
-            <PanelLeftOpen className="w-4 h-4 group-hover:text-blue-500 transition-colors" />
+            <PanelLeftOpen className="w-5 h-5 group-hover:text-blue-500 transition-colors" />
           </button>
 
-          <div className="h-5 w-px bg-border shrink-0" />
+          <div className="h-6 w-px bg-border shrink-0" />
 
           {/* Platform Icons (Icon only, hover shows name tooltip) */}
           <nav className="flex items-center space-x-2">
@@ -220,13 +224,13 @@ export function TopPlatformHeader({ currentMode = "SAFE" }: TopPlatformHeaderPro
                   <button
                     onClick={() => handlePlatformClick(p)}
                     aria-label={p.name}
-                    className={`h-8 w-8 rounded-xl flex items-center justify-center transition-all duration-200 transform group-hover:scale-105 shrink-0 ${
+                    className={`h-10 w-10 rounded-xl flex items-center justify-center transition-all duration-200 transform group-hover:scale-105 shrink-0 ${
                       isCurrentActive ? p.activeBg : p.bgColor
                     } ${!isCurrentActive ? "opacity-75 hover:opacity-100" : ""}`}
                   >
-                    <IconComponent className="w-4 h-4" />
+                    <IconComponent className="w-5 h-5" />
                     {isCurrentActive && (
-                      <span className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-emerald-400 ring-2 ring-card animate-pulse" />
+                      <span className="absolute -top-1 -right-1 h-2.5 w-2.5 rounded-full bg-emerald-400 ring-2 ring-card animate-pulse" />
                     )}
                   </button>
 
@@ -242,23 +246,23 @@ export function TopPlatformHeader({ currentMode = "SAFE" }: TopPlatformHeaderPro
         </div>
 
         {/* 3. Right: Single Profile Avatar Button & Dropdown Menu */}
-        <div className="px-4 border-l border-border h-full flex items-center shrink-0 relative" ref={profileDropdownRef}>
+        <div className="px-3 sm:px-4 border-l border-border h-full flex items-center shrink-0 relative" ref={profileDropdownRef}>
           {/* Profile Trigger Button */}
           <button
             onClick={() => setIsProfileDropdownOpen(!isProfileDropdownOpen)}
-            className="relative flex items-center space-x-2 p-1 rounded-full hover:bg-muted transition group"
+            className="relative flex items-center justify-center p-1 rounded-full hover:bg-muted transition group"
             title="User Profile & Settings"
           >
-            <div className="h-8 w-8 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-xs shadow-xs ring-2 ring-border group-hover:ring-blue-500 transition-all">
+            <div className="h-9 w-9 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-xs shadow-xs ring-2 ring-border group-hover:ring-blue-500 transition-all">
               {displayName.charAt(0).toUpperCase()}
             </div>
             {/* Active Indicator Dot */}
-            <span className="absolute bottom-1 right-1 w-2.5 h-2.5 rounded-full bg-emerald-500 ring-2 ring-card" />
+            <span className="absolute bottom-0.5 right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-500 ring-2 ring-card" />
           </button>
 
           {/* Profile Dropdown Popover */}
           {isProfileDropdownOpen && (
-            <div className="absolute top-14 right-4 w-72 bg-card border border-border rounded-2xl shadow-2xl p-4 space-y-4 animate-in fade-in slide-in-from-top-2 z-50 text-xs">
+            <div className="absolute top-full mt-2 right-4 w-72 bg-card border border-border rounded-2xl shadow-2xl p-4 space-y-4 animate-in fade-in slide-in-from-top-2 z-50 text-xs">
               {/* User Header */}
               <div className="flex items-center space-x-3 border-b border-border pb-3">
                 <div className="h-10 w-10 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-sm shadow-xs">
