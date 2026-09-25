@@ -29,6 +29,8 @@ import {
   Filter,
   Eye,
   AlertTriangle,
+  Globe,
+  X,
 } from "lucide-react"
 import { useFacebookAccounts } from "../../../../../hooks/useFacebookAccounts"
 import { useGroupPoster, GroupPostJob, CustomGroupItem } from "../../../../../hooks/useGroupPoster"
@@ -59,7 +61,7 @@ export default function SafeGroupPosterPage() {
   const [postFormat, setPostFormat] = useState<"Text" | "Image" | "Video" | "Link">("Image")
   const [postTitle, setPostTitle] = useState("Eid Special Wholesale Watch Collection 2026")
   const [postContent, setPostContent] = useState(
-    "🔥 আমাদের অফিশিয়াল গ্রুপ মেম্বারদের জন্য এক্সক্লুসিভ ৩০% ডিসকাউন্ট ডিল! স্টক সীমিত। অর্ডার করতে এখনই ইনবক্স করুন অথবা লিংকে ভিসিট করুন।"
+    "আমাদের অফিশিয়াল গ্রুপ মেম্বারদের জন্য এক্সক্লুসিভ ৩০% ডিসকাউন্ট ডিল! স্টক সীমিত। অর্ডার করতে এখনই ইনবক্স করুন অথবা লিংকে ভিসিট করুন।"
   )
   const [mediaUrl, setMediaUrl] = useState(
     "https://images.unsplash.com/photo-1522335789203-aabd1fc54bc9?w=600&auto=format&fit=crop&q=80"
@@ -279,7 +281,7 @@ export default function SafeGroupPosterPage() {
       // Spin variation
       let variedContent = postContent
       if (spinVariations && index > 0) {
-        const greetings = ["📢 বিশেষ অফার:", "⚡ এক্সক্লুসিভ আপডেট:", "🛍️ অফার নোটিশ:", "🎁 স্পেশাল ডিল:"]
+        const greetings = ["বিশেষ অফার:", "এক্সক্লুসিভ আপডেট:", "অফার নোটিশ:", "স্পেশাল ডিল:"]
         const prefix = greetings[index % greetings.length]
         variedContent = `${prefix}\n${postContent}`
       }
@@ -323,7 +325,7 @@ export default function SafeGroupPosterPage() {
       accountName: activeAccounts[idx % (activeAccounts.length || 1)]?.name || "Tariqul Islam",
       accountAvatar: activeAccounts[idx % (activeAccounts.length || 1)]?.avatarUrl,
       postTitle: "Eid Special Flash Sale 2026",
-      postContent: "🔥 স্পেশাল ডিসকাউন্ট অফার! বিস্তারিত জানতে ইনবক্স করুন।",
+      postContent: "স্পেশাল ডিসকাউন্ট অফার! বিস্তারিত জানতে ইনবক্স করুন।",
       mediaUrl: "https://images.unsplash.com/photo-1522335789203-aabd1fc54bc9?w=600&auto=format&fit=crop&q=80",
       postFormat: "Image",
       status: "Pending",
@@ -428,12 +430,12 @@ export default function SafeGroupPosterPage() {
   }
 
   return (
-    <div className="max-w-6xl mx-auto space-y-6 pb-12">
+    <div className="max-w-6xl mx-auto space-y-6 pb-20">
       {/* Header */}
       <div className="border-b pb-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20 mb-2">
-            <Users className="w-3 h-3 text-purple-500" />
+          <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20 mb-2">
+            <Users className="w-3 h-3 text-blue-500" />
             MODULE 12 • MULTI-GROUP AUTO POSTER
           </div>
           <h1 className="text-2xl md:text-3xl font-black tracking-tight text-foreground flex items-center gap-2">
@@ -445,12 +447,12 @@ export default function SafeGroupPosterPage() {
         </div>
 
         {/* Tab Controls */}
-        <div className="flex items-center bg-muted/60 p-1 rounded-xl border flex-wrap gap-1">
+        <div className="flex items-center bg-muted/60 p-1 rounded-xl border overflow-x-auto scrollbar-none flex-nowrap sm:flex-wrap gap-1 max-w-full">
           <button
             onClick={() => setActiveTab("composer")}
-            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 shrink-0 ${
               activeTab === "composer"
-                ? "bg-background shadow-sm text-foreground"
+                ? "bg-background shadow-xs text-foreground"
                 : "text-muted-foreground hover:text-foreground"
             }`}
           >
@@ -459,9 +461,9 @@ export default function SafeGroupPosterPage() {
           </button>
           <button
             onClick={() => setActiveTab("queue")}
-            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 shrink-0 ${
               activeTab === "queue"
-                ? "bg-background shadow-sm text-foreground"
+                ? "bg-background shadow-xs text-foreground"
                 : "text-muted-foreground hover:text-foreground"
             }`}
           >
@@ -470,20 +472,20 @@ export default function SafeGroupPosterPage() {
           </button>
           <button
             onClick={() => setActiveTab("groups")}
-            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 shrink-0 ${
               activeTab === "groups"
-                ? "bg-background shadow-sm text-foreground"
+                ? "bg-background shadow-xs text-foreground"
                 : "text-muted-foreground hover:text-foreground"
             }`}
           >
-            <Users className="w-3.5 h-3.5 text-purple-500" />
+            <Users className="w-3.5 h-3.5 text-blue-500" />
             Groups ({allAvailableGroups.length})
           </button>
           <button
             onClick={() => setActiveTab("logs")}
-            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 shrink-0 ${
               activeTab === "logs"
-                ? "bg-background shadow-sm text-foreground"
+                ? "bg-background shadow-xs text-foreground"
                 : "text-muted-foreground hover:text-foreground"
             }`}
           >
@@ -494,9 +496,9 @@ export default function SafeGroupPosterPage() {
       </div>
 
       {/* Anti-Ban & Humanizer Delay Strategic Banner */}
-      <div className="bg-gradient-to-r from-amber-50 via-purple-50/40 to-blue-50 dark:from-amber-950/20 dark:via-purple-950/20 dark:to-blue-950/20 border border-amber-200 dark:border-amber-900/50 p-4 rounded-xl shadow-sm">
+      <div className="bg-amber-500/5 border border-amber-500/20 p-4 rounded-xl shadow-xs">
         <div className="flex items-start gap-3">
-          <div className="p-2 rounded-lg bg-amber-500 text-white shadow-sm mt-0.5 shrink-0">
+          <div className="p-2 rounded-lg bg-amber-500 text-white shadow-xs mt-0.5 shrink-0">
             <ShieldAlert className="w-4 h-4" />
           </div>
           <div className="space-y-1.5 flex-1">
@@ -504,8 +506,8 @@ export default function SafeGroupPosterPage() {
               <h2 className="text-xs font-extrabold uppercase tracking-wider text-amber-900 dark:text-amber-300">
                 Anti-Ban Protection &amp; Account Rotation Architecture
               </h2>
-              <span className="text-[10px] bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 font-bold px-2 py-0.5 rounded-full border border-emerald-500/20 flex items-center gap-1">
-                <ShieldCheck className="w-3 h-3 text-emerald-500" /> Smart Load Balancing Enabled
+              <span className="text-[10px] bg-blue-500/10 text-blue-600 dark:text-blue-400 font-bold px-2 py-0.5 rounded-full border border-blue-500/20 flex items-center gap-1">
+                <ShieldCheck className="w-3 h-3 text-blue-500" /> Smart Load Balancing Enabled
               </span>
             </div>
             <p className="text-xs text-amber-950/80 dark:text-amber-200/80 leading-relaxed">
@@ -517,16 +519,16 @@ export default function SafeGroupPosterPage() {
 
       {/* Metrics Row */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <div className="border bg-card p-4 rounded-xl shadow-sm space-y-1">
+        <div className="border bg-card p-4 rounded-xl shadow-xs space-y-1">
           <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider flex items-center justify-between">
             Reachable Groups
-            <Users className="w-3.5 h-3.5 text-purple-500" />
+            <Users className="w-3.5 h-3.5 text-blue-500" />
           </div>
           <div className="text-2xl font-black text-foreground">{allAvailableGroups.length}</div>
           <div className="text-[10px] text-muted-foreground">Connected via accounts &amp; library</div>
         </div>
 
-        <div className="border bg-card p-4 rounded-xl shadow-sm space-y-1">
+        <div className="border bg-card p-4 rounded-xl shadow-xs space-y-1">
           <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider flex items-center justify-between">
             Active Accounts
             <Users className="w-3.5 h-3.5 text-blue-500" />
@@ -537,7 +539,7 @@ export default function SafeGroupPosterPage() {
           <div className="text-[10px] text-muted-foreground">With daily share quotas ready</div>
         </div>
 
-        <div className="border bg-card p-4 rounded-xl shadow-sm space-y-1">
+        <div className="border bg-card p-4 rounded-xl shadow-xs space-y-1">
           <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider flex items-center justify-between">
             Queued Tasks
             <Clock className="w-3.5 h-3.5 text-amber-500" />
@@ -548,7 +550,7 @@ export default function SafeGroupPosterPage() {
           <div className="text-[10px] text-muted-foreground">Pending anti-ban dispatch</div>
         </div>
 
-        <div className="border bg-card p-4 rounded-xl shadow-sm space-y-1">
+        <div className="border bg-card p-4 rounded-xl shadow-xs space-y-1">
           <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider flex items-center justify-between">
             Success Rate
             <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
@@ -567,7 +569,7 @@ export default function SafeGroupPosterPage() {
         <div className="grid gap-6 lg:grid-cols-12">
           {/* Post Composer Column (6 cols) */}
           <div className="lg:col-span-6 space-y-4">
-            <div className="border bg-card p-5 rounded-xl shadow-sm space-y-4">
+            <div className="border bg-card p-5 rounded-xl shadow-xs space-y-4">
               <div className="flex items-center justify-between border-b pb-3">
                 <h2 className="font-extrabold text-sm flex items-center gap-2">
                   <Send className="w-4 h-4 text-blue-600" /> 1. Group Post Composer
@@ -575,9 +577,9 @@ export default function SafeGroupPosterPage() {
                 <button
                   type="button"
                   onClick={() => setShowLibraryModal(true)}
-                  className="px-2.5 py-1 rounded-lg border border-purple-500/30 bg-purple-500/10 text-purple-600 dark:text-purple-400 hover:bg-purple-500/20 font-bold text-xs flex items-center gap-1 transition"
+                  className="px-2.5 py-1 rounded-lg border border-border hover:bg-muted text-foreground font-bold text-xs flex items-center gap-1 transition"
                 >
-                  <Sparkles className="w-3.5 h-3.5" /> Import from Library
+                  <Sparkles className="w-3.5 h-3.5 text-blue-500" /> Import from Library
                 </button>
               </div>
 
@@ -664,7 +666,7 @@ export default function SafeGroupPosterPage() {
                 <div className="flex items-center justify-between p-3 rounded-lg border bg-muted/20">
                   <div className="space-y-0.5">
                     <div className="font-bold text-xs flex items-center gap-1.5">
-                      <Sparkles className="w-3.5 h-3.5 text-purple-600" />
+                      <Sparkles className="w-3.5 h-3.5 text-blue-600" />
                       Anti-Spam Copy Variation Spinner
                     </div>
                     <div className="text-[10px] text-muted-foreground">
@@ -675,19 +677,19 @@ export default function SafeGroupPosterPage() {
                     type="checkbox"
                     checked={spinVariations}
                     onChange={(e) => setSpinVariations(e.target.checked)}
-                    className="w-4 h-4 rounded text-purple-600 cursor-pointer"
+                    className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 cursor-pointer"
                   />
                 </div>
               </div>
             </div>
 
             {/* Live Facebook Group Post Feed Mockup Preview */}
-            <div className="border bg-card p-4 rounded-xl shadow-sm space-y-3">
+            <div className="border bg-card p-4 rounded-xl shadow-xs space-y-3">
               <div className="flex items-center justify-between text-[11px] font-bold text-muted-foreground uppercase border-b pb-2">
                 <span className="flex items-center gap-1.5">
                   <Eye className="w-3.5 h-3.5 text-blue-500" /> Live Facebook Group Feed Preview
                 </span>
-                <span className="text-[10px] bg-blue-500/10 text-blue-600 px-2 py-0.5 rounded">Mockup</span>
+                <span className="text-[10px] bg-blue-500/10 text-blue-600 dark:text-blue-400 font-bold px-2 py-0.5 rounded">Mockup</span>
               </div>
 
               {/* Feed Card */}
@@ -703,8 +705,15 @@ export default function SafeGroupPosterPage() {
                         ? allAvailableGroups.find((g) => g.id === selectedGroupIds[0])?.name || "Selected Group"
                         : "Dhaka Buy and Sell Official Marketplace"}
                     </div>
-                    <div className="text-[10px] text-muted-foreground flex items-center gap-1">
-                      <span>Posted by BMT Marketing Lead</span> • <span>Just now</span> • <span>🌐 Public</span>
+                    <div className="text-[10px] text-muted-foreground flex items-center gap-1.5">
+                      <span>Posted by BMT Marketing Lead</span>
+                      <span>•</span>
+                      <span>Just now</span>
+                      <span>•</span>
+                      <span className="inline-flex items-center gap-1">
+                        <Globe className="w-2.5 h-2.5 text-muted-foreground" />
+                        <span>Public</span>
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -731,13 +740,13 @@ export default function SafeGroupPosterPage() {
 
                 {/* Engagement Bar */}
                 <div className="border-t pt-2 flex items-center justify-around text-muted-foreground text-[11px] font-semibold">
-                  <button type="button" className="flex items-center gap-1 hover:text-blue-600">
+                  <button type="button" className="flex items-center gap-1 hover:text-blue-600 transition">
                     <ThumbsUp className="w-3.5 h-3.5" /> Like
                   </button>
-                  <button type="button" className="flex items-center gap-1 hover:text-blue-600">
+                  <button type="button" className="flex items-center gap-1 hover:text-blue-600 transition">
                     <MessageCircle className="w-3.5 h-3.5" /> Comment
                   </button>
-                  <button type="button" className="flex items-center gap-1 hover:text-blue-600">
+                  <button type="button" className="flex items-center gap-1 hover:text-blue-600 transition">
                     <Share2 className="w-3.5 h-3.5" /> Share
                   </button>
                 </div>
@@ -747,17 +756,17 @@ export default function SafeGroupPosterPage() {
 
           {/* Group & Account Selector Matrix (6 cols) */}
           <div className="lg:col-span-6 space-y-4">
-            <div className="border bg-card p-5 rounded-xl shadow-sm space-y-4">
+            <div className="border bg-card p-5 rounded-xl shadow-xs space-y-4">
               <div className="flex items-center justify-between border-b pb-3">
                 <div>
                   <h2 className="font-extrabold text-sm flex items-center gap-2">
-                    <Users className="w-4 h-4 text-purple-600" /> 2. Target Facebook Groups Matrix
+                    <Users className="w-4 h-4 text-blue-600" /> 2. Target Facebook Groups Matrix
                   </h2>
                   <p className="text-[11px] text-muted-foreground mt-0.5">
                     Select groups to broadcast this post. Accounts rotate automatically.
                   </p>
                 </div>
-                <span className="text-xs font-black text-purple-600 dark:text-purple-400 bg-purple-500/10 px-2.5 py-1 rounded-lg">
+                <span className="text-xs font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/50 border border-blue-200 dark:border-blue-900/40 px-2.5 py-1 rounded-lg">
                   {selectedGroupIds.length} Selected
                 </span>
               </div>
@@ -776,7 +785,7 @@ export default function SafeGroupPosterPage() {
                 </div>
 
                 {/* Category Pills */}
-                <div className="flex items-center gap-1 overflow-x-auto pb-1 text-[11px]">
+                <div className="flex items-center gap-1 overflow-x-auto pb-1 text-[11px] scrollbar-none">
                   {["ALL", "Buy & Sell", "E-Commerce", "Tech & Gadgets", "Fashion & Lifestyle", "Food & Organic"].map(
                     (cat) => (
                       <button
@@ -785,7 +794,7 @@ export default function SafeGroupPosterPage() {
                         onClick={() => setSelectedCategory(cat)}
                         className={`px-2.5 py-1 rounded-full whitespace-nowrap font-bold transition border ${
                           selectedCategory === cat
-                            ? "bg-purple-600 text-white border-purple-600 shadow-xs"
+                            ? "bg-blue-600 text-white border-blue-600 shadow-xs"
                             : "bg-muted/40 text-muted-foreground hover:bg-muted"
                         }`}
                       >
@@ -801,7 +810,7 @@ export default function SafeGroupPosterPage() {
                     <button
                       type="button"
                       onClick={handleSelectAll}
-                      className="text-purple-600 hover:underline"
+                      className="text-blue-600 hover:underline"
                     >
                       Select All ({filteredGroups.length})
                     </button>
@@ -839,7 +848,7 @@ export default function SafeGroupPosterPage() {
                         onClick={() => toggleGroupSelection(grp.id)}
                         className={`p-3 rounded-xl border cursor-pointer transition flex items-center justify-between gap-3 text-xs ${
                           isSelected
-                            ? "border-purple-600 bg-purple-500/10 shadow-xs"
+                            ? "border-blue-600 bg-blue-50/20 dark:bg-blue-950/20 shadow-xs"
                             : "hover:bg-muted/30"
                         }`}
                       >
@@ -848,7 +857,7 @@ export default function SafeGroupPosterPage() {
                             type="checkbox"
                             checked={isSelected}
                             onChange={() => {}} // handled by parent onClick
-                            className="w-4 h-4 rounded text-purple-600 cursor-pointer shrink-0"
+                            className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 cursor-pointer shrink-0"
                           />
                           <div className="space-y-0.5 min-w-0">
                             <div className="font-extrabold text-foreground truncate flex items-center gap-1.5">
@@ -860,11 +869,14 @@ export default function SafeGroupPosterPage() {
                               )}
                             </div>
                             <div className="text-[10px] text-muted-foreground flex items-center gap-2">
-                              <span>👥 {(grp.memberCount / 1000).toFixed(1)}K members</span>
+                              <span className="inline-flex items-center gap-1">
+                                <Users className="w-2.5 h-2.5 text-muted-foreground" />
+                                <span>{(grp.memberCount / 1000).toFixed(1)}K members</span>
+                              </span>
                               <span>•</span>
                               <span>{grp.privacy}</span>
                               <span>•</span>
-                              <span className="text-purple-600 dark:text-purple-400 font-semibold">
+                              <span className="text-blue-600 dark:text-blue-400 font-semibold">
                                 {grp.category}
                               </span>
                             </div>
@@ -892,7 +904,7 @@ export default function SafeGroupPosterPage() {
                   Anti-Ban Delay &amp; Rotation Mode
                 </h3>
 
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
                     <label className="text-[10px] font-bold text-muted-foreground uppercase block mb-1">
                       Interval Delay
@@ -903,7 +915,7 @@ export default function SafeGroupPosterPage() {
                       className="w-full px-2.5 py-2 border rounded-lg bg-background font-semibold text-xs"
                     >
                       <option value="fast">15s–30s (Testing Mode)</option>
-                      <option value="balanced">45s–90s (Recommended ✨)</option>
+                      <option value="balanced">45s–90s (Recommended)</option>
                       <option value="safe">120s–300s (Conservative)</option>
                     </select>
                   </div>
@@ -928,7 +940,7 @@ export default function SafeGroupPosterPage() {
                   type="button"
                   onClick={handleLaunchDispatch}
                   disabled={selectedGroupIds.length === 0}
-                  className="w-full bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-white font-extrabold py-3 rounded-xl shadow-sm transition text-xs flex items-center justify-center gap-2 mt-2"
+                  className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-extrabold py-3 rounded-xl shadow-xs transition text-xs flex items-center justify-center gap-2 mt-2"
                 >
                   <Send className="w-4 h-4" />
                   Launch Multi-Group Auto Dispatch ({selectedGroupIds.length} Groups)
@@ -982,7 +994,7 @@ export default function SafeGroupPosterPage() {
 
           {/* OVERALL BATCH PROGRESS DASHBOARD */}
           {queue.length > 0 && (
-            <div className="p-4 border rounded-xl bg-gradient-to-br from-purple-50/50 via-indigo-50/30 to-background dark:from-purple-950/20 dark:via-indigo-950/10 dark:to-background space-y-3.5">
+            <div className="p-4 border rounded-xl bg-card space-y-3.5">
               <div className="flex items-center justify-between flex-wrap gap-2">
                 <div>
                   <div className="text-xs font-black uppercase tracking-wider text-muted-foreground">
@@ -995,7 +1007,7 @@ export default function SafeGroupPosterPage() {
 
                 <div>
                   {isDispatcherRunning ? (
-                    <span className="px-3 py-1 rounded-full text-xs font-black bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20 flex items-center gap-1.5">
+                    <span className="px-3 py-1 rounded-full text-xs font-black bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20 flex items-center gap-1.5">
                       <RotateCw className="w-3.5 h-3.5 animate-spin" /> Batch in Progress ({overallBatchPercentage}%)
                     </span>
                   ) : pendingBatchCount === 0 && totalBatchCount > 0 ? (
@@ -1010,19 +1022,19 @@ export default function SafeGroupPosterPage() {
                 </div>
               </div>
 
-              {/* Master Glowing Progress Bar */}
+              {/* Master Progress Bar */}
               <div className="space-y-1">
                 <div className="flex items-center justify-between text-[11px] font-bold">
                   <span className="text-muted-foreground">
                     {completedBatchCount} of {totalBatchCount} Groups Successfully Dispatched
                   </span>
-                  <span className="font-mono font-black text-purple-600 dark:text-purple-400">
+                  <span className="font-mono font-black text-blue-600 dark:text-blue-400">
                     {overallBatchPercentage}%
                   </span>
                 </div>
-                <div className="w-full bg-muted/70 h-3.5 rounded-full overflow-hidden p-0.5 border border-border shadow-inner">
+                <div className="w-full bg-muted/70 h-3 rounded-full overflow-hidden p-0.5 border border-border shadow-inner">
                   <div
-                    className="h-full rounded-full bg-gradient-to-r from-purple-600 via-indigo-600 to-emerald-500 transition-all duration-500 ease-out shadow-xs"
+                    className="h-full rounded-full bg-gradient-to-r from-blue-600 via-blue-500 to-emerald-500 transition-all duration-500 ease-out shadow-xs"
                     style={{ width: `${overallBatchPercentage}%` }}
                   />
                 </div>
@@ -1042,11 +1054,11 @@ export default function SafeGroupPosterPage() {
                   </div>
                 </div>
 
-                <div className="p-2.5 rounded-lg border bg-purple-500/10 border-purple-500/20 space-y-0.5">
-                  <span className="text-[10px] font-bold text-purple-700 dark:text-purple-400 uppercase">Current Group</span>
-                  <div className="text-xs font-bold text-purple-600 dark:text-purple-400 truncate">
+                <div className="p-2.5 rounded-lg border bg-blue-500/10 border-blue-500/20 space-y-0.5">
+                  <span className="text-[10px] font-bold text-blue-700 dark:text-blue-400 uppercase">Current Group</span>
+                  <div className="text-xs font-bold text-blue-600 dark:text-blue-400 truncate">
                     {queue.find((j) => j.status === "Posting")?.groupName ||
-                      (pendingBatchCount === 0 ? "Completed ✓" : "Waiting...")}
+                      (pendingBatchCount === 0 ? "Completed" : "Waiting...")}
                   </div>
                 </div>
 
@@ -1060,13 +1072,13 @@ export default function SafeGroupPosterPage() {
 
           {/* Status Notice */}
           {statusNotice && (
-            <div className="p-3.5 border rounded-xl bg-purple-500/10 border-purple-500/30 text-purple-700 dark:text-purple-300 text-xs font-semibold flex items-center justify-between">
+            <div className="p-3.5 border rounded-xl bg-blue-500/10 border-blue-500/30 text-blue-700 dark:text-blue-300 text-xs font-semibold flex items-center justify-between">
               <span className="flex items-center gap-2">
                 <RotateCw className={`w-4 h-4 ${isDispatcherRunning ? "animate-spin" : ""}`} />
                 {statusNotice}
               </span>
               {countdownSeconds !== null && (
-                <span className="font-mono text-xs font-black bg-purple-600 text-white px-2 py-0.5 rounded">
+                <span className="font-mono text-xs font-black bg-blue-600 text-white px-2 py-0.5 rounded">
                   {countdownSeconds}s
                 </span>
               )}
@@ -1084,16 +1096,16 @@ export default function SafeGroupPosterPage() {
                 <button
                   type="button"
                   onClick={() => setActiveTab("composer")}
-                  className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white font-bold rounded-lg shadow-sm transition flex items-center gap-1.5"
+                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg shadow-xs transition flex items-center gap-1.5"
                 >
                   <Send className="w-3.5 h-3.5" /> Go to Composer &amp; Select Groups
                 </button>
                 <button
                   type="button"
                   onClick={handleLoadDemoQueue}
-                  className="px-4 py-2 border border-purple-500/30 bg-purple-500/10 hover:bg-purple-500/20 text-purple-700 dark:text-purple-300 font-bold rounded-lg transition flex items-center gap-1.5"
+                  className="px-4 py-2 border border-border hover:bg-muted text-foreground font-bold rounded-lg transition flex items-center gap-1.5"
                 >
-                  <Sparkles className="w-3.5 h-3.5" /> ⚡ Load Test Batch (3 Groups)
+                  <Sparkles className="w-3.5 h-3.5 text-blue-500" /> <span>Load Test Batch (3 Groups)</span>
                 </button>
               </div>
             </div>
@@ -1106,7 +1118,7 @@ export default function SafeGroupPosterPage() {
                     key={job.id}
                     className={`p-4 rounded-xl border text-xs space-y-3 transition ${
                       job.status === "Posting"
-                        ? "border-purple-600 bg-purple-50/40 dark:bg-purple-950/20 shadow-sm ring-1 ring-purple-500/30"
+                        ? "border-blue-600 bg-blue-50/40 dark:bg-blue-950/20 shadow-xs ring-1 ring-blue-500/30"
                         : job.status === "Success"
                         ? "border-emerald-500/40 bg-emerald-50/20 dark:bg-emerald-950/10"
                         : "bg-muted/10"
@@ -1132,13 +1144,13 @@ export default function SafeGroupPosterPage() {
                           </span>
                         )}
                         {job.status === "Posting" && (
-                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-purple-500/10 text-purple-600 border border-purple-500/20 flex items-center gap-1">
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-500/10 text-blue-600 border border-blue-500/20 flex items-center gap-1">
                             <RotateCw className="w-2.5 h-2.5 animate-spin" /> {jobPct}% Active
                           </span>
                         )}
                         {job.status === "Success" && (
                           <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-600 border border-emerald-500/20 flex items-center gap-1">
-                            <CheckCircle2 className="w-2.5 h-2.5" /> 100% Posted ✓
+                            <CheckCircle2 className="w-2.5 h-2.5" /> 100% Posted
                           </span>
                         )}
                         {job.status === "Failed" && (
@@ -1168,7 +1180,7 @@ export default function SafeGroupPosterPage() {
                               job.status === "Success"
                                 ? "text-emerald-600 dark:text-emerald-400"
                                 : job.status === "Posting"
-                                ? "text-purple-600 dark:text-purple-400"
+                                ? "text-blue-600 dark:text-blue-400"
                                 : job.status === "Failed"
                                 ? "text-rose-600 dark:text-rose-400"
                                 : "text-muted-foreground"
@@ -1184,7 +1196,7 @@ export default function SafeGroupPosterPage() {
                             </span>
                           )}
                           {job.status === "Posting" && (
-                            <span className="text-purple-600 dark:text-purple-400 flex items-center gap-1 font-bold">
+                            <span className="text-blue-600 dark:text-blue-400 flex items-center gap-1 font-bold">
                               <RotateCw className="w-3 h-3 animate-spin" />
                               {currentJobStep === "cooling"
                                 ? `Anti-Ban Wait: ${countdownSeconds}s remaining`
@@ -1208,7 +1220,7 @@ export default function SafeGroupPosterPage() {
                               : job.status === "Failed"
                               ? "bg-rose-500"
                               : job.status === "Posting"
-                              ? "bg-gradient-to-r from-purple-600 to-indigo-500 animate-pulse"
+                              ? "bg-blue-600 animate-pulse"
                               : "bg-muted"
                           }`}
                           style={{ width: `${jobPct}%` }}
@@ -1231,11 +1243,11 @@ export default function SafeGroupPosterPage() {
 
       {/* TAB 3: MANAGED GROUPS */}
       {activeTab === "groups" && (
-        <div className="border bg-card rounded-xl shadow-sm overflow-hidden p-5 space-y-4">
+        <div className="border bg-card rounded-xl shadow-xs overflow-hidden p-5 space-y-4">
           <div className="flex items-center justify-between border-b pb-3 flex-wrap gap-2">
             <div>
               <h2 className="font-extrabold text-sm flex items-center gap-2">
-                <Users className="w-4 h-4 text-purple-500" /> Managed Facebook Groups ({allAvailableGroups.length})
+                <Users className="w-4 h-4 text-blue-500" /> Managed Facebook Groups ({allAvailableGroups.length})
               </h2>
               <p className="text-[11px] text-muted-foreground mt-0.5">
                 Groups aggregated from Module 8 (100 Accounts Engine) and custom imported communities.
@@ -1243,7 +1255,7 @@ export default function SafeGroupPosterPage() {
             </div>
             <button
               onClick={() => setShowAddGroupModal(true)}
-              className="px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs rounded-lg flex items-center gap-1.5"
+              className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-lg flex items-center gap-1.5 shadow-xs transition"
             >
               <Plus className="w-3.5 h-3.5" /> Add New Group
             </button>
@@ -1262,7 +1274,7 @@ export default function SafeGroupPosterPage() {
                 </div>
                 <div className="text-[11px] text-muted-foreground flex items-center justify-between">
                   <span>{(grp.memberCount / 1000).toFixed(1)}K Members</span>
-                  <span className="text-purple-600 dark:text-purple-400 font-semibold">{grp.category}</span>
+                  <span className="text-blue-600 dark:text-blue-400 font-semibold">{grp.category}</span>
                 </div>
                 <div className="pt-2 border-t flex items-center justify-between text-[11px]">
                   <span className="text-muted-foreground">Account: {grp.assignedAccountName}</span>
@@ -1285,7 +1297,7 @@ export default function SafeGroupPosterPage() {
 
       {/* TAB 4: AUDIT LEDGER */}
       {activeTab === "logs" && (
-        <div className="border bg-card rounded-xl shadow-sm overflow-hidden">
+        <div className="border bg-card rounded-xl shadow-xs overflow-hidden">
           <div className="p-4 border-b flex items-center justify-between">
             <div>
               <h2 className="font-extrabold text-sm flex items-center gap-2">
@@ -1340,7 +1352,7 @@ export default function SafeGroupPosterPage() {
                       <td className="px-4 py-3 whitespace-nowrap">
                         {log.status === "Success" ? (
                           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-600 border border-emerald-500/20">
-                            Success ✓
+                            Success
                           </span>
                         ) : (
                           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-500/10 text-rose-600 border border-rose-500/20">
@@ -1375,9 +1387,10 @@ export default function SafeGroupPosterPage() {
               <h3 className="font-extrabold text-sm text-foreground">Add New Facebook Group</h3>
               <button
                 onClick={() => setShowAddGroupModal(false)}
-                className="text-muted-foreground hover:text-foreground font-bold"
+                className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition"
+                aria-label="Close modal"
               >
-                ✕
+                <X className="w-4 h-4" />
               </button>
             </div>
 
@@ -1452,7 +1465,7 @@ export default function SafeGroupPosterPage() {
                       type="checkbox"
                       checked={newGroupIsAdmin}
                       onChange={(e) => setNewGroupIsAdmin(e.target.checked)}
-                      className="w-4 h-4 rounded text-purple-600"
+                      className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500"
                     />
                     <span>I am an Admin</span>
                   </label>
@@ -1461,7 +1474,7 @@ export default function SafeGroupPosterPage() {
 
               <button
                 type="submit"
-                className="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-2.5 rounded-lg shadow-sm transition mt-2"
+                className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 rounded-lg shadow-xs transition mt-2"
               >
                 Save Group to Directory
               </button>
