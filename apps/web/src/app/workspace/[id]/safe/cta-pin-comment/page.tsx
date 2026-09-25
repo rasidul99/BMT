@@ -300,7 +300,7 @@ export default function SafeCtaPinCommentPage() {
   }
 
   return (
-    <div className="max-w-6xl mx-auto space-y-6 pb-12">
+    <div className="max-w-6xl mx-auto space-y-6 pb-20">
       {/* Header */}
       <div className="border-b pb-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
@@ -317,12 +317,12 @@ export default function SafeCtaPinCommentPage() {
         </div>
 
         {/* Tab Navigation Controls */}
-        <div className="flex items-center bg-muted/60 p-1 rounded-xl border">
+        <div className="flex items-center bg-muted/60 p-1 rounded-xl border overflow-x-auto scrollbar-none flex-nowrap sm:flex-wrap gap-1 max-w-full">
           <button
             onClick={() => setActiveTab("templates")}
-            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 shrink-0 ${
               activeTab === "templates"
-                ? "bg-background shadow-sm text-foreground"
+                ? "bg-background shadow-xs text-foreground"
                 : "text-muted-foreground hover:text-foreground"
             }`}
           >
@@ -331,20 +331,20 @@ export default function SafeCtaPinCommentPage() {
           </button>
           <button
             onClick={() => setActiveTab("testConsole")}
-            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 shrink-0 ${
               activeTab === "testConsole"
-                ? "bg-background shadow-sm text-foreground"
+                ? "bg-background shadow-xs text-foreground"
                 : "text-muted-foreground hover:text-foreground"
             }`}
           >
-            <Terminal className="w-3.5 h-3.5 text-emerald-500" />
+            <Terminal className="w-3.5 h-3.5 text-blue-500" />
             Test Console
           </button>
           <button
             onClick={() => setActiveTab("auditLogs")}
-            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 shrink-0 ${
               activeTab === "auditLogs"
-                ? "bg-background shadow-sm text-foreground"
+                ? "bg-background shadow-xs text-foreground"
                 : "text-muted-foreground hover:text-foreground"
             }`}
           >
@@ -355,9 +355,9 @@ export default function SafeCtaPinCommentPage() {
       </div>
 
       {/* Strategic Algorithm Notice Banner */}
-      <div className="bg-gradient-to-r from-blue-50 via-indigo-50/50 to-blue-50 dark:from-blue-950/20 dark:via-indigo-950/10 dark:to-blue-950/20 border border-blue-200 dark:border-blue-900/50 p-4 rounded-xl shadow-sm">
+      <div className="bg-blue-50/40 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-900/40 p-4 rounded-xl shadow-xs">
         <div className="flex items-start gap-3">
-          <div className="p-2 rounded-lg bg-blue-600 text-white shadow-sm mt-0.5 shrink-0">
+          <div className="p-2 rounded-lg bg-blue-600 text-white shadow-xs mt-0.5 shrink-0">
             <TrendingUp className="w-4 h-4" />
           </div>
           <div className="space-y-1.5 flex-1">
@@ -373,7 +373,7 @@ export default function SafeCtaPinCommentPage() {
               Facebook actively downgrades feed rankings for posts with external URLs in the primary caption to keep users on platform. By placing your order link or WhatsApp CTA in the <strong>first pinned comment</strong>, your post retains maximum viral distribution while keeping conversion click-throughs friction-free.
             </p>
             {/* Visual execution pipeline */}
-            <div className="pt-2 grid grid-cols-1 sm:grid-cols-4 gap-2 text-[11px] font-semibold text-center">
+            <div className="pt-2 grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11px] font-semibold text-center">
               <div className="p-2 rounded-lg bg-background/80 border text-foreground">
                 <span className="text-muted-foreground block text-[10px] font-medium">Step 1</span>
                 Post Published Clean
@@ -397,7 +397,7 @@ export default function SafeCtaPinCommentPage() {
 
       {/* Metrics Row */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <div className="border bg-card p-4 rounded-xl shadow-sm space-y-1">
+        <div className="border bg-card p-4 rounded-xl shadow-xs space-y-1">
           <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider flex items-center justify-between">
             Active Templates
             <Sparkles className="w-3.5 h-3.5 text-blue-500" />
@@ -406,7 +406,7 @@ export default function SafeCtaPinCommentPage() {
           <div className="text-[10px] text-muted-foreground">Ready for 1st-comment auto dispatch</div>
         </div>
 
-        <div className="border bg-card p-4 rounded-xl shadow-sm space-y-1">
+        <div className="border bg-card p-4 rounded-xl shadow-xs space-y-1">
           <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider flex items-center justify-between">
             Auto-Pinned Dispatches
             <Pin className="w-3.5 h-3.5 text-emerald-500" />
@@ -417,16 +417,16 @@ export default function SafeCtaPinCommentPage() {
           <div className="text-[10px] text-muted-foreground">Successfully pinned to top</div>
         </div>
 
-        <div className="border bg-card p-4 rounded-xl shadow-sm space-y-1">
+        <div className="border bg-card p-4 rounded-xl shadow-xs space-y-1">
           <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider flex items-center justify-between">
             Target Pages
-            <Globe className="w-3.5 h-3.5 text-indigo-500" />
+            <Globe className="w-3.5 h-3.5 text-blue-500" />
           </div>
           <div className="text-2xl font-black text-foreground">{registeredPages.length}</div>
-          <div className="text-[10px] text-muted-foreground">CARE HUB BD, Cooking & Profiles</div>
+          <div className="text-[10px] text-muted-foreground">CARE HUB BD, Cooking &amp; Profiles</div>
         </div>
 
-        <div className="border bg-card p-4 rounded-xl shadow-sm space-y-1">
+        <div className="border bg-card p-4 rounded-xl shadow-xs space-y-1">
           <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider flex items-center justify-between">
             Meta Graph API
             <ShieldCheck className="w-3.5 h-3.5 text-blue-500" />
@@ -434,7 +434,7 @@ export default function SafeCtaPinCommentPage() {
           <div className="text-base font-black text-blue-600 dark:text-blue-400 pt-1">v26.0 Connected</div>
           <div className="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold flex items-center gap-1">
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-            Endpoints Active & Ready
+            Endpoints Active &amp; Ready
           </div>
         </div>
       </div>
@@ -492,7 +492,7 @@ export default function SafeCtaPinCommentPage() {
                 <textarea
                   rows={4}
                   required
-                  placeholder="Write the exact CTA comment (e.g. 🎁 অফারে অর্ডার করতে এখনই ভিজিট করুন: https://bmt.link/deal)"
+                  placeholder="Write the exact CTA comment (e.g. অফারে অর্ডার করতে এখনই ভিজিট করুন: https://bmt.link/deal)"
                   value={commentText}
                   onChange={(e) => setCommentText(e.target.value)}
                   className="w-full px-3 py-2 border rounded-lg bg-background focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition font-sans text-xs leading-relaxed"
@@ -510,7 +510,7 @@ export default function SafeCtaPinCommentPage() {
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="font-bold block mb-1 text-foreground">Target Facebook Page</label>
                   <select
@@ -534,7 +534,7 @@ export default function SafeCtaPinCommentPage() {
                     className="w-full px-2.5 py-2 border rounded-lg bg-background font-semibold text-xs"
                   >
                     <option value={0}>0s (Immediate)</option>
-                    <option value={15}>15s (Natural ✨)</option>
+                    <option value={15}>15s (Natural)</option>
                     <option value={30}>30s (Safe)</option>
                     <option value={60}>60s (Conservative)</option>
                   </select>
@@ -565,7 +565,7 @@ export default function SafeCtaPinCommentPage() {
 
               <button
                 type="submit"
-                className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 rounded-lg shadow-sm transition flex items-center justify-center gap-2"
+                className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 rounded-lg shadow-xs transition flex items-center justify-center gap-2"
               >
                 {isEditing ? <CheckCircle2 className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
                 {isEditing ? "Update Template" : "Save CTA Template"}
@@ -588,23 +588,23 @@ export default function SafeCtaPinCommentPage() {
               {templates.map((tmpl) => (
                 <div
                   key={tmpl.id}
-                  className="border bg-card p-4 rounded-xl space-y-3 shadow-sm hover:border-blue-500/40 transition group"
+                  className="border bg-card p-4 rounded-xl space-y-3 shadow-xs hover:border-blue-500/40 transition group"
                 >
                   <div className="flex items-start justify-between gap-2">
                     <div className="space-y-1">
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="font-black text-sm text-foreground">{tmpl.title}</span>
                         {tmpl.autoPin && (
-                          <span className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
+                          <span className="bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-900/40 text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
                             <Pin className="w-2.5 h-2.5" /> Pinned: true
                           </span>
                         )}
-                        <span className="bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
+                        <span className="bg-muted text-muted-foreground border border-border text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
                           <Clock className="w-2.5 h-2.5" /> {tmpl.delaySeconds}s Delay
                         </span>
                       </div>
                       <div className="text-[11px] text-muted-foreground font-semibold flex items-center gap-1">
-                        <Globe className="w-3 h-3 text-indigo-500" />
+                        <Globe className="w-3 h-3 text-blue-500" />
                         Target: <span className="text-foreground">{tmpl.assignedPage}</span>
                       </div>
                     </div>
@@ -647,7 +647,7 @@ export default function SafeCtaPinCommentPage() {
                     >
                       {copiedId === tmpl.id ? (
                         <>
-                          <Check className="w-3 h-3 text-emerald-500" /> Copied
+                          <Check className="w-3 h-3 text-blue-600 dark:text-blue-400" /> Copied
                         </>
                       ) : (
                         <>
@@ -676,10 +676,10 @@ export default function SafeCtaPinCommentPage() {
       {activeTab === "testConsole" && (
         <div className="grid gap-6 lg:grid-cols-12">
           {/* Dispatch Form (6 cols) */}
-          <div className="lg:col-span-6 border bg-card p-5 rounded-xl shadow-sm space-y-4">
+          <div className="lg:col-span-6 border bg-card p-5 rounded-xl shadow-xs space-y-4">
             <div className="border-b pb-3">
-              <h2 className="font-extrabold text-sm flex items-center gap-2">
-                <Terminal className="w-4 h-4 text-emerald-500" /> Live Meta Graph API Comment Dispatcher
+              <h2 className="font-bold text-sm flex items-center gap-2">
+                <Terminal className="w-4 h-4 text-blue-600" /> Live Meta Graph API Comment Dispatcher
               </h2>
               <p className="text-[11px] text-muted-foreground mt-0.5">
                 Simulate or execute real Facebook comment pinning on any published post ID.
@@ -688,7 +688,7 @@ export default function SafeCtaPinCommentPage() {
 
             <div className="space-y-3.5 text-xs">
               <div>
-                <label className="font-bold block mb-1 text-foreground">Target Post ID or URL *</label>
+                <label className="font-semibold block mb-1 text-foreground">Target Post ID or URL *</label>
                 <div className="flex gap-2">
                   <input
                     type="text"
@@ -696,25 +696,25 @@ export default function SafeCtaPinCommentPage() {
                     placeholder="e.g. 892168940637389_1020304050"
                     value={testPostId}
                     onChange={(e) => setTestPostId(e.target.value)}
-                    className="flex-1 px-3 py-2 border rounded-lg bg-background font-mono text-xs focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition"
+                    className="flex-1 px-3 py-2 border rounded-lg bg-background font-mono text-xs focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition"
                   />
                   <button
                     type="button"
                     onClick={() => setTestPostId("892168940637389_1020304050")}
-                    className="px-2.5 py-1.5 border rounded-lg text-[10px] font-bold bg-muted/40 hover:bg-muted transition text-muted-foreground hover:text-foreground"
+                    className="px-2.5 py-1.5 border rounded-lg text-[10px] font-semibold bg-muted/40 hover:bg-muted transition text-muted-foreground hover:text-foreground"
                   >
                     Sample ID
                   </button>
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="font-bold block mb-1 text-foreground">Target Facebook Page</label>
+                  <label className="font-semibold block mb-1 text-foreground">Target Facebook Page</label>
                   <select
                     value={testTargetPage}
                     onChange={(e) => setTestTargetPage(e.target.value)}
-                    className="w-full px-2.5 py-2 border rounded-lg bg-background font-semibold text-xs"
+                    className="w-full px-2.5 py-2 border rounded-lg bg-background font-medium text-xs focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none"
                   >
                     {registeredPages.map((p) => (
                       <option key={p.pageId} value={p.pageName}>
@@ -725,11 +725,11 @@ export default function SafeCtaPinCommentPage() {
                 </div>
 
                 <div>
-                  <label className="font-bold block mb-1 text-foreground">Load From Template</label>
+                  <label className="font-semibold block mb-1 text-foreground">Load From Template</label>
                   <select
                     value={testSelectedTemplateId}
                     onChange={(e) => handleSelectTemplateForTest(e.target.value)}
-                    className="w-full px-2.5 py-2 border rounded-lg bg-background font-semibold text-xs"
+                    className="w-full px-2.5 py-2 border rounded-lg bg-background font-medium text-xs focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none"
                   >
                     <option value="">-- Custom Text --</option>
                     {templates.map((t) => (
@@ -742,24 +742,24 @@ export default function SafeCtaPinCommentPage() {
               </div>
 
               <div>
-                <label className="font-bold block mb-1 text-foreground">Comment Message Body *</label>
+                <label className="font-semibold block mb-1 text-foreground">Comment Message Body *</label>
                 <textarea
                   rows={4}
                   required
                   value={testCommentText}
                   onChange={(e) => setTestCommentText(e.target.value)}
-                  className="w-full px-3 py-2 border rounded-lg bg-background focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition font-sans text-xs leading-relaxed"
+                  className="w-full px-3 py-2 border rounded-lg bg-background focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition font-sans text-xs leading-relaxed"
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="flex items-center justify-between p-2.5 border rounded-lg bg-muted/20">
-                  <span className="font-bold text-xs">Auto-Pin</span>
+                  <span className="font-semibold text-xs">Auto-Pin</span>
                   <input
                     type="checkbox"
                     checked={testAutoPin}
                     onChange={(e) => setTestAutoPin(e.target.checked)}
-                    className="w-4 h-4 rounded text-blue-600 cursor-pointer"
+                    className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 cursor-pointer"
                   />
                 </div>
 
@@ -767,7 +767,7 @@ export default function SafeCtaPinCommentPage() {
                   <select
                     value={testDelaySeconds}
                     onChange={(e) => setTestDelaySeconds(Number(e.target.value))}
-                    className="w-full px-2.5 py-2 border rounded-lg bg-background font-semibold text-xs"
+                    className="w-full px-2.5 py-2 border rounded-lg bg-background font-medium text-xs focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none"
                   >
                     <option value={0}>0s (Immediate)</option>
                     <option value={5}>5s (Quick Test)</option>
@@ -781,7 +781,7 @@ export default function SafeCtaPinCommentPage() {
                 type="button"
                 disabled={isDispatching || !testPostId.trim() || !testCommentText.trim()}
                 onClick={handleRunTestDispatch}
-                className="w-full bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-bold py-2.5 rounded-lg shadow-sm transition flex items-center justify-center gap-2"
+                className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-semibold py-2.5 rounded-lg shadow-xs transition flex items-center justify-center gap-2"
               >
                 {isDispatching ? (
                   <>
@@ -800,23 +800,23 @@ export default function SafeCtaPinCommentPage() {
 
           {/* Live Request & Response Inspector (6 cols) */}
           <div className="lg:col-span-6 space-y-4">
-            <div className="border bg-slate-950 text-slate-100 p-5 rounded-xl shadow-md space-y-3 font-mono text-xs">
+            <div className="border bg-slate-950 text-slate-100 p-5 rounded-xl shadow-xs space-y-3 font-mono text-xs">
               <div className="flex items-center justify-between border-b border-slate-800 pb-2.5">
                 <div className="flex items-center gap-2">
-                  <span className="w-2.5 h-2.5 rounded-full bg-rose-500"></span>
-                  <span className="w-2.5 h-2.5 rounded-full bg-amber-500"></span>
-                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
+                  <span className="w-2.5 h-2.5 rounded-full bg-slate-600"></span>
+                  <span className="w-2.5 h-2.5 rounded-full bg-slate-600"></span>
+                  <span className="w-2.5 h-2.5 rounded-full bg-blue-500"></span>
                   <span className="text-[11px] font-bold text-slate-400 ml-2">GRAPH API PROTOCOL INSPECTOR</span>
                 </div>
                 {apiConsoleStatus && (
-                  <span className="text-[10px] text-emerald-400 font-bold">{apiConsoleStatus}</span>
+                  <span className="text-[10px] text-blue-400 font-bold">{apiConsoleStatus}</span>
                 )}
               </div>
 
               {/* Endpoint signature */}
               <div className="space-y-1">
                 <div className="text-[10px] uppercase font-bold text-slate-500">Target HTTP Endpoint</div>
-                <div className="p-2 bg-slate-900 border border-slate-800 rounded text-emerald-400 break-all select-all">
+                <div className="p-2 bg-slate-900 border border-slate-800 rounded text-blue-400 break-all select-all">
                   POST https://graph.facebook.com/v26.0/{testPostId || "{post-id}"}/comments
                 </div>
               </div>
@@ -841,7 +841,7 @@ export default function SafeCtaPinCommentPage() {
               <div className="space-y-1 pt-1">
                 <div className="text-[10px] uppercase font-bold text-slate-500">Meta API Response</div>
                 {apiConsoleResponse ? (
-                  <pre className="p-2.5 bg-slate-900 border border-emerald-900/60 rounded text-emerald-300 text-[11px] overflow-x-auto whitespace-pre-wrap max-h-52">
+                  <pre className="p-2.5 bg-slate-900 border border-blue-900/60 rounded text-blue-300 text-[11px] overflow-x-auto whitespace-pre-wrap max-h-52">
                     {JSON.stringify(apiConsoleResponse, null, 2)}
                   </pre>
                 ) : (
@@ -857,11 +857,11 @@ export default function SafeCtaPinCommentPage() {
 
       {/* TAB 3: AUDIT LOGS */}
       {activeTab === "auditLogs" && (
-        <div className="border bg-card rounded-xl shadow-sm overflow-hidden">
+        <div className="border bg-card rounded-xl shadow-xs overflow-hidden">
           <div className="p-4 border-b flex items-center justify-between">
             <div>
-              <h2 className="font-extrabold text-sm text-foreground flex items-center gap-2">
-                <Clock className="w-4 h-4 text-amber-500" /> Auto-Pin Execution Audit Trail ({logs.length})
+              <h2 className="font-bold text-sm text-foreground flex items-center gap-2">
+                <Clock className="w-4 h-4 text-blue-600" /> Auto-Pin Execution Audit Trail ({logs.length})
               </h2>
               <p className="text-[11px] text-muted-foreground mt-0.5">
                 Full chronological ledger of comments posted and pinned via Meta Graph API v26.0.
@@ -870,7 +870,7 @@ export default function SafeCtaPinCommentPage() {
             {logs.length > 0 && (
               <button
                 onClick={clearLogs}
-                className="px-3 py-1.5 border rounded-lg text-xs font-bold text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition flex items-center gap-1.5"
+                className="px-3 py-1.5 border rounded-lg text-xs font-semibold text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition flex items-center gap-1.5"
               >
                 <Trash2 className="w-3.5 h-3.5" /> Clear Audit Log
               </button>
@@ -900,7 +900,7 @@ export default function SafeCtaPinCommentPage() {
                       <td className="px-4 py-3 whitespace-nowrap text-[11px] text-muted-foreground">
                         {new Date(log.timestamp).toLocaleString()}
                       </td>
-                      <td className="px-4 py-3 font-bold text-foreground whitespace-nowrap">
+                      <td className="px-4 py-3 font-semibold text-foreground whitespace-nowrap">
                         {log.pageName}
                       </td>
                       <td className="px-4 py-3 font-mono text-[11px] text-blue-600 dark:text-blue-400 whitespace-nowrap">
@@ -911,15 +911,15 @@ export default function SafeCtaPinCommentPage() {
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap">
                         {log.pinnedStatus === "Pinned" ? (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
-                            <Pin className="w-2.5 h-2.5" /> Pinned ✓
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20">
+                            <Pin className="w-2.5 h-2.5" /> Pinned
                           </span>
                         ) : log.pinnedStatus === "Comment Only" ? (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20">
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-muted text-muted-foreground border">
                             <MessageSquare className="w-2.5 h-2.5" /> Comment Only
                           </span>
                         ) : (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20">
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20">
                             <AlertTriangle className="w-2.5 h-2.5" /> {log.pinnedStatus}
                           </span>
                         )}
@@ -938,3 +938,4 @@ export default function SafeCtaPinCommentPage() {
     </div>
   )
 }
+

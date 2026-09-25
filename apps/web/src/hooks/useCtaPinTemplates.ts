@@ -90,7 +90,16 @@ export function useCtaPinTemplates() {
     try {
       const storedTemplates = localStorage.getItem(STORAGE_KEY_TEMPLATES)
       if (storedTemplates) {
-        setTemplates(JSON.parse(storedTemplates))
+        const parsed = JSON.parse(storedTemplates)
+        const emojiRegex = /[\u{1F300}-\u{1F6FF}\u{1F900}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{1F1E6}-\u{1F1FF}\u{FE00}-\u{FE0F}]/gu
+        const sanitized = Array.isArray(parsed)
+          ? parsed.map((t: CTAPinTemplate) => ({
+              ...t,
+              title: t.title?.replace(emojiRegex, "").trim(),
+              commentText: t.commentText?.replace(emojiRegex, "").trim(),
+            }))
+          : DEFAULT_TEMPLATES
+        setTemplates(sanitized)
       } else {
         setTemplates(DEFAULT_TEMPLATES)
         localStorage.setItem(STORAGE_KEY_TEMPLATES, JSON.stringify(DEFAULT_TEMPLATES))
