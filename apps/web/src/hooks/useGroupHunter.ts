@@ -40,6 +40,13 @@ const STORAGE_KEY_FB_GROUPS = "bmt_hunted_fb_groups"
 const STORAGE_KEY_MSGR_GROUPS = "bmt_hunted_messenger_groups"
 const STORAGE_KEY_POST_GROUP_CUSTOM = "bmt_saved_custom_groups"
 
+const sanitizeText = (text: string): string => {
+  return text
+    .replace(/[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{1F600}-\u{1F64F}\u{1F680}-\u{1F6FF}\u{1F1E0}-\u{1F1FF}\u{25A0}-\u{25FF}\u{2B50}\u{2713}\u{2714}\u{2705}]/gu, "")
+    .replace(/\s+/g, " ")
+    .trim()
+}
+
 export const INITIAL_FB_GROUPS: FacebookActiveGroup[] = [
   {
     id: "hfb-1",
@@ -282,10 +289,30 @@ export function useGroupHunter() {
 
     try {
       const savedFb = localStorage.getItem(STORAGE_KEY_FB_GROUPS)
-      setFbGroups(savedFb ? JSON.parse(savedFb) : INITIAL_FB_GROUPS)
+      if (savedFb) {
+        const parsed = JSON.parse(savedFb)
+        const sanitized = parsed.map((g: FacebookActiveGroup) => ({
+          ...g,
+          name: sanitizeText(g.name || ""),
+          niche: sanitizeText(g.niche || ""),
+        }))
+        setFbGroups(sanitized)
+      } else {
+        setFbGroups(INITIAL_FB_GROUPS)
+      }
 
       const savedMsgr = localStorage.getItem(STORAGE_KEY_MSGR_GROUPS)
-      setMsgrGroups(savedMsgr ? JSON.parse(savedMsgr) : INITIAL_MSGR_GROUPS)
+      if (savedMsgr) {
+        const parsed = JSON.parse(savedMsgr)
+        const sanitized = parsed.map((m: MessengerGroupLink) => ({
+          ...m,
+          name: sanitizeText(m.name || ""),
+          niche: sanitizeText(m.niche || ""),
+        }))
+        setMsgrGroups(sanitized)
+      } else {
+        setMsgrGroups(INITIAL_MSGR_GROUPS)
+      }
     } catch {
       setFbGroups(INITIAL_FB_GROUPS)
       setMsgrGroups(INITIAL_MSGR_GROUPS)
@@ -353,6 +380,8 @@ export function useGroupHunter() {
   const addCustomFbGroup = useCallback((group: Omit<FacebookActiveGroup, "id" | "discoveredAt" | "isSavedToPostGroup">) => {
     const newGroup: FacebookActiveGroup = {
       ...group,
+      name: sanitizeText(group.name),
+      niche: sanitizeText(group.niche),
       id: `hfb-${Date.now()}`,
       discoveredAt: new Date().toISOString().replace("T", " ").substring(0, 16),
       isSavedToPostGroup: false,
@@ -363,6 +392,8 @@ export function useGroupHunter() {
   const addCustomMsgrGroup = useCallback((group: Omit<MessengerGroupLink, "id" | "discoveredAt">) => {
     const newGroup: MessengerGroupLink = {
       ...group,
+      name: sanitizeText(group.name),
+      niche: sanitizeText(group.niche),
       id: `hmsg-${Date.now()}`,
       discoveredAt: new Date().toISOString().replace("T", " ").substring(0, 16),
     }

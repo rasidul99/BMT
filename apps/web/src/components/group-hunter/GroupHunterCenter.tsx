@@ -387,11 +387,11 @@ export function GroupHunterCenter({ currentMode }: GroupHunterCenterProps) {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pb-20">
       {/* Toast Notification */}
       {toastMessage && (
-        <div className="fixed bottom-5 right-5 z-50 bg-slate-900 text-white dark:bg-white dark:text-slate-900 px-4 py-3 rounded-xl shadow-2xl flex items-center space-x-2 text-xs font-bold border border-slate-700 animate-in fade-in slide-in-from-bottom-2">
-          <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+        <div className="fixed bottom-5 right-5 z-50 bg-slate-900 text-white dark:bg-white dark:text-slate-900 px-4 py-3 rounded-xl shadow-2xl flex items-center space-x-2 text-xs font-semibold border border-slate-700 animate-in fade-in slide-in-from-bottom-2">
+          <CheckCircle2 className="w-4 h-4 text-blue-400" />
           <span>{toastMessage}</span>
         </div>
       )}
@@ -400,23 +400,17 @@ export function GroupHunterCenter({ currentMode }: GroupHunterCenterProps) {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-border pb-5">
         <div>
           <div className="flex items-center space-x-2">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white shadow-sm">
+            <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center text-white shadow-xs">
               <Compass className="w-5 h-5" />
             </div>
-            <h1 className="text-2xl font-black tracking-tight text-foreground">
+            <h1 className="text-xl sm:text-2xl font-black tracking-tight text-foreground">
               FB Data Collector & Group Hunter
             </h1>
-            <span
-              className={`text-[10px] uppercase font-black px-2 py-0.5 rounded-full border ${
-                currentMode === "SAFE"
-                  ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20"
-                  : "bg-orange-500/10 text-orange-600 dark:text-orange-400 border-orange-500/20"
-              }`}
-            >
+            <span className="text-[10px] uppercase font-bold px-2.5 py-0.5 rounded-full border bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300 border-blue-200 dark:border-blue-800">
               {currentMode} ENGINE
             </span>
           </div>
-          <p className="text-xs text-muted-foreground mt-1.5 max-w-2xl">
+          <p className="text-xs text-muted-foreground mt-1.5 max-w-2xl leading-relaxed">
             Audit-grade discovery engine for public auto-approval Facebook groups and Messenger communities.
             Filter by activity score, track 24h chatter velocity, and export verified datasets directly into Module 12 (Post A Group).
           </p>
@@ -426,7 +420,7 @@ export function GroupHunterCenter({ currentMode }: GroupHunterCenterProps) {
         <div className="flex items-center flex-wrap gap-2">
           <button
             onClick={() => setIsAddModalOpen(true)}
-            className="flex items-center space-x-1.5 px-3 py-2 rounded-lg text-xs font-bold bg-muted hover:bg-muted/80 border text-foreground transition"
+            className="flex items-center space-x-1.5 px-3 py-2 rounded-lg text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white shadow-xs transition min-h-[36px]"
           >
             <Plus className="w-3.5 h-3.5" />
             <span>Add Group</span>
@@ -436,14 +430,14 @@ export function GroupHunterCenter({ currentMode }: GroupHunterCenterProps) {
             <>
               <button
                 onClick={handleExportFbCSV}
-                className="flex items-center space-x-1.5 px-3 py-2 rounded-lg text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white transition shadow-sm"
+                className="flex items-center space-x-1.5 px-3 py-2 rounded-lg text-xs font-semibold bg-card hover:bg-muted border border-border text-foreground transition shadow-xs min-h-[36px]"
               >
                 <Download className="w-3.5 h-3.5" />
                 <span>Export CSV</span>
               </button>
               <button
                 onClick={handleExportFbExcel}
-                className="flex items-center space-x-1.5 px-3 py-2 rounded-lg text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white transition shadow-sm"
+                className="flex items-center space-x-1.5 px-3 py-2 rounded-lg text-xs font-semibold bg-card hover:bg-muted border border-border text-foreground transition shadow-xs min-h-[36px]"
               >
                 <FileSpreadsheet className="w-3.5 h-3.5" />
                 <span>Export Excel (.xls)</span>
@@ -453,14 +447,14 @@ export function GroupHunterCenter({ currentMode }: GroupHunterCenterProps) {
             <>
               <button
                 onClick={handleExportMsgrCSV}
-                className="flex items-center space-x-1.5 px-3 py-2 rounded-lg text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white transition shadow-sm"
+                className="flex items-center space-x-1.5 px-3 py-2 rounded-lg text-xs font-semibold bg-card hover:bg-muted border border-border text-foreground transition shadow-xs min-h-[36px]"
               >
                 <Download className="w-3.5 h-3.5" />
                 <span>Export CSV</span>
               </button>
               <button
                 onClick={handleExportMsgrExcel}
-                className="flex items-center space-x-1.5 px-3 py-2 rounded-lg text-xs font-bold bg-sky-600 hover:bg-sky-700 text-white transition shadow-sm"
+                className="flex items-center space-x-1.5 px-3 py-2 rounded-lg text-xs font-semibold bg-card hover:bg-muted border border-border text-foreground transition shadow-xs min-h-[36px]"
               >
                 <FileSpreadsheet className="w-3.5 h-3.5" />
                 <span>Export Excel (.xls)</span>
@@ -469,7 +463,7 @@ export function GroupHunterCenter({ currentMode }: GroupHunterCenterProps) {
           ) : (
             <button
               onClick={navigateToModule12}
-              className="flex items-center space-x-1.5 px-4 py-2 rounded-lg text-xs font-bold bg-purple-600 hover:bg-purple-700 text-white transition shadow-sm"
+              className="flex items-center space-x-1.5 px-4 py-2 rounded-lg text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white transition shadow-xs min-h-[36px]"
             >
               <span>Launch Module 12</span>
               <ArrowRight className="w-3.5 h-3.5" />
@@ -480,78 +474,79 @@ export function GroupHunterCenter({ currentMode }: GroupHunterCenterProps) {
 
       {/* Executive Metric Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <div className="border border-border bg-card p-4 rounded-xl shadow-sm flex flex-col justify-between">
+        <div className="border border-border bg-card p-4 rounded-xl shadow-xs flex flex-col justify-between">
           <div className="flex items-center justify-between text-muted-foreground text-xs font-semibold">
             <span>Discovered FB Groups</span>
-            <Users className="w-4 h-4 text-blue-500" />
+            <Users className="w-4 h-4 text-blue-600 dark:text-blue-400" />
           </div>
           <div className="mt-2 flex items-baseline justify-between">
             <span className="text-2xl font-black text-foreground">
               {metrics.totalFbGroups}
             </span>
-            <span className="text-[10px] font-bold text-emerald-500 flex items-center">
+            <span className="text-[10px] font-semibold text-blue-600 dark:text-blue-400">
               100% Auto-Approval
             </span>
           </div>
         </div>
 
-        <div className="border border-border bg-card p-4 rounded-xl shadow-sm flex flex-col justify-between">
+        <div className="border border-border bg-card p-4 rounded-xl shadow-xs flex flex-col justify-between">
           <div className="flex items-center justify-between text-muted-foreground text-xs font-semibold">
             <span>High-Activity FB Groups</span>
-            <Flame className="w-4 h-4 text-amber-500" />
+            <Flame className="w-4 h-4 text-blue-600 dark:text-blue-400" />
           </div>
           <div className="mt-2 flex items-baseline justify-between">
-            <span className="text-2xl font-black text-amber-600 dark:text-amber-400">
+            <span className="text-2xl font-black text-foreground">
               {metrics.highScoreFbGroups}
             </span>
-            <span className="text-[10px] font-bold text-muted-foreground">
+            <span className="text-[10px] font-semibold text-muted-foreground">
               Score 85+ / 100
             </span>
           </div>
         </div>
 
-        <div className="border border-border bg-card p-4 rounded-xl shadow-sm flex flex-col justify-between">
+        <div className="border border-border bg-card p-4 rounded-xl shadow-xs flex flex-col justify-between">
           <div className="flex items-center justify-between text-muted-foreground text-xs font-semibold">
             <span>Messenger Communities</span>
-            <MessageSquare className="w-4 h-4 text-sky-500" />
+            <MessageSquare className="w-4 h-4 text-blue-600 dark:text-blue-400" />
           </div>
           <div className="mt-2 flex items-baseline justify-between">
-            <span className="text-2xl font-black text-sky-600 dark:text-sky-400">
+            <span className="text-2xl font-black text-foreground">
               {metrics.totalMsgrGroups}
             </span>
-            <span className="text-[10px] font-bold text-emerald-500">
+            <span className="text-[10px] font-semibold text-blue-600 dark:text-blue-400">
               {metrics.activeMsgrGroups} Active Now
             </span>
           </div>
         </div>
 
-        <div className="border border-border bg-card p-4 rounded-xl shadow-sm flex flex-col justify-between">
+        <div className="border border-border bg-card p-4 rounded-xl shadow-xs flex flex-col justify-between">
           <div className="flex items-center justify-between text-muted-foreground text-xs font-semibold">
             <span>Queued for Post A Group</span>
-            <BookmarkCheck className="w-4 h-4 text-purple-500" />
+            <BookmarkCheck className="w-4 h-4 text-blue-600 dark:text-blue-400" />
           </div>
           <div className="mt-2 flex items-baseline justify-between">
-            <span className="text-2xl font-black text-purple-600 dark:text-purple-400">
+            <span className="text-2xl font-black text-foreground">
               {metrics.savedToPostGroupCount}
             </span>
             <button
               onClick={() => setActiveTab("SAVED")}
-              className="text-[10px] font-bold text-purple-600 dark:text-purple-400 hover:underline"
+              className="text-[10px] font-semibold text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-0.5"
             >
-              View Bridge →
+              <span>View Bridge</span>
+              <ArrowRight className="w-3 h-3" />
             </button>
           </div>
         </div>
       </div>
 
       {/* Tab Selector */}
-      <div className="flex items-center space-x-2 border-b border-border pb-2">
+      <div className="flex items-center space-x-2 border-b border-border pb-2 overflow-x-auto no-scrollbar flex-nowrap shrink-0">
         <button
           onClick={() => setActiveTab("FB")}
-          className={`flex items-center space-x-2 px-4 py-2 rounded-lg text-xs font-bold transition ${
+          className={`flex items-center space-x-2 px-4 py-2 rounded-lg text-xs transition whitespace-nowrap shrink-0 min-h-[38px] ${
             activeTab === "FB"
-              ? "bg-blue-600 text-white shadow-sm"
-              : "bg-muted text-muted-foreground hover:bg-muted/80"
+              ? "bg-blue-600 text-white shadow-xs font-semibold"
+              : "bg-muted/70 text-muted-foreground hover:bg-muted hover:text-foreground font-medium"
           }`}
         >
           <Compass className="w-3.5 h-3.5" />
@@ -560,10 +555,10 @@ export function GroupHunterCenter({ currentMode }: GroupHunterCenterProps) {
 
         <button
           onClick={() => setActiveTab("MESSENGER")}
-          className={`flex items-center space-x-2 px-4 py-2 rounded-lg text-xs font-bold transition ${
+          className={`flex items-center space-x-2 px-4 py-2 rounded-lg text-xs transition whitespace-nowrap shrink-0 min-h-[38px] ${
             activeTab === "MESSENGER"
-              ? "bg-sky-600 text-white shadow-sm"
-              : "bg-muted text-muted-foreground hover:bg-muted/80"
+              ? "bg-blue-600 text-white shadow-xs font-semibold"
+              : "bg-muted/70 text-muted-foreground hover:bg-muted hover:text-foreground font-medium"
           }`}
         >
           <MessageSquare className="w-3.5 h-3.5" />
@@ -572,10 +567,10 @@ export function GroupHunterCenter({ currentMode }: GroupHunterCenterProps) {
 
         <button
           onClick={() => setActiveTab("SAVED")}
-          className={`flex items-center space-x-2 px-4 py-2 rounded-lg text-xs font-bold transition ${
+          className={`flex items-center space-x-2 px-4 py-2 rounded-lg text-xs transition whitespace-nowrap shrink-0 min-h-[38px] ${
             activeTab === "SAVED"
-              ? "bg-purple-600 text-white shadow-sm"
-              : "bg-muted text-muted-foreground hover:bg-muted/80"
+              ? "bg-blue-600 text-white shadow-xs font-semibold"
+              : "bg-muted/70 text-muted-foreground hover:bg-muted hover:text-foreground font-medium"
           }`}
         >
           <BookmarkCheck className="w-3.5 h-3.5" />
@@ -727,15 +722,15 @@ export function GroupHunterCenter({ currentMode }: GroupHunterCenterProps) {
                           <ExternalLink className="w-3.5 h-3.5" />
                         </a>
                         {grp.autoApproval && (
-                          <span className="inline-flex items-center space-x-1 px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                          <span className="inline-flex items-center space-x-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-50 text-blue-700 dark:bg-blue-950/50 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
                             <ShieldCheck className="w-3 h-3" />
                             <span>Auto-Approval</span>
                           </span>
                         )}
-                        <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-muted text-muted-foreground border">
+                        <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-muted text-muted-foreground border border-border">
                           {grp.country}
                         </span>
-                        <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20">
+                        <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-muted text-muted-foreground border border-border">
                           {grp.category}
                         </span>
                       </div>
@@ -754,7 +749,7 @@ export function GroupHunterCenter({ currentMode }: GroupHunterCenterProps) {
                         <span>•</span>
                         <span>
                           Active Members (Est.):{" "}
-                          <strong className="text-emerald-600 dark:text-emerald-400 font-black">
+                          <strong className="text-blue-600 dark:text-blue-400 font-black">
                             {grp.activeMembersEst.toLocaleString()}
                           </strong>
                         </span>
@@ -770,28 +765,20 @@ export function GroupHunterCenter({ currentMode }: GroupHunterCenterProps) {
 
                     {/* Middle: Scores */}
                     <div className="flex items-center space-x-3 shrink-0">
-                      <div className="p-2 border rounded-xl bg-card text-center min-w-[90px] shadow-sm">
+                      <div className="p-2 border rounded-xl bg-card text-center min-w-[90px] shadow-xs">
                         <span className="text-[9px] font-black text-muted-foreground block uppercase tracking-wider">
                           Activity Score
                         </span>
-                        <span
-                          className={`text-base font-black ${
-                            grp.activityScore >= 90
-                              ? "text-emerald-600 dark:text-emerald-400"
-                              : grp.activityScore >= 80
-                              ? "text-blue-600 dark:text-blue-400"
-                              : "text-amber-600 dark:text-amber-400"
-                          }`}
-                        >
+                        <span className="text-base font-black text-foreground">
                           {grp.activityScore} / 100
                         </span>
                       </div>
 
-                      <div className="p-2 border rounded-xl bg-card text-center min-w-[90px] shadow-sm">
+                      <div className="p-2 border rounded-xl bg-card text-center min-w-[90px] shadow-xs">
                         <span className="text-[9px] font-black text-muted-foreground block uppercase tracking-wider">
                           Engagement
                         </span>
-                        <span className="text-base font-black text-indigo-600 dark:text-indigo-400">
+                        <span className="text-base font-black text-blue-600 dark:text-blue-400">
                           {grp.engagementPrediction}%
                         </span>
                       </div>
@@ -802,10 +789,10 @@ export function GroupHunterCenter({ currentMode }: GroupHunterCenterProps) {
                       <button
                         onClick={() => handleCopy(grp.url, grp.id)}
                         title="Copy Facebook Group URL"
-                        className="p-2 rounded-lg border bg-background hover:bg-muted transition text-muted-foreground hover:text-foreground"
+                        className="p-2 rounded-lg border bg-background hover:bg-muted transition text-muted-foreground hover:text-foreground min-h-[36px] min-w-[36px] flex items-center justify-center"
                       >
                         {copiedId === grp.id ? (
-                          <Check className="w-4 h-4 text-emerald-500" />
+                          <Check className="w-4 h-4 text-blue-600 dark:text-blue-400" />
                         ) : (
                           <Copy className="w-4 h-4" />
                         )}
@@ -814,15 +801,15 @@ export function GroupHunterCenter({ currentMode }: GroupHunterCenterProps) {
                       {grp.isSavedToPostGroup ? (
                         <button
                           disabled
-                          className="flex items-center space-x-1.5 px-3 py-2 rounded-lg text-xs font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 cursor-default"
+                          className="flex items-center space-x-1.5 px-3 py-2 rounded-lg text-xs font-semibold bg-muted text-muted-foreground border border-border cursor-default min-h-[36px]"
                         >
-                          <BookmarkCheck className="w-3.5 h-3.5" />
-                          <span>Saved ✓</span>
+                          <Check className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+                          <span>Saved</span>
                         </button>
                       ) : (
                         <button
                           onClick={() => handleSaveToPostGroup(grp)}
-                          className="flex items-center space-x-1.5 px-3 py-2 rounded-lg text-xs font-bold bg-purple-600 hover:bg-purple-700 text-white transition shadow-sm"
+                          className="flex items-center space-x-1.5 px-3 py-2 rounded-lg text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white transition shadow-xs min-h-[36px]"
                         >
                           <Bookmark className="w-3.5 h-3.5" />
                           <span>Save to Post A Group</span>
@@ -832,7 +819,7 @@ export function GroupHunterCenter({ currentMode }: GroupHunterCenterProps) {
                       <button
                         onClick={() => deleteFbGroup(grp.id)}
                         title="Delete Group"
-                        className="p-2 rounded-lg border bg-background hover:bg-red-500/10 text-muted-foreground hover:text-red-600 dark:hover:text-red-400 transition"
+                        className="p-2 rounded-lg border bg-background hover:bg-red-500/10 text-muted-foreground hover:text-red-600 dark:hover:text-red-400 transition min-h-[36px] min-w-[36px] flex items-center justify-center"
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
@@ -851,18 +838,18 @@ export function GroupHunterCenter({ currentMode }: GroupHunterCenterProps) {
       {activeTab === "MESSENGER" && (
         <div className="space-y-4">
           {/* Messenger Filters */}
-          <div className="border border-border bg-card p-4 rounded-xl space-y-3 shadow-sm text-xs">
+          <div className="border border-border bg-card p-4 rounded-xl space-y-3 shadow-xs text-xs">
             <div className="flex items-center justify-between border-b border-border pb-2.5">
               <div className="flex items-center space-x-2">
-                <MessageSquare className="w-4 h-4 text-sky-500" />
-                <h3 className="font-extrabold text-foreground">
+                <MessageSquare className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                <h3 className="font-bold text-foreground">
                   Messenger Community Group Hunter (m.me/j/...)
                 </h3>
               </div>
               <button
                 onClick={() => triggerScan("MESSENGER")}
                 disabled={isScanning}
-                className="flex items-center space-x-1.5 px-3 py-1.5 bg-sky-600 hover:bg-sky-700 text-white font-bold rounded-lg transition disabled:opacity-50"
+                className="flex items-center space-x-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition shadow-xs disabled:opacity-50 min-h-[36px]"
               >
                 <RefreshCw className={`w-3.5 h-3.5 ${isScanning ? "animate-spin" : ""}`} />
                 <span>{isScanning ? "Scanning Messenger Links..." : "Scan Messenger Groups"}</span>
@@ -872,7 +859,7 @@ export function GroupHunterCenter({ currentMode }: GroupHunterCenterProps) {
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
               {/* Search */}
               <div className="space-y-1">
-                <label className="text-[11px] font-bold text-muted-foreground">Community Keyword</label>
+                <label className="text-[11px] font-semibold text-muted-foreground">Community Keyword</label>
                 <div className="relative">
                   <Search className="w-3.5 h-3.5 absolute left-2.5 top-2.5 text-muted-foreground" />
                   <input
@@ -880,18 +867,18 @@ export function GroupHunterCenter({ currentMode }: GroupHunterCenterProps) {
                     placeholder="Search by community name..."
                     value={msgrSearch}
                     onChange={(e) => setMsgrSearch(e.target.value)}
-                    className="w-full pl-8 pr-3 py-1.5 border rounded-lg bg-background text-xs"
+                    className="w-full pl-8 pr-3 py-1.5 border rounded-lg bg-background text-xs focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition min-h-[36px]"
                   />
                 </div>
               </div>
 
               {/* Country */}
               <div className="space-y-1">
-                <label className="text-[11px] font-bold text-muted-foreground">Country</label>
+                <label className="text-[11px] font-semibold text-muted-foreground">Country</label>
                 <select
                   value={msgrCountry}
                   onChange={(e) => setMsgrCountry(e.target.value)}
-                  className="w-full px-3 py-1.5 border rounded-lg bg-background text-xs"
+                  className="w-full px-3 py-1.5 border rounded-lg bg-background text-xs focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition min-h-[36px]"
                 >
                   <option value="All">All Countries</option>
                   <option value="Bangladesh">Bangladesh (BD)</option>
@@ -902,11 +889,11 @@ export function GroupHunterCenter({ currentMode }: GroupHunterCenterProps) {
 
               {/* Category */}
               <div className="space-y-1">
-                <label className="text-[11px] font-bold text-muted-foreground">Community Category</label>
+                <label className="text-[11px] font-semibold text-muted-foreground">Community Category</label>
                 <select
                   value={msgrCategory}
                   onChange={(e) => setMsgrCategory(e.target.value)}
-                  className="w-full px-3 py-1.5 border rounded-lg bg-background text-xs"
+                  className="w-full px-3 py-1.5 border rounded-lg bg-background text-xs focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition min-h-[36px]"
                 >
                   <option value="All">All Categories</option>
                   <option value="Buy & Sell Community">Buy & Sell Community</option>
@@ -919,11 +906,11 @@ export function GroupHunterCenter({ currentMode }: GroupHunterCenterProps) {
 
               {/* Status */}
               <div className="space-y-1">
-                <label className="text-[11px] font-bold text-muted-foreground">Capacity / Status</label>
+                <label className="text-[11px] font-semibold text-muted-foreground">Capacity / Status</label>
                 <select
                   value={msgrStatusFilter}
                   onChange={(e) => setMsgrStatusFilter(e.target.value)}
-                  className="w-full px-3 py-1.5 border rounded-lg bg-background text-xs"
+                  className="w-full px-3 py-1.5 border rounded-lg bg-background text-xs focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition min-h-[36px]"
                 >
                   <option value="All">All Statuses</option>
                   <option value="Active">Active</option>
@@ -936,7 +923,7 @@ export function GroupHunterCenter({ currentMode }: GroupHunterCenterProps) {
           </div>
 
           {/* Messenger Results List */}
-          <div className="border border-border bg-card rounded-xl shadow-sm overflow-hidden text-xs">
+          <div className="border border-border bg-card rounded-xl shadow-xs overflow-hidden text-xs">
             <div className="p-3 bg-muted/40 border-b border-border flex items-center justify-between font-bold text-foreground">
               <span>Discovered Messenger Communities ({filteredMsgrGroups.length})</span>
               <span className="text-[11px] text-muted-foreground font-normal">
@@ -968,27 +955,27 @@ export function GroupHunterCenter({ currentMode }: GroupHunterCenterProps) {
                             {msg.name}
                           </span>
                           <span
-                            className={`px-2 py-0.5 rounded-full text-[10px] font-black border ${
+                            className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${
                               msg.status === "Almost Full"
                                 ? "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20"
                                 : msg.status === "Full"
                                 ? "bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/20"
-                                : "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20"
+                                : "bg-blue-50 text-blue-700 dark:bg-blue-950/50 dark:text-blue-300 border-blue-200 dark:border-blue-800"
                             }`}
                           >
                             {msg.status}
                           </span>
-                          <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-muted text-muted-foreground border">
+                          <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-muted text-muted-foreground border border-border">
                             {msg.country}
                           </span>
-                          <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-sky-500/10 text-sky-600 dark:text-sky-400 border border-sky-500/20">
+                          <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-muted text-muted-foreground border border-border">
                             {msg.category}
                           </span>
                         </div>
 
                         <p className="text-[11px] text-muted-foreground">
                           <strong className="text-foreground">Invite URL:</strong>{" "}
-                          <code className="px-1.5 py-0.5 rounded bg-muted font-mono text-[10px] text-sky-600 dark:text-sky-400">
+                          <code className="px-1.5 py-0.5 rounded bg-muted font-mono text-[10px] text-blue-600 dark:text-blue-400">
                             {msg.inviteUrl}
                           </code>
                         </p>
@@ -1004,7 +991,7 @@ export function GroupHunterCenter({ currentMode }: GroupHunterCenterProps) {
                           </span>
                           <span>•</span>
                           <span>
-                            Active Chatters: <strong className="text-emerald-600 dark:text-emerald-400 font-black">{msg.activeChatters}</strong>
+                            Active Chatters: <strong className="text-blue-600 dark:text-blue-400 font-black">{msg.activeChatters}</strong>
                           </span>
                         </div>
                       </div>
@@ -1026,7 +1013,7 @@ export function GroupHunterCenter({ currentMode }: GroupHunterCenterProps) {
                                   ? "bg-red-500"
                                   : capacityPercent >= 90
                                   ? "bg-amber-500"
-                                  : "bg-emerald-500"
+                                  : "bg-blue-600"
                               }`}
                               style={{ width: `${Math.min(capacityPercent, 100)}%` }}
                             />
@@ -1034,11 +1021,11 @@ export function GroupHunterCenter({ currentMode }: GroupHunterCenterProps) {
                         </div>
 
                         {/* Activity Score */}
-                        <div className="p-2 border rounded-xl bg-card text-center min-w-[85px] shadow-sm">
+                        <div className="p-2 border rounded-xl bg-card text-center min-w-[85px] shadow-xs">
                           <span className="text-[9px] font-black text-muted-foreground block uppercase tracking-wider">
                             Chat Velocity
                           </span>
-                          <span className="text-base font-black text-sky-600 dark:text-sky-400">
+                          <span className="text-base font-black text-foreground">
                             {msg.activityScore} / 100
                           </span>
                         </div>
@@ -1049,10 +1036,10 @@ export function GroupHunterCenter({ currentMode }: GroupHunterCenterProps) {
                         <button
                           onClick={() => handleCopy(msg.inviteUrl, msg.id)}
                           title="Copy Invite URL"
-                          className="p-2 rounded-lg border bg-background hover:bg-muted transition text-muted-foreground hover:text-foreground"
+                          className="p-2 rounded-lg border bg-background hover:bg-muted transition text-muted-foreground hover:text-foreground min-h-[36px] min-w-[36px] flex items-center justify-center"
                         >
                           {copiedId === msg.id ? (
-                            <Check className="w-4 h-4 text-emerald-500" />
+                            <Check className="w-4 h-4 text-blue-600 dark:text-blue-400" />
                           ) : (
                             <Copy className="w-4 h-4" />
                           )}
@@ -1062,7 +1049,7 @@ export function GroupHunterCenter({ currentMode }: GroupHunterCenterProps) {
                           href={msg.inviteUrl}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="flex items-center space-x-1.5 px-3 py-2 rounded-lg text-xs font-bold bg-sky-600 hover:bg-sky-700 text-white transition shadow-sm"
+                          className="flex items-center space-x-1.5 px-3 py-2 rounded-lg text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white transition shadow-xs min-h-[36px]"
                         >
                           <span>Join in Messenger</span>
                           <ExternalLink className="w-3.5 h-3.5" />
@@ -1071,7 +1058,7 @@ export function GroupHunterCenter({ currentMode }: GroupHunterCenterProps) {
                         <button
                           onClick={() => deleteMsgrGroup(msg.id)}
                           title="Delete Community Link"
-                          className="p-2 rounded-lg border bg-background hover:bg-red-500/10 text-muted-foreground hover:text-red-600 dark:hover:text-red-400 transition"
+                          className="p-2 rounded-lg border bg-background hover:bg-red-500/10 text-muted-foreground hover:text-red-600 dark:hover:text-red-400 transition min-h-[36px] min-w-[36px] flex items-center justify-center"
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>
@@ -1090,11 +1077,11 @@ export function GroupHunterCenter({ currentMode }: GroupHunterCenterProps) {
       {/* ======================================================== */}
       {activeTab === "SAVED" && (
         <div className="space-y-4">
-          <div className="border border-purple-500/20 bg-purple-500/5 p-4 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="border border-blue-500/20 bg-blue-500/5 p-4 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="space-y-1">
               <div className="flex items-center space-x-2">
-                <BookmarkCheck className="w-4 h-4 text-purple-600 dark:text-purple-400" />
-                <h3 className="font-extrabold text-sm text-foreground">
+                <BookmarkCheck className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                <h3 className="font-bold text-sm text-foreground">
                   Module 12 Integration Bridge Active
                 </h3>
               </div>
@@ -1106,14 +1093,14 @@ export function GroupHunterCenter({ currentMode }: GroupHunterCenterProps) {
 
             <button
               onClick={navigateToModule12}
-              className="flex items-center space-x-2 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs rounded-lg transition shadow-sm shrink-0"
+              className="flex items-center space-x-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs rounded-lg transition shadow-xs shrink-0 min-h-[36px]"
             >
               <span>Go to Module 12 (Post A Group)</span>
               <ArrowRight className="w-4 h-4" />
             </button>
           </div>
 
-          <div className="border border-border bg-card rounded-xl shadow-sm overflow-hidden text-xs">
+          <div className="border border-border bg-card rounded-xl shadow-xs overflow-hidden text-xs">
             <div className="p-3 bg-muted/40 border-b border-border flex items-center justify-between font-bold text-foreground">
               <span>Groups Queued for Posting ({savedForPostGroups.length})</span>
               <span className="text-[11px] text-muted-foreground font-normal">
@@ -1147,7 +1134,7 @@ export function GroupHunterCenter({ currentMode }: GroupHunterCenterProps) {
                           <span>{grp.name}</span>
                           <ExternalLink className="w-3 h-3" />
                         </a>
-                        <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                        <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-50 text-blue-700 dark:bg-blue-950/50 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
                           Auto-Approval
                         </span>
                       </div>
@@ -1163,11 +1150,11 @@ export function GroupHunterCenter({ currentMode }: GroupHunterCenterProps) {
                     <div className="flex items-center space-x-2">
                       <button
                         onClick={() => handleCopy(grp.url, grp.id)}
-                        className="px-3 py-1.5 rounded-lg border text-xs font-bold hover:bg-muted flex items-center space-x-1.5 transition"
+                        className="px-3 py-1.5 rounded-lg border text-xs font-semibold hover:bg-muted flex items-center space-x-1.5 transition min-h-[36px]"
                       >
                         {copiedId === grp.id ? (
                           <>
-                            <Check className="w-3.5 h-3.5 text-emerald-500" />
+                            <Check className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
                             <span>Copied</span>
                           </>
                         ) : (
@@ -1194,12 +1181,12 @@ export function GroupHunterCenter({ currentMode }: GroupHunterCenterProps) {
           <div className="bg-card border border-border rounded-2xl w-full max-w-lg shadow-2xl p-6 space-y-4 animate-in fade-in zoom-in-95">
             <div className="flex items-center justify-between border-b border-border pb-3">
               <div className="flex items-center space-x-2">
-                <Plus className="w-5 h-5 text-blue-500" />
-                <h3 className="font-black text-base text-foreground">Add Custom Facebook Group</h3>
+                <Plus className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                <h3 className="font-bold text-base text-foreground">Add Custom Facebook Group</h3>
               </div>
               <button
                 onClick={() => setIsAddModalOpen(false)}
-                className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground"
+                className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground min-h-[32px] min-w-[32px] flex items-center justify-center"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -1207,36 +1194,36 @@ export function GroupHunterCenter({ currentMode }: GroupHunterCenterProps) {
 
             <form onSubmit={handleCreateCustomGroup} className="space-y-3.5 text-xs">
               <div className="space-y-1">
-                <label className="font-bold text-foreground">Group Name</label>
+                <label className="font-semibold text-foreground">Group Name</label>
                 <input
                   type="text"
                   required
                   placeholder="e.g. BD Digital Marketers & Entrepreneurs"
                   value={newFbName}
                   onChange={(e) => setNewFbName(e.target.value)}
-                  className="w-full px-3 py-2 border rounded-lg bg-background text-xs"
+                  className="w-full px-3 py-2 border rounded-lg bg-background text-xs focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition min-h-[38px]"
                 />
               </div>
 
               <div className="space-y-1">
-                <label className="font-bold text-foreground">Group URL</label>
+                <label className="font-semibold text-foreground">Group URL</label>
                 <input
                   type="url"
                   required
                   placeholder="https://facebook.com/groups/..."
                   value={newFbUrl}
                   onChange={(e) => setNewFbUrl(e.target.value)}
-                  className="w-full px-3 py-2 border rounded-lg bg-background text-xs"
+                  className="w-full px-3 py-2 border rounded-lg bg-background text-xs focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition min-h-[38px]"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
-                  <label className="font-bold text-foreground">Country</label>
+                  <label className="font-semibold text-foreground">Country</label>
                   <select
                     value={newFbCountry}
                     onChange={(e) => setNewFbCountry(e.target.value)}
-                    className="w-full px-3 py-2 border rounded-lg bg-background text-xs"
+                    className="w-full px-3 py-2 border rounded-lg bg-background text-xs focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition min-h-[38px]"
                   >
                     <option value="Bangladesh">Bangladesh</option>
                     <option value="USA">USA</option>
@@ -1245,11 +1232,11 @@ export function GroupHunterCenter({ currentMode }: GroupHunterCenterProps) {
                 </div>
 
                 <div className="space-y-1">
-                  <label className="font-bold text-foreground">Category</label>
+                  <label className="font-semibold text-foreground">Category</label>
                   <select
                     value={newFbCategory}
                     onChange={(e) => setNewFbCategory(e.target.value as any)}
-                    className="w-full px-3 py-2 border rounded-lg bg-background text-xs"
+                    className="w-full px-3 py-2 border rounded-lg bg-background text-xs focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition min-h-[38px]"
                   >
                     <option value="Fashion & Lifestyle">Fashion & Lifestyle</option>
                     <option value="E-Commerce & Digital">E-Commerce & Digital</option>
@@ -1263,24 +1250,24 @@ export function GroupHunterCenter({ currentMode }: GroupHunterCenterProps) {
 
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
-                  <label className="font-bold text-foreground">Niche Description</label>
+                  <label className="font-semibold text-foreground">Niche Description</label>
                   <input
                     type="text"
                     placeholder="e.g. Dropshipping, Clothing"
                     value={newFbNiche}
                     onChange={(e) => setNewFbNiche(e.target.value)}
-                    className="w-full px-3 py-2 border rounded-lg bg-background text-xs"
+                    className="w-full px-3 py-2 border rounded-lg bg-background text-xs focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition min-h-[38px]"
                   />
                 </div>
 
                 <div className="space-y-1">
-                  <label className="font-bold text-foreground">Approx. Member Count</label>
+                  <label className="font-semibold text-foreground">Approx. Member Count</label>
                   <input
                     type="number"
                     min="100"
                     value={newFbMembers}
                     onChange={(e) => setNewFbMembers(Number(e.target.value))}
-                    className="w-full px-3 py-2 border rounded-lg bg-background text-xs"
+                    className="w-full px-3 py-2 border rounded-lg bg-background text-xs focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition min-h-[38px]"
                   />
                 </div>
               </div>
@@ -1289,13 +1276,13 @@ export function GroupHunterCenter({ currentMode }: GroupHunterCenterProps) {
                 <button
                   type="button"
                   onClick={() => setIsAddModalOpen(false)}
-                  className="px-4 py-2 rounded-lg border hover:bg-muted font-bold text-xs"
+                  className="px-4 py-2 rounded-lg border hover:bg-muted font-semibold text-xs min-h-[38px] transition"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-sm transition"
+                  className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs shadow-xs transition min-h-[38px]"
                 >
                   Save Group
                 </button>
