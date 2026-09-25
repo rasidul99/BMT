@@ -142,9 +142,9 @@ export function AddAccountModal({ isOpen, onClose, onAdd, currentCount }: AddAcc
                   onChange={(e) => setStatus(e.target.value as any)}
                   className="w-full mt-1 p-2 border rounded-lg bg-background text-xs font-medium focus:ring-1 focus:ring-blue-500"
                 >
-                  <option value="Active">🟢 Active (Ready to Post)</option>
-                  <option value="Warming Up">🟡 Warming Up (Light Action)</option>
-                  <option value="Checkpoint">🔴 Checkpoint / Pending</option>
+                  <option value="Active">Active (Ready to Post)</option>
+                  <option value="Warming Up">Warming Up (Light Action)</option>
+                  <option value="Checkpoint">Checkpoint / Pending</option>
                 </select>
               </div>
             </div>
@@ -298,9 +298,9 @@ export function AddAccountModal({ isOpen, onClose, onAdd, currentCount }: AddAcc
             </button>
             <button
               type="submit"
-              className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white font-extrabold rounded-xl shadow-md transition text-xs"
+              className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white font-extrabold rounded-xl shadow-xs transition text-xs"
             >
-              ✓ Connect Facebook Account
+              Connect Facebook Account
             </button>
           </div>
         </form>

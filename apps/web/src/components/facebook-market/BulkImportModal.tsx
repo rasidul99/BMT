@@ -1,7 +1,7 @@
 "use client"
 
 import React, { useState } from "react"
-import { Layers, CheckCircle2, AlertCircle, X, HelpCircle } from "lucide-react"
+import { Layers, CheckCircle2, AlertCircle, X, HelpCircle, BookOpen } from "lucide-react"
 
 interface BulkImportModalProps {
   isOpen: boolean
@@ -60,7 +60,7 @@ export function BulkImportModal({
       <div className="bg-card border border-border rounded-2xl max-w-xl w-full p-6 space-y-5 shadow-2xl animate-in zoom-in-95 duration-200">
         <div className="flex items-center justify-between border-b pb-3">
           <div className="flex items-center space-x-2">
-            <span className="p-2 bg-purple-600/10 text-purple-600 rounded-lg">
+            <span className="p-2 bg-blue-600/10 text-blue-600 rounded-lg">
               <Layers className="w-5 h-5" />
             </span>
             <div>
@@ -123,8 +123,9 @@ export function BulkImportModal({
 
           {/* Quick Helper Accordion / Tooltip Guide */}
           <details className="group pt-1">
-            <summary className="cursor-pointer text-[11px] font-bold text-blue-600 dark:text-blue-400 hover:underline flex items-center space-x-1 select-none">
-              <span>📖 How & where do I get these credentials? (Click to view guide)</span>
+            <summary className="cursor-pointer text-[11px] font-bold text-blue-600 dark:text-blue-400 hover:underline flex items-center space-x-1.5 select-none">
+              <BookOpen className="w-3.5 h-3.5 shrink-0" />
+              <span>How & where do I get these credentials? (Click to view guide)</span>
             </summary>
             <div className="mt-2.5 grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px] leading-relaxed text-muted-foreground bg-background/60 p-3 rounded-lg border border-border/60">
               <div className="space-y-1">

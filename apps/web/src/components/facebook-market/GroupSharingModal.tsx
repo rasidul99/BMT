@@ -171,7 +171,7 @@ export function GroupSharingModal({
                 onChange={(e) => handleSelectAsset(e.target.value)}
                 className="p-1 border rounded-lg bg-background text-[11px] font-semibold"
               >
-                <option value="">📁 Pick from Asset Library ({assets.length})</option>
+                <option value="">Pick from Asset Library ({assets.length})</option>
                 {assets.map((asset) => (
                   <option key={asset.id} value={asset.id}>
                     {asset.title} ({asset.type})
@@ -353,7 +353,7 @@ export function GroupSharingModal({
               type="button"
               onClick={handleStartDispatch}
               disabled={isExecuting || totalTargetGroups === 0}
-              className="px-6 py-2 bg-gradient-to-r from-blue-600 to-rose-600 hover:from-blue-700 hover:to-rose-700 text-white font-extrabold rounded-xl shadow-lg transition flex items-center space-x-2"
+              className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white font-extrabold rounded-xl shadow-xs transition flex items-center space-x-2 disabled:opacity-50"
             >
               {isExecuting ? (
                 <>
@@ -363,7 +363,7 @@ export function GroupSharingModal({
               ) : (
                 <>
                   <Play className="w-4 h-4 fill-white" />
-                  <span>🚀 Launch Group Sharing</span>
+                  <span>Launch Group Sharing</span>
                 </>
               )}
             </button>

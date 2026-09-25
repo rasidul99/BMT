@@ -87,65 +87,65 @@ export default function FacebookMarketPage() {
   return (
     <div className="max-w-7xl mx-auto space-y-6 pb-12">
       {/* 1. Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b pb-4">
-        <div className="flex items-center space-x-3">
-          <div className="p-2.5 bg-gradient-to-tr from-blue-600 to-indigo-600 text-white rounded-2xl shadow-md">
-            <Users className="w-6 h-6" />
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-border pb-4">
+        <div className="flex items-start sm:items-center space-x-3">
+          <div className="h-10 w-10 sm:h-11 sm:w-11 bg-blue-600 text-white rounded-xl shadow-xs flex items-center justify-center shrink-0">
+            <Users className="w-5 h-5 sm:w-6 sm:h-6" />
           </div>
           <div>
-            <div className="flex items-center space-x-2">
-              <h1 className="text-2xl font-black tracking-tight text-foreground">
+            <div className="flex flex-wrap items-center gap-2">
+              <h1 className="text-lg sm:text-xl md:text-2xl font-bold tracking-tight text-foreground">
                 Facebook Market (100 Accounts Engine)
               </h1>
-              <span className="bg-blue-500/10 text-blue-600 dark:text-blue-400 font-extrabold text-[10px] px-2 py-0.5 rounded-full border border-blue-500/20">
+              <span className="bg-blue-500/10 text-blue-600 dark:text-blue-400 font-bold text-[10px] px-2 py-0.5 rounded-full border border-blue-500/20 shrink-0">
                 MODULE 8
               </span>
             </div>
-            <p className="text-xs text-muted-foreground mt-0.5">
+            <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
               মাল্টি-অ্যাকাউন্ট ফেসবুক মার্কেটিং হাব: ১০০টি ফেসবুক আইডি ও ডেডিকেটেড প্রক্সি ম্যানেজমেন্ট এবং অ্যান্টি-ব্যান গ্রুপ শেয়ারিং
             </p>
           </div>
         </div>
 
-        {/* Top Actions */}
-        <div className="flex items-center flex-wrap gap-2">
+        {/* Top Actions (Mobile-Optimized Grid / Flex) */}
+        <div className="grid grid-cols-1 sm:flex sm:items-center gap-2 w-full sm:w-auto">
           <button
             onClick={() => setShowBulkModal(true)}
-            className="px-3.5 py-2 border rounded-xl hover:bg-muted font-bold text-xs transition flex items-center space-x-1.5 shadow-sm"
+            className="w-full sm:w-auto px-3.5 py-2.5 sm:py-2 border border-border bg-card hover:bg-muted font-semibold text-xs rounded-xl transition flex items-center justify-center space-x-2 shadow-xs text-foreground"
           >
-            <Layers className="w-3.5 h-3.5 text-purple-500" />
-            <span>📥 Bulk Import (100 IDs)</span>
+            <Layers className="w-4 h-4 text-blue-600 dark:text-blue-400 shrink-0" />
+            <span>Bulk Import (100 IDs)</span>
           </button>
 
           <button
             onClick={() => setShowAddModal(true)}
-            className="px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-xs rounded-xl shadow-md transition flex items-center space-x-1.5"
+            className="w-full sm:w-auto px-3.5 py-2.5 sm:py-2 border border-blue-500/30 bg-blue-500/10 hover:bg-blue-500/20 text-blue-600 dark:text-blue-400 font-semibold text-xs rounded-xl shadow-xs transition flex items-center justify-center space-x-1.5"
           >
-            <Plus className="w-4 h-4" />
+            <Plus className="w-4 h-4 shrink-0" />
             <span>Connect Account</span>
           </button>
 
           <button
             onClick={() => setShowSharingModal(true)}
-            className="px-4 py-2 bg-gradient-to-r from-rose-600 to-amber-600 hover:from-rose-700 hover:to-amber-700 text-white font-extrabold text-xs rounded-xl shadow-md transition flex items-center space-x-1.5"
+            className="w-full sm:w-auto px-4 py-2.5 sm:py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs rounded-xl shadow-xs transition flex items-center justify-center space-x-2"
           >
-            <Send className="w-3.5 h-3.5" />
-            <span>🚀 Launch Group Sharing</span>
+            <Send className="w-4 h-4 shrink-0" />
+            <span>Launch Group Sharing</span>
           </button>
         </div>
       </div>
 
       {/* 2. Executive 4-Metric Live Stats Bar */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         {/* Metric 1: Connected Accounts */}
-        <div className="border bg-card p-4 rounded-2xl shadow-sm space-y-2">
+        <div className="border border-border bg-card p-3.5 sm:p-4 rounded-2xl shadow-xs space-y-2">
           <div className="flex items-center justify-between text-muted-foreground">
-            <span className="text-xs font-bold uppercase tracking-wider">Connected Accounts</span>
-            <Users className="w-4 h-4 text-blue-500" />
+            <span className="text-[10px] sm:text-xs font-bold uppercase tracking-wider truncate">Connected Accounts</span>
+            <Users className="w-4 h-4 text-blue-600 dark:text-blue-400 shrink-0" />
           </div>
-          <div className="flex items-baseline space-x-2">
-            <span className="text-2xl font-black text-foreground">{metrics.total}</span>
-            <span className="text-xs font-bold text-muted-foreground">/ {metrics.maxCapacity} Max</span>
+          <div className="flex items-baseline space-x-1.5 sm:space-x-2">
+            <span className="text-xl sm:text-2xl font-black text-foreground">{metrics.total}</span>
+            <span className="text-[11px] sm:text-xs font-semibold text-muted-foreground">/ {metrics.maxCapacity} Max</span>
           </div>
           {/* Progress gauge */}
           <div className="w-full bg-muted rounded-full h-1.5 overflow-hidden">
@@ -157,80 +157,87 @@ export default function FacebookMarketPage() {
         </div>
 
         {/* Metric 2: Live Proxies */}
-        <div className="border bg-card p-4 rounded-2xl shadow-sm space-y-2">
+        <div className="border border-border bg-card p-3.5 sm:p-4 rounded-2xl shadow-xs space-y-2">
           <div className="flex items-center justify-between text-muted-foreground">
-            <span className="text-xs font-bold uppercase tracking-wider">Active Proxies</span>
-            <Server className="w-4 h-4 text-emerald-500" />
+            <span className="text-[10px] sm:text-xs font-bold uppercase tracking-wider truncate">Active Proxies</span>
+            <Server className="w-4 h-4 text-emerald-500 shrink-0" />
           </div>
-          <div className="flex items-baseline space-x-2">
-            <span className="text-2xl font-black text-emerald-600 dark:text-emerald-400">
+          <div className="flex items-baseline space-x-1.5 sm:space-x-2">
+            <span className="text-xl sm:text-2xl font-black text-emerald-600 dark:text-emerald-400">
               {metrics.activeProxies}
             </span>
-            <span className="text-xs font-bold text-muted-foreground">/ {metrics.total} Live</span>
+            <span className="text-[11px] sm:text-xs font-semibold text-muted-foreground">/ {metrics.total} Live</span>
           </div>
-          <p className="text-[10px] text-muted-foreground flex items-center space-x-1">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-            <span>Dedicated IP Isolation Active</span>
+          <p className="text-[10px] sm:text-[11px] text-muted-foreground flex items-center space-x-1.5 truncate">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+            <span className="truncate">Dedicated IP Isolation</span>
           </p>
         </div>
 
         {/* Metric 3: Account Health */}
-        <div className="border bg-card p-4 rounded-2xl shadow-sm space-y-2">
+        <div className="border border-border bg-card p-3.5 sm:p-4 rounded-2xl shadow-xs space-y-2">
           <div className="flex items-center justify-between text-muted-foreground">
-            <span className="text-xs font-bold uppercase tracking-wider">Health Status</span>
-            <ShieldCheck className="w-4 h-4 text-purple-500" />
+            <span className="text-[10px] sm:text-xs font-bold uppercase tracking-wider truncate">Health Status</span>
+            <ShieldCheck className="w-4 h-4 text-blue-600 dark:text-blue-400 shrink-0" />
           </div>
-          <div className="flex items-center space-x-3 text-xs font-bold">
-            <span className="text-emerald-600">{metrics.activeCount} Active</span>
-            <span className="text-amber-500">{metrics.warmingCount} Warming</span>
+          {/* Mobile-optimized badges that NEVER overlap or wrap broken words */}
+          <div className="flex flex-wrap items-center gap-1 sm:gap-1.5 text-[10px] sm:text-xs">
+            <span className="px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-bold shrink-0">
+              {metrics.activeCount} Active
+            </span>
+            <span className="px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-600 dark:text-amber-400 font-bold shrink-0">
+              {metrics.warmingCount} Warming
+            </span>
             {metrics.checkpointCount > 0 && (
-              <span className="text-rose-500">{metrics.checkpointCount} Checkpoint</span>
+              <span className="px-1.5 py-0.5 rounded bg-rose-500/10 text-rose-600 dark:text-rose-400 font-bold shrink-0">
+                {metrics.checkpointCount} Checkpoint
+              </span>
             )}
           </div>
-          <p className="text-[10px] text-muted-foreground">
-            Safety Score: <b>{Math.round((metrics.activeCount / Math.max(1, metrics.total)) * 100)}%</b>
+          <p className="text-[10px] sm:text-[11px] text-muted-foreground truncate">
+            Safety Score: <b className="text-foreground">{Math.round((metrics.activeCount / Math.max(1, metrics.total)) * 100)}%</b>
           </p>
         </div>
 
         {/* Metric 4: Cumulative Group Reach */}
-        <div className="border bg-card p-4 rounded-2xl shadow-sm space-y-2">
+        <div className="border border-border bg-card p-3.5 sm:p-4 rounded-2xl shadow-xs space-y-2">
           <div className="flex items-center justify-between text-muted-foreground">
-            <span className="text-xs font-bold uppercase tracking-wider">Total Group Reach</span>
-            <Flame className="w-4 h-4 text-rose-500" />
+            <span className="text-[10px] sm:text-xs font-bold uppercase tracking-wider truncate">Total Group Reach</span>
+            <Flame className="w-4 h-4 text-blue-600 dark:text-blue-400 shrink-0" />
           </div>
-          <div className="text-2xl font-black text-foreground">
+          <div className="text-xl sm:text-2xl font-black text-foreground">
             {metrics.totalGroupsReach >= 1000000
               ? (metrics.totalGroupsReach / 1000000).toFixed(1) + "M"
               : (metrics.totalGroupsReach / 1000).toFixed(0) + "K"}{" "}
-            <span className="text-xs font-bold text-muted-foreground font-sans">Audience</span>
+            <span className="text-[11px] sm:text-xs font-semibold text-muted-foreground font-sans">Audience</span>
           </div>
-          <p className="text-[10px] text-muted-foreground">Across all assigned marketing groups</p>
+          <p className="text-[10px] sm:text-[11px] text-muted-foreground truncate">Across assigned groups</p>
         </div>
       </div>
 
       {/* 3. Search & Filter Bar */}
-      <div className="border bg-card p-4 rounded-2xl shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+      <div className="border border-border bg-card p-3 sm:p-4 rounded-2xl shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
         {/* Search */}
-        <div className="relative flex-1 max-w-md">
+        <div className="relative flex-1 max-w-md w-full">
           <Search className="absolute left-3 top-2.5 w-4 h-4 text-muted-foreground" />
           <input
             type="text"
             placeholder="Search account name, UID, Proxy IP, or Tag..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-9 pr-4 py-2 border rounded-xl bg-background text-xs font-medium focus:ring-2 focus:ring-blue-500 focus:outline-none"
+            className="w-full pl-9 pr-4 py-2 border border-border rounded-xl bg-background text-xs font-medium focus:ring-1 focus:ring-blue-500 focus:outline-none"
           />
         </div>
 
         {/* Status Filters */}
-        <div className="flex items-center space-x-1.5 border p-1 rounded-xl bg-muted/30">
+        <div className="flex items-center space-x-1 border border-border p-1 rounded-xl bg-muted/30 overflow-x-auto no-scrollbar w-full sm:w-auto">
           {(["All", "Active", "Warming Up", "Checkpoint"] as const).map((st) => (
             <button
               key={st}
               onClick={() => setStatusFilter(st)}
-              className={`px-3 py-1.5 rounded-lg font-bold transition text-[11px] ${
+              className={`px-3 py-1.5 rounded-lg font-semibold transition text-[11px] shrink-0 ${
                 statusFilter === st
-                  ? "bg-card text-foreground shadow-sm font-extrabold"
+                  ? "bg-card text-foreground shadow-xs font-bold"
                   : "text-muted-foreground hover:text-foreground"
               }`}
             >
@@ -241,9 +248,9 @@ export default function FacebookMarketPage() {
       </div>
 
       {/* 4. Accounts Table */}
-      <div className="border bg-card rounded-2xl overflow-hidden shadow-sm">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs">
+      <div className="border border-border bg-card rounded-2xl overflow-hidden shadow-xs">
+        <div className="overflow-x-auto no-scrollbar">
+          <table className="w-full min-w-[640px] text-left text-xs">
             <thead className="bg-muted/50 border-b uppercase text-[10px] font-extrabold text-muted-foreground">
               <tr>
                 <th className="p-3.5">Account & UID</th>
