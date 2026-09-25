@@ -234,11 +234,11 @@ export function LinkCommentBlockCenter({ currentMode }: LinkCommentBlockCenterPr
 
     setSimResult(result)
     if (result.action === "AUTO_DELETED") {
-      showToast("🛡️ Intercepted! Link comment was automatically DELETED via Graph API.")
+      showToast("Intercepted! Link comment was automatically DELETED via Graph API.")
     } else if (result.action === "HIDDEN") {
-      showToast("👁️ Intercepted! Link comment was HIDDEN via Graph API.")
+      showToast("Intercepted! Link comment was HIDDEN via Graph API.")
     } else if (result.action === "ALLOWED_WHITELIST") {
-      showToast("✅ Allowed! Link matched Whitelisted Domain.")
+      showToast("Allowed! Link matched Whitelisted Domain.")
     } else {
       showToast("Clean comment! No link or spam detected.")
     }
@@ -264,11 +264,11 @@ export function LinkCommentBlockCenter({ currentMode }: LinkCommentBlockCenterPr
   ]
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pb-20">
       {/* Toast Notification */}
       {toastMessage && (
-        <div className="fixed bottom-5 right-5 z-50 bg-slate-900 text-white dark:bg-white dark:text-slate-900 px-4 py-3 rounded-xl shadow-2xl flex items-center space-x-2 text-xs font-bold border border-slate-700 animate-in fade-in slide-in-from-bottom-2">
-          <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+        <div className="fixed bottom-5 right-5 z-50 bg-slate-900 text-white dark:bg-white dark:text-slate-900 px-4 py-3 rounded-xl shadow-2xl flex items-center space-x-2 text-xs font-semibold border border-slate-700 animate-in fade-in slide-in-from-bottom-2">
+          <CheckCircle2 className="w-4 h-4 text-blue-400" />
           <span>{toastMessage}</span>
         </div>
       )}
@@ -277,19 +277,13 @@ export function LinkCommentBlockCenter({ currentMode }: LinkCommentBlockCenterPr
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-border pb-5">
         <div>
           <div className="flex items-center space-x-2">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-red-600 to-rose-600 flex items-center justify-center text-white shadow-sm">
-              <ShieldAlert className="w-5 h-5" />
+            <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center text-white shadow-xs">
+              <ShieldAlert className="w-4 h-4" />
             </div>
-            <h1 className="text-2xl font-black tracking-tight text-foreground">
+            <h1 className="text-2xl font-bold tracking-tight text-foreground">
               Link Comment Block Shield
             </h1>
-            <span
-              className={`text-[10px] uppercase font-black px-2 py-0.5 rounded-full border ${
-                currentMode === "SAFE"
-                  ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20"
-                  : "bg-orange-500/10 text-orange-600 dark:text-orange-400 border-orange-500/20"
-              }`}
-            >
+            <span className="text-[10px] uppercase font-semibold px-2 py-0.5 rounded-full border bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20">
               {currentMode} PROTECTION
             </span>
           </div>
@@ -306,7 +300,7 @@ export function LinkCommentBlockCenter({ currentMode }: LinkCommentBlockCenterPr
               setSimResult(null)
               setIsSimModalOpen(true)
             }}
-            className="flex items-center space-x-1.5 px-3 py-2 rounded-lg text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white transition shadow-sm"
+            className="flex items-center space-x-1.5 px-3 py-2 rounded-lg text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white transition shadow-xs min-h-[36px]"
           >
             <Sparkles className="w-3.5 h-3.5" />
             <span>Test Comment Simulator</span>
@@ -314,17 +308,17 @@ export function LinkCommentBlockCenter({ currentMode }: LinkCommentBlockCenterPr
 
           <button
             onClick={handleExportCSV}
-            className="flex items-center space-x-1.5 px-3 py-2 rounded-lg text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white transition shadow-sm"
+            className="flex items-center space-x-1.5 px-3 py-2 rounded-lg text-xs font-semibold bg-background hover:bg-muted border border-border text-foreground transition shadow-xs min-h-[36px]"
           >
-            <Download className="w-3.5 h-3.5" />
+            <Download className="w-3.5 h-3.5 text-blue-600" />
             <span>Export CSV</span>
           </button>
 
           <button
             onClick={handleExportExcel}
-            className="flex items-center space-x-1.5 px-3 py-2 rounded-lg text-xs font-bold bg-sky-600 hover:bg-sky-700 text-white transition shadow-sm"
+            className="flex items-center space-x-1.5 px-3 py-2 rounded-lg text-xs font-semibold bg-background hover:bg-muted border border-border text-foreground transition shadow-xs min-h-[36px]"
           >
-            <FileSpreadsheet className="w-3.5 h-3.5" />
+            <FileSpreadsheet className="w-3.5 h-3.5 text-blue-600" />
             <span>Export Excel</span>
           </button>
         </div>
@@ -333,28 +327,28 @@ export function LinkCommentBlockCenter({ currentMode }: LinkCommentBlockCenterPr
       {/* Top Executive Metrics */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {/* Shield Status */}
-        <div className="border border-border bg-card p-4 rounded-xl shadow-sm flex flex-col justify-between">
+        <div className="border border-border bg-card p-4 rounded-xl shadow-xs flex flex-col justify-between">
           <div className="flex items-center justify-between text-muted-foreground text-xs font-semibold">
             <span>Shield Status</span>
-            <Shield className="w-4 h-4 text-emerald-500" />
+            <Shield className="w-4 h-4 text-blue-600" />
           </div>
           <div className="mt-2 flex items-center justify-between">
             <div className="flex items-center space-x-2">
               <span
                 className={`w-2.5 h-2.5 rounded-full ${
-                  settings.isShieldActive ? "bg-emerald-500 animate-pulse" : "bg-muted-foreground"
+                  settings.isShieldActive ? "bg-blue-600 animate-pulse" : "bg-muted-foreground"
                 }`}
               />
-              <span className="text-base font-black text-foreground">
+              <span className="text-base font-bold text-foreground">
                 {settings.isShieldActive ? "24/7 ACTIVE" : "PAUSED"}
               </span>
             </div>
             <button
               onClick={toggleShield}
-              className={`px-2.5 py-1 rounded text-[10px] font-bold transition ${
+              className={`px-2.5 py-1 rounded-md text-[10px] font-semibold transition border ${
                 settings.isShieldActive
-                  ? "bg-red-500/10 text-red-600 hover:bg-red-500/20"
-                  : "bg-emerald-600 text-white hover:bg-emerald-700"
+                  ? "bg-muted/40 hover:bg-muted text-muted-foreground hover:text-foreground"
+                  : "bg-blue-600 text-white hover:bg-blue-700"
               }`}
             >
               {settings.isShieldActive ? "Pause" : "Activate"}
@@ -363,48 +357,48 @@ export function LinkCommentBlockCenter({ currentMode }: LinkCommentBlockCenterPr
         </div>
 
         {/* Deleted Links */}
-        <div className="border border-border bg-card p-4 rounded-xl shadow-sm flex flex-col justify-between">
+        <div className="border border-border bg-card p-4 rounded-xl shadow-xs flex flex-col justify-between">
           <div className="flex items-center justify-between text-muted-foreground text-xs font-semibold">
             <span>Auto-Deleted Comments</span>
-            <Trash2 className="w-4 h-4 text-red-500" />
+            <Trash2 className="w-4 h-4 text-rose-500" />
           </div>
           <div className="mt-2 flex items-baseline justify-between">
-            <span className="text-2xl font-black text-red-600 dark:text-red-400">
+            <span className="text-2xl font-bold text-foreground">
               {metrics.totalDeleted}
             </span>
-            <span className="text-[10px] font-bold text-emerald-500">
+            <span className="text-[10px] font-semibold text-rose-600 dark:text-rose-400">
               100% Graph API Verified
             </span>
           </div>
         </div>
 
         {/* Whitelist Allowed */}
-        <div className="border border-border bg-card p-4 rounded-xl shadow-sm flex flex-col justify-between">
+        <div className="border border-border bg-card p-4 rounded-xl shadow-xs flex flex-col justify-between">
           <div className="flex items-center justify-between text-muted-foreground text-xs font-semibold">
             <span>Whitelisted Safe Passes</span>
-            <ShieldCheck className="w-4 h-4 text-blue-500" />
+            <ShieldCheck className="w-4 h-4 text-blue-600" />
           </div>
           <div className="mt-2 flex items-baseline justify-between">
-            <span className="text-2xl font-black text-blue-600 dark:text-blue-400">
+            <span className="text-2xl font-bold text-blue-600 dark:text-blue-400">
               {metrics.totalAllowed}
             </span>
-            <span className="text-[10px] font-bold text-muted-foreground">
+            <span className="text-[10px] font-medium text-muted-foreground">
               {settings.whitelistedDomains.length} Domains Active
             </span>
           </div>
         </div>
 
         {/* Average Latency */}
-        <div className="border border-border bg-card p-4 rounded-xl shadow-sm flex flex-col justify-between">
+        <div className="border border-border bg-card p-4 rounded-xl shadow-xs flex flex-col justify-between">
           <div className="flex items-center justify-between text-muted-foreground text-xs font-semibold">
             <span>Average Deletion Latency</span>
-            <Zap className="w-4 h-4 text-amber-500" />
+            <Zap className="w-4 h-4 text-blue-600" />
           </div>
           <div className="mt-2 flex items-baseline justify-between">
-            <span className="text-2xl font-black text-amber-600 dark:text-amber-400">
+            <span className="text-2xl font-bold text-foreground">
               {metrics.avgLatencyMs} ms
             </span>
-            <span className="text-[10px] font-bold text-emerald-500">
+            <span className="text-[10px] font-medium text-muted-foreground">
               &lt; 1.0s Speed
             </span>
           </div>
@@ -412,13 +406,13 @@ export function LinkCommentBlockCenter({ currentMode }: LinkCommentBlockCenterPr
       </div>
 
       {/* Tabs */}
-      <div className="flex items-center space-x-2 border-b border-border pb-2">
+      <div className="flex items-center space-x-2 border-b border-border pb-2 overflow-x-auto no-scrollbar flex-nowrap">
         <button
           onClick={() => setActiveTab("LOGS")}
-          className={`flex items-center space-x-2 px-4 py-2 rounded-lg text-xs font-bold transition ${
+          className={`flex items-center space-x-2 px-4 py-2 rounded-lg text-xs font-semibold transition shrink-0 whitespace-nowrap ${
             activeTab === "LOGS"
-              ? "bg-red-600 text-white shadow-sm"
-              : "bg-muted text-muted-foreground hover:bg-muted/80"
+              ? "bg-blue-600 text-white shadow-xs"
+              : "bg-muted/50 text-muted-foreground hover:text-foreground"
           }`}
         >
           <ShieldAlert className="w-3.5 h-3.5" />
@@ -427,10 +421,10 @@ export function LinkCommentBlockCenter({ currentMode }: LinkCommentBlockCenterPr
 
         <button
           onClick={() => setActiveTab("RULES")}
-          className={`flex items-center space-x-2 px-4 py-2 rounded-lg text-xs font-bold transition ${
+          className={`flex items-center space-x-2 px-4 py-2 rounded-lg text-xs font-semibold transition shrink-0 whitespace-nowrap ${
             activeTab === "RULES"
-              ? "bg-blue-600 text-white shadow-sm"
-              : "bg-muted text-muted-foreground hover:bg-muted/80"
+              ? "bg-blue-600 text-white shadow-xs"
+              : "bg-muted/50 text-muted-foreground hover:text-foreground"
           }`}
         >
           <Sliders className="w-3.5 h-3.5" />
@@ -439,10 +433,10 @@ export function LinkCommentBlockCenter({ currentMode }: LinkCommentBlockCenterPr
 
         <button
           onClick={() => setActiveTab("PAGES")}
-          className={`flex items-center space-x-2 px-4 py-2 rounded-lg text-xs font-bold transition ${
+          className={`flex items-center space-x-2 px-4 py-2 rounded-lg text-xs font-semibold transition shrink-0 whitespace-nowrap ${
             activeTab === "PAGES"
-              ? "bg-purple-600 text-white shadow-sm"
-              : "bg-muted text-muted-foreground hover:bg-muted/80"
+              ? "bg-blue-600 text-white shadow-xs"
+              : "bg-muted/50 text-muted-foreground hover:text-foreground"
           }`}
         >
           <Layers className="w-3.5 h-3.5" />
@@ -456,7 +450,7 @@ export function LinkCommentBlockCenter({ currentMode }: LinkCommentBlockCenterPr
       {activeTab === "LOGS" && (
         <div className="space-y-4">
           {/* Filter Bar */}
-          <div className="border border-border bg-card p-4 rounded-xl space-y-3 shadow-sm text-xs">
+          <div className="border border-border bg-card p-4 rounded-xl space-y-3 shadow-xs text-xs">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               {/* Search */}
               <div className="relative flex-1">
@@ -466,12 +460,12 @@ export function LinkCommentBlockCenter({ currentMode }: LinkCommentBlockCenterPr
                   placeholder="Search by sender, post, or detected URL..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-9 pr-3 py-1.5 border rounded-lg bg-background text-xs"
+                  className="w-full pl-9 pr-3 py-1.5 border rounded-lg bg-background text-xs focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none"
                 />
               </div>
 
               {/* Action Filter */}
-              <div className="flex items-center space-x-1.5">
+              <div className="flex items-center space-x-1.5 overflow-x-auto no-scrollbar pb-0.5">
                 {(
                   [
                     { id: "ALL", label: "All" },
@@ -483,10 +477,10 @@ export function LinkCommentBlockCenter({ currentMode }: LinkCommentBlockCenterPr
                   <button
                     key={f.id}
                     onClick={() => setActionFilter(f.id)}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${
+                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition shrink-0 whitespace-nowrap ${
                       actionFilter === f.id
-                        ? "bg-red-600 text-white shadow-sm"
-                        : "bg-muted text-muted-foreground hover:bg-muted/80"
+                        ? "bg-blue-600 text-white shadow-xs"
+                        : "bg-muted/50 text-muted-foreground hover:bg-muted"
                     }`}
                   >
                     {f.label}
@@ -496,7 +490,7 @@ export function LinkCommentBlockCenter({ currentMode }: LinkCommentBlockCenterPr
                 {logs.length > 0 && (
                   <button
                     onClick={clearAllLogs}
-                    className="p-1.5 rounded-lg border hover:bg-red-500/10 text-muted-foreground hover:text-red-600 transition"
+                    className="p-1.5 rounded-lg border hover:bg-rose-500/10 text-muted-foreground hover:text-rose-600 transition shrink-0"
                     title="Clear All Incident Logs"
                   >
                     <Trash2 className="w-4 h-4" />
@@ -507,8 +501,8 @@ export function LinkCommentBlockCenter({ currentMode }: LinkCommentBlockCenterPr
           </div>
 
           {/* Incident Table / List */}
-          <div className="border border-border bg-card rounded-xl shadow-sm overflow-hidden text-xs">
-            <div className="p-3 bg-muted/40 border-b border-border flex items-center justify-between font-bold text-foreground">
+          <div className="border border-border bg-card rounded-xl shadow-xs overflow-hidden text-xs">
+            <div className="p-3 bg-muted/40 border-b border-border flex items-center justify-between font-semibold text-foreground">
               <span>Intercepted Comment Incidents ({filteredLogs.length})</span>
               <span className="text-[11px] text-muted-foreground font-normal">
                 Real-time Graph API webhook interception feed
@@ -517,8 +511,8 @@ export function LinkCommentBlockCenter({ currentMode }: LinkCommentBlockCenterPr
 
             {filteredLogs.length === 0 ? (
               <div className="p-10 text-center space-y-2">
-                <ShieldCheck className="w-10 h-10 text-emerald-500 mx-auto opacity-70" />
-                <p className="font-bold text-foreground">No incidents found</p>
+                <ShieldCheck className="w-10 h-10 text-blue-600 mx-auto opacity-70" />
+                <p className="font-semibold text-foreground">No incidents found</p>
                 <p className="text-muted-foreground text-xs">
                   Your monitored posts are clean, or no comments match your search criteria.
                 </p>
@@ -533,15 +527,15 @@ export function LinkCommentBlockCenter({ currentMode }: LinkCommentBlockCenterPr
                     {/* Left: Info */}
                     <div className="space-y-1.5 flex-1">
                       <div className="flex items-center flex-wrap gap-2">
-                        <span className="font-black text-sm text-foreground">{log.senderName}</span>
+                        <span className="font-bold text-sm text-foreground">{log.senderName}</span>
 
                         <span
-                          className={`px-2 py-0.5 rounded-full text-[10px] font-black border ${
+                          className={`px-2 py-0.5 rounded-full text-[10px] font-semibold border ${
                             log.actionTaken === "AUTO_DELETED"
-                              ? "bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/20"
+                              ? "bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20"
                               : log.actionTaken === "HIDDEN"
                               ? "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20"
-                              : "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20"
+                              : "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20"
                           }`}
                         >
                           {log.actionTaken === "AUTO_DELETED"
@@ -551,7 +545,7 @@ export function LinkCommentBlockCenter({ currentMode }: LinkCommentBlockCenterPr
                             : "Whitelisted Safe Pass"}
                         </span>
 
-                        <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-muted text-muted-foreground border">
+                        <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-muted text-muted-foreground border">
                           {log.pageOrAccountName}
                         </span>
 
@@ -568,14 +562,14 @@ export function LinkCommentBlockCenter({ currentMode }: LinkCommentBlockCenterPr
 
                       {/* Detected Links */}
                       <div className="flex items-center flex-wrap gap-2 text-[10px] pt-0.5">
-                        <span className="font-bold text-foreground">Detected Link:</span>
+                        <span className="font-semibold text-foreground">Detected Link:</span>
                         {log.detectedLinks.map((link, idx) => (
                           <span
                             key={idx}
-                            className={`px-1.5 py-0.5 rounded font-mono font-bold ${
+                            className={`px-1.5 py-0.5 rounded font-mono font-medium ${
                               log.actionTaken === "ALLOWED_WHITELIST"
-                                ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30"
-                                : "bg-red-500/10 text-red-600 dark:text-red-400 border border-red-500/30"
+                                ? "bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/30"
+                                : "bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/30"
                             }`}
                           >
                             {link}
@@ -590,20 +584,20 @@ export function LinkCommentBlockCenter({ currentMode }: LinkCommentBlockCenterPr
 
                     {/* Middle: Latency & Graph API Status */}
                     <div className="flex items-center space-x-3 shrink-0">
-                      <div className="p-2 border rounded-xl bg-card text-center min-w-[85px] shadow-sm">
-                        <span className="text-[9px] font-black text-muted-foreground block uppercase tracking-wider">
+                      <div className="p-2 border rounded-xl bg-card text-center min-w-[85px] shadow-xs">
+                        <span className="text-[9px] font-semibold text-muted-foreground block uppercase tracking-wider">
                           Graph API
                         </span>
-                        <span className="text-xs font-black text-emerald-600 dark:text-emerald-400">
+                        <span className="text-xs font-bold text-foreground">
                           {log.graphApiStatus}
                         </span>
                       </div>
 
-                      <div className="p-2 border rounded-xl bg-card text-center min-w-[75px] shadow-sm">
-                        <span className="text-[9px] font-black text-muted-foreground block uppercase tracking-wider">
+                      <div className="p-2 border rounded-xl bg-card text-center min-w-[75px] shadow-xs">
+                        <span className="text-[9px] font-semibold text-muted-foreground block uppercase tracking-wider">
                           Latency
                         </span>
-                        <span className="text-xs font-black text-blue-600 dark:text-blue-400">
+                        <span className="text-xs font-bold text-blue-600 dark:text-blue-400">
                           {log.latencyMs}ms
                         </span>
                       </div>
@@ -618,7 +612,7 @@ export function LinkCommentBlockCenter({ currentMode }: LinkCommentBlockCenterPr
                             showToast(`Added ${log.detectedLinks[0]} to Whitelisted Domains!`)
                           }}
                           title="Add this domain to Whitelist"
-                          className="px-2.5 py-1.5 rounded-lg border text-xs font-bold bg-background hover:bg-muted transition text-foreground"
+                          className="px-2.5 py-1.5 rounded-lg border text-xs font-semibold bg-background hover:bg-muted transition text-foreground min-h-[32px]"
                         >
                           + Whitelist
                         </button>
@@ -626,7 +620,7 @@ export function LinkCommentBlockCenter({ currentMode }: LinkCommentBlockCenterPr
 
                       <button
                         onClick={() => deleteLog(log.id)}
-                        className="p-1.5 rounded-lg border hover:bg-red-500/10 text-muted-foreground hover:text-red-600 transition"
+                        className="p-1.5 rounded-lg border hover:bg-rose-500/10 text-muted-foreground hover:text-rose-600 transition"
                         title="Delete this record"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
@@ -646,11 +640,11 @@ export function LinkCommentBlockCenter({ currentMode }: LinkCommentBlockCenterPr
       {activeTab === "RULES" && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
           {/* Allowed Whitelist Domains */}
-          <div className="border border-border bg-card p-5 rounded-xl space-y-4 shadow-sm">
+          <div className="border border-border bg-card p-5 rounded-xl space-y-4 shadow-xs">
             <div className="flex items-center space-x-2 border-b border-border pb-3">
-              <ShieldCheck className="w-4 h-4 text-emerald-500" />
+              <ShieldCheck className="w-4 h-4 text-blue-600" />
               <div>
-                <h3 className="font-extrabold text-sm text-foreground">Allowed Whitelist Domains</h3>
+                <h3 className="font-bold text-sm text-foreground">Allowed Whitelist Domains</h3>
                 <p className="text-[11px] text-muted-foreground">
                   Comments containing these domains will NEVER be deleted (your own website, affiliate links, etc.)
                 </p>
@@ -663,11 +657,11 @@ export function LinkCommentBlockCenter({ currentMode }: LinkCommentBlockCenterPr
                 placeholder="e.g. yourshop.com, bmt.link"
                 value={newDomain}
                 onChange={(e) => setNewDomain(e.target.value)}
-                className="flex-1 px-3 py-1.5 border rounded-lg bg-background text-xs"
+                className="flex-1 px-3 py-1.5 border rounded-lg bg-background text-xs focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none"
               />
               <button
                 type="submit"
-                className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg transition"
+                className="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition shadow-xs min-h-[34px]"
               >
                 + Add Domain
               </button>
@@ -677,13 +671,13 @@ export function LinkCommentBlockCenter({ currentMode }: LinkCommentBlockCenterPr
               {settings.whitelistedDomains.map((dom) => (
                 <span
                   key={dom}
-                  className="inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-lg text-xs font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30"
+                  className="inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/30"
                 >
                   <Globe className="w-3 h-3" />
                   <span>{dom}</span>
                   <button
                     onClick={() => removeWhitelistedDomain(dom)}
-                    className="hover:text-red-500 transition ml-1"
+                    className="hover:text-rose-500 transition ml-1"
                   >
                     <X className="w-3 h-3" />
                   </button>
@@ -693,11 +687,11 @@ export function LinkCommentBlockCenter({ currentMode }: LinkCommentBlockCenterPr
           </div>
 
           {/* Blacklisted Keywords */}
-          <div className="border border-border bg-card p-5 rounded-xl space-y-4 shadow-sm">
+          <div className="border border-border bg-card p-5 rounded-xl space-y-4 shadow-xs">
             <div className="flex items-center space-x-2 border-b border-border pb-3">
-              <ShieldAlert className="w-4 h-4 text-red-500" />
+              <ShieldAlert className="w-4 h-4 text-rose-500" />
               <div>
-                <h3 className="font-extrabold text-sm text-foreground">High-Risk Phishing Keywords</h3>
+                <h3 className="font-bold text-sm text-foreground">High-Risk Phishing Keywords</h3>
                 <p className="text-[11px] text-muted-foreground">
                   Any comment containing these keywords will be immediately intercepted and deleted.
                 </p>
@@ -710,11 +704,11 @@ export function LinkCommentBlockCenter({ currentMode }: LinkCommentBlockCenterPr
                 placeholder="e.g. crypto, t.me/, whatsapp scam"
                 value={newKeyword}
                 onChange={(e) => setNewKeyword(e.target.value)}
-                className="flex-1 px-3 py-1.5 border rounded-lg bg-background text-xs"
+                className="flex-1 px-3 py-1.5 border rounded-lg bg-background text-xs focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none"
               />
               <button
                 type="submit"
-                className="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white font-bold rounded-lg transition"
+                className="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition shadow-xs min-h-[34px]"
               >
                 + Add Keyword
               </button>
@@ -724,12 +718,12 @@ export function LinkCommentBlockCenter({ currentMode }: LinkCommentBlockCenterPr
               {settings.blacklistedKeywords.map((kw) => (
                 <span
                   key={kw}
-                  className="inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-lg text-xs font-bold bg-red-500/10 text-red-600 dark:text-red-400 border border-red-500/30"
+                  className="inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/30"
                 >
                   <span>{kw}</span>
                   <button
                     onClick={() => removeBlacklistedKeyword(kw)}
-                    className="hover:text-white transition ml-1"
+                    className="hover:text-foreground transition ml-1"
                   >
                     <X className="w-3 h-3" />
                   </button>
@@ -739,20 +733,20 @@ export function LinkCommentBlockCenter({ currentMode }: LinkCommentBlockCenterPr
           </div>
 
           {/* Interception Action & Sensitivity Settings */}
-          <div className="border border-border bg-card p-5 rounded-xl space-y-4 shadow-sm md:col-span-2">
-            <h3 className="font-extrabold text-sm border-b border-border pb-2 text-foreground">
-              Shield Behavior & Graph API Action
+          <div className="border border-border bg-card p-5 rounded-xl space-y-4 shadow-xs md:col-span-2">
+            <h3 className="font-bold text-sm border-b border-border pb-2 text-foreground">
+              Shield Behavior &amp; Graph API Action
             </h3>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-1.5">
-                <label className="font-bold text-foreground">Action Upon Link Detection</label>
+                <label className="font-semibold text-foreground">Action Upon Link Detection</label>
                 <select
                   value={settings.actionType}
                   onChange={(e) =>
                     updateSettings({ actionType: e.target.value as "AUTO_DELETE" | "HIDE_COMMENT" })
                   }
-                  className="w-full px-3 py-2 border rounded-lg bg-background text-xs"
+                  className="w-full px-3 py-2 border rounded-lg bg-background text-xs focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none font-medium"
                 >
                   <option value="AUTO_DELETE">
                     Permanent Delete (DELETE /&#123;comment-id&#125; - Recommended)
@@ -767,13 +761,13 @@ export function LinkCommentBlockCenter({ currentMode }: LinkCommentBlockCenterPr
               </div>
 
               <div className="space-y-1.5">
-                <label className="font-bold text-foreground">Detection Sensitivity</label>
+                <label className="font-semibold text-foreground">Detection Sensitivity</label>
                 <select
                   value={settings.sensitivity}
                   onChange={(e) =>
                     updateSettings({ sensitivity: e.target.value as "STRICT" | "STANDARD" })
                   }
-                  className="w-full px-3 py-2 border rounded-lg bg-background text-xs"
+                  className="w-full px-3 py-2 border rounded-lg bg-background text-xs focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none font-medium"
                 >
                   <option value="STRICT">Strict (All URLs, Raw Domains .com, .xyz, Shortlinks)</option>
                   <option value="STANDARD">Standard (Only explicit http://, https://, www URLs)</option>
@@ -791,10 +785,10 @@ export function LinkCommentBlockCenter({ currentMode }: LinkCommentBlockCenterPr
       {/* TAB 3: MONITORED FB PAGES                                */}
       {/* ======================================================== */}
       {activeTab === "PAGES" && (
-        <div className="border border-border bg-card p-5 rounded-xl space-y-4 shadow-sm text-xs">
+        <div className="border border-border bg-card p-5 rounded-xl space-y-4 shadow-xs text-xs">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-border pb-3">
             <div>
-              <h3 className="font-extrabold text-sm text-foreground">Monitored Facebook Pages & Profiles</h3>
+              <h3 className="font-bold text-sm text-foreground">Monitored Facebook Pages &amp; Profiles</h3>
               <p className="text-[11px] text-muted-foreground">
                 All posts made on these connected accounts will be monitored 24/7 via real-time Webhook subscriptions.
               </p>
@@ -806,11 +800,11 @@ export function LinkCommentBlockCenter({ currentMode }: LinkCommentBlockCenterPr
                 placeholder="Add page name..."
                 value={newPage}
                 onChange={(e) => setNewPage(e.target.value)}
-                className="px-3 py-1.5 border rounded-lg bg-background text-xs"
+                className="px-3 py-1.5 border rounded-lg bg-background text-xs focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none"
               />
               <button
                 type="submit"
-                className="px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white font-bold rounded-lg transition"
+                className="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition shadow-xs min-h-[34px]"
               >
                 + Add Page
               </button>
@@ -825,15 +819,15 @@ export function LinkCommentBlockCenter({ currentMode }: LinkCommentBlockCenterPr
               >
                 <div className="space-y-0.5">
                   <span className="font-bold text-sm text-foreground block">{pageName}</span>
-                  <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold flex items-center space-x-1">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                  <span className="text-[10px] text-blue-600 dark:text-blue-400 font-semibold flex items-center space-x-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-blue-600 animate-pulse" />
                     <span>Webhook Active (24/7)</span>
                   </span>
                 </div>
 
                 <button
                   onClick={() => toggleMonitoredPage(pageName)}
-                  className="p-1.5 rounded-lg border hover:bg-red-500/10 text-muted-foreground hover:text-red-500 transition"
+                  className="p-1.5 rounded-lg border hover:bg-rose-500/10 text-muted-foreground hover:text-rose-500 transition"
                   title="Remove from monitoring"
                 >
                   <X className="w-3.5 h-3.5" />
@@ -848,18 +842,18 @@ export function LinkCommentBlockCenter({ currentMode }: LinkCommentBlockCenterPr
       {/* SIMULATE TEST COMMENT MODAL                              */}
       {/* ======================================================== */}
       {isSimModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-card border border-border rounded-2xl w-full max-w-lg shadow-2xl p-6 space-y-4 animate-in fade-in zoom-in-95">
             <div className="flex items-center justify-between border-b border-border pb-3">
               <div className="flex items-center space-x-2">
-                <Sparkles className="w-5 h-5 text-blue-500" />
-                <h3 className="font-black text-base text-foreground">
+                <Sparkles className="w-5 h-5 text-blue-600" />
+                <h3 className="font-bold text-base text-foreground">
                   Simulate Live Comment Interception
                 </h3>
               </div>
               <button
                 onClick={() => setIsSimModalOpen(false)}
-                className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground"
+                className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground transition"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -867,7 +861,7 @@ export function LinkCommentBlockCenter({ currentMode }: LinkCommentBlockCenterPr
 
             {/* Quick Presets */}
             <div className="space-y-1.5">
-              <span className="text-[11px] font-bold text-muted-foreground block">
+              <span className="text-[11px] font-semibold text-muted-foreground block">
                 Quick Test Presets:
               </span>
               <div className="flex flex-wrap gap-1.5">
@@ -876,7 +870,7 @@ export function LinkCommentBlockCenter({ currentMode }: LinkCommentBlockCenterPr
                     key={p.label}
                     type="button"
                     onClick={() => setSimComment(p.comment)}
-                    className="px-2.5 py-1 rounded-lg border text-[11px] font-semibold hover:bg-muted text-foreground"
+                    className="px-2.5 py-1 rounded-lg border text-[11px] font-semibold hover:bg-muted text-foreground transition"
                   >
                     {p.label}
                   </button>
@@ -886,24 +880,24 @@ export function LinkCommentBlockCenter({ currentMode }: LinkCommentBlockCenterPr
 
             <form onSubmit={handleRunSimulation} className="space-y-3.5 text-xs">
               <div className="space-y-1">
-                <label className="font-bold text-foreground">Sender Name</label>
+                <label className="font-semibold text-foreground">Sender Name</label>
                 <input
                   type="text"
                   value={simSender}
                   onChange={(e) => setSimSender(e.target.value)}
-                  className="w-full px-3 py-1.5 border rounded-lg bg-background text-xs"
+                  className="w-full px-3 py-1.5 border rounded-lg bg-background text-xs focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none"
                 />
               </div>
 
               <div className="space-y-1">
-                <label className="font-bold text-foreground">Comment Body</label>
+                <label className="font-semibold text-foreground">Comment Body</label>
                 <textarea
                   rows={3}
                   required
                   placeholder="Type any comment containing a link..."
                   value={simComment}
                   onChange={(e) => setSimComment(e.target.value)}
-                  className="w-full px-3 py-2 border rounded-lg bg-background text-xs font-mono"
+                  className="w-full px-3 py-2 border rounded-lg bg-background text-xs font-mono focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none"
                 />
               </div>
 
@@ -911,15 +905,15 @@ export function LinkCommentBlockCenter({ currentMode }: LinkCommentBlockCenterPr
                 <div
                   className={`p-3 rounded-xl border space-y-1 ${
                     simResult.action === "AUTO_DELETED"
-                      ? "bg-red-500/10 border-red-500/30 text-red-600 dark:text-red-400"
+                      ? "bg-rose-500/10 border-rose-500/30 text-rose-600 dark:text-rose-400"
                       : simResult.action === "HIDDEN"
                       ? "bg-amber-500/10 border-amber-500/30 text-amber-600 dark:text-amber-400"
                       : simResult.action === "ALLOWED_WHITELIST"
-                      ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-600 dark:text-emerald-400"
+                      ? "bg-blue-500/10 border-blue-500/30 text-blue-600 dark:text-blue-400"
                       : "bg-muted border text-foreground"
                   }`}
                 >
-                  <div className="font-black text-xs flex items-center space-x-1.5">
+                  <div className="font-bold text-xs flex items-center space-x-1.5">
                     {simResult.action === "AUTO_DELETED" && <Trash2 className="w-4 h-4" />}
                     {simResult.action === "ALLOWED_WHITELIST" && <ShieldCheck className="w-4 h-4" />}
                     <span>Result: {simResult.action}</span>
@@ -937,13 +931,13 @@ export function LinkCommentBlockCenter({ currentMode }: LinkCommentBlockCenterPr
                 <button
                   type="button"
                   onClick={() => setIsSimModalOpen(false)}
-                  className="px-4 py-2 rounded-lg border hover:bg-muted font-bold text-xs"
+                  className="px-4 py-2 rounded-lg border hover:bg-muted font-semibold text-xs transition"
                 >
                   Close
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white font-bold text-xs shadow-sm transition"
+                  className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs shadow-xs transition min-h-[36px]"
                 >
                   Intercept Comment
                 </button>
