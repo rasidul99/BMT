@@ -1,4 +1,4 @@
-"use client"
+﻿"use client"
 
 import React, { useState } from "react"
 import { useRouter, useParams } from "next/navigation"
@@ -31,6 +31,9 @@ import {
   ClipboardList,
   Send,
   AlertCircle,
+  ArrowRight,
+  ArrowLeft,
+  Info,
 } from "lucide-react"
 import { useAssetLibrary } from "../../../../../hooks/useAssetLibrary"
 import { useLandingPages, LandingPageProject, DropdownOption, SectionVisibility } from "../../../../../hooks/useLandingPages"
@@ -69,29 +72,29 @@ export default function SafeLandingPageBuilderPage() {
   const [mobileStudioTab, setMobileStudioTab] = useState<"editor" | "preview">("editor")
 
   // Editor states
-  const [announcementBar, setAnnouncementBar] = useState("সীমিত সময়ের ধামাকা অফার • সারাদেশে ক্যাশ অন হোম ডেলিভারি ফ্রি!")
+  const [announcementBar, setAnnouncementBar] = useState("à¦¸à§€à¦®à¦¿à¦¤ à¦¸à¦®à§Ÿà§‡à¦° à¦§à¦¾à¦®à¦¾à¦•à¦¾ à¦…à¦«à¦¾à¦° â€¢ à¦¸à¦¾à¦°à¦¾à¦¦à§‡à¦¶à§‡ à¦•à§à¦¯à¦¾à¦¶ à¦…à¦¨ à¦¹à§‹à¦® à¦¡à§‡à¦²à¦¿à¦­à¦¾à¦°à¦¿ à¦«à§à¦°à¦¿!")
   const [category, setCategory] = useState<LandingPageProject["category"]>("E-Commerce & Gadgets")
   const [pageTitle, setPageTitle] = useState("Eid Special Premium Watch Landing Page")
-  const [headline, setHeadline] = useState("ঈদের সেরা ধামাকা অফারে কিনুন অরিজিনাল আল্ট্রা স্মার্ট ওয়াচ!")
-  const [subheadline, setSubheadline] = useState("অরিজিনাল অ্যামোলেড ডিসপ্লে, ব্লুটুথ কলিং ও ১ বছরের অফিসিয়াল ব্র্যান্ড ওয়ারেন্টি সহ। স্টক সীমিত!")
+  const [headline, setHeadline] = useState("à¦ˆà¦¦à§‡à¦° à¦¸à§‡à¦°à¦¾ à¦§à¦¾à¦®à¦¾à¦•à¦¾ à¦…à¦«à¦¾à¦°à§‡ à¦•à¦¿à¦¨à§à¦¨ à¦…à¦°à¦¿à¦œà¦¿à¦¨à¦¾à¦² à¦†à¦²à§à¦Ÿà§à¦°à¦¾ à¦¸à§à¦®à¦¾à¦°à§à¦Ÿ à¦“à§Ÿà¦¾à¦š!")
+  const [subheadline, setSubheadline] = useState("à¦…à¦°à¦¿à¦œà¦¿à¦¨à¦¾à¦² à¦…à§à¦¯à¦¾à¦®à§‹à¦²à§‡à¦¡ à¦¡à¦¿à¦¸à¦ªà§à¦²à§‡, à¦¬à§à¦²à§à¦Ÿà§à¦¥ à¦•à¦²à¦¿à¦‚ à¦“ à§§ à¦¬à¦›à¦°à§‡à¦° à¦…à¦«à¦¿à¦¸à¦¿à¦¯à¦¼à¦¾à¦² à¦¬à§à¦°à§à¦¯à¦¾à¦¨à§à¦¡ à¦“à¦¯à¦¼à¦¾à¦°à§‡à¦¨à§à¦Ÿà¦¿ à¦¸à¦¹à¥¤ à¦¸à§à¦Ÿà¦• à¦¸à§€à¦®à¦¿à¦¤!")
   const [heroImage, setHeroImage] = useState("https://images.unsplash.com/photo-1522335789203-aabd1fc54bc9?w=800&auto=format&fit=crop")
   const [features, setFeatures] = useState<string[]>([
-    "অরিজিনাল ২.০২ ইঞ্চি সুপার অ্যামোলেড কালার ডিসপ্লে",
-    "হাই-ডেফিনিশন ব্লুটুথ কলিং ও লাউড স্পিকার",
-    "এক চার্জে টানা ৫ থেকে ৭ দিন ব্যাটারি ব্যাকআপ",
-    "১ বছরের অফিসিয়াল ব্র্যান্ড রিপ্লেসমেন্ট ওয়ারেন্টি",
+    "à¦…à¦°à¦¿à¦œà¦¿à¦¨à¦¾à¦² à§¨.à§¦à§¨ à¦‡à¦žà§à¦šà¦¿ à¦¸à§à¦ªà¦¾à¦° à¦…à§à¦¯à¦¾à¦®à§‹à¦²à§‡à¦¡ à¦•à¦¾à¦²à¦¾à¦° à¦¡à¦¿à¦¸à¦ªà§à¦²à§‡",
+    "à¦¹à¦¾à¦‡-à¦¡à§‡à¦«à¦¿à¦¨à¦¿à¦¶à¦¨ à¦¬à§à¦²à§à¦Ÿà§à¦¥ à¦•à¦²à¦¿à¦‚ à¦“ à¦²à¦¾à¦‰à¦¡ à¦¸à§à¦ªà¦¿à¦•à¦¾à¦°",
+    "à¦à¦• à¦šà¦¾à¦°à§à¦œà§‡ à¦Ÿà¦¾à¦¨à¦¾ à§« à¦¥à§‡à¦•à§‡ à§­ à¦¦à¦¿à¦¨ à¦¬à§à¦¯à¦¾à¦Ÿà¦¾à¦°à¦¿ à¦¬à§à¦¯à¦¾à¦•à¦†à¦ª",
+    "à§§ à¦¬à¦›à¦°à§‡à¦° à¦…à¦«à¦¿à¦¸à¦¿à§Ÿà¦¾à¦² à¦¬à§à¦°à§à¦¯à¦¾à¦¨à§à¦¡ à¦°à¦¿à¦ªà§à¦²à§‡à¦¸à¦®à§‡à¦¨à§à¦Ÿ à¦“à§Ÿà¦¾à¦°à§‡à¦¨à§à¦Ÿà¦¿",
   ])
-  const [productPrice, setProductPrice] = useState("২,৪৯০ টাকা (রেগুলার ৩,৯৯০ টাকা)")
-  const [ctaText, setCtaText] = useState("এখনই ক্যাশ অন ডেলিভারিতে অর্ডার করুন")
+  const [productPrice, setProductPrice] = useState("à§¨,à§ªà§¯à§¦ à¦Ÿà¦¾à¦•à¦¾ (à¦°à§‡à¦—à§à¦²à¦¾à¦° à§©,à§¯à§¯à§¦ à¦Ÿà¦¾à¦•à¦¾)")
+  const [ctaText, setCtaText] = useState("à¦à¦–à¦¨à¦‡ à¦•à§à¦¯à¦¾à¦¶ à¦…à¦¨ à¦¡à§‡à¦²à¦¿à¦­à¦¾à¦°à¦¿à¦¤à§‡ à¦…à¦°à§à¦¡à¦¾à¦° à¦•à¦°à§à¦¨")
   const [ctaAction, setCtaAction] = useState<"Order Form" | "WhatsApp Checkout">("Order Form")
   const [whatsappNumber, setWhatsappNumber] = useState("01700000000")
 
   // Client Specification: Interactive Offer Dropdown options
-  const [dropdownTitle, setDropdownTitle] = useState("প্যাকেজ ও কালার ভ্যারিয়েন্ট বেছে নিন (Select Variant):")
+  const [dropdownTitle, setDropdownTitle] = useState("à¦ªà§à¦¯à¦¾à¦•à§‡à¦œ à¦“ à¦•à¦¾à¦²à¦¾à¦° à¦­à§à¦¯à¦¾à¦°à¦¿à§Ÿà§‡à¦¨à§à¦Ÿ à¦¬à§‡à¦›à§‡ à¦¨à¦¿à¦¨ (Select Variant):")
   const [dropdownOptions, setDropdownOptions] = useState<DropdownOption[]>([
-    { label: "1x Ultra Smart Watch - Jet Black (Silver Bezel)", price: "২,৪৯০ টাকা" },
-    { label: "1x Ultra Smart Watch - Ocean Orange (Sport Loop)", price: "২,৪৯০ টাকা" },
-    { label: "2x Combo Pack (Black + Orange) - স্পেশাল গিফট প্যাক", price: "৪,৫০০ টাকা (Save ৫০০৳)" },
+    { label: "1x Ultra Smart Watch - Jet Black (Silver Bezel)", price: "à§¨,à§ªà§¯à§¦ à¦Ÿà¦¾à¦•à¦¾" },
+    { label: "1x Ultra Smart Watch - Ocean Orange (Sport Loop)", price: "à§¨,à§ªà§¯à§¦ à¦Ÿà¦¾à¦•à¦¾" },
+    { label: "2x Combo Pack (Black + Orange) - à¦¸à§à¦ªà§‡à¦¶à¦¾à¦² à¦—à¦¿à¦«à¦Ÿ à¦ªà§à¦¯à¦¾à¦•", price: "à§ª,à§«à§¦à§¦ à¦Ÿà¦¾à¦•à¦¾ (Save à§«à§¦à§¦à§³)" },
   ])
 
   // Client Specification: Monetization Ad Slot
@@ -107,7 +110,7 @@ export default function SafeLandingPageBuilderPage() {
   const [activePublishedPage, setActivePublishedPage] = useState<LandingPageProject | null>(null)
   const [copiedSlug, setCopiedSlug] = useState<string | null>(null)
   const [showAssetPicker, setShowAssetPicker] = useState(false)
-  const [toastMsg, setToastMsg] = useState<string | null>(null)
+  const [toast, setToast] = useState<{ message: string; type: "success" | "error" | "info" } | null>(null)
 
   // Direct PC Upload ref
   const localImageInputRef = React.useRef<HTMLInputElement | null>(null)
@@ -138,14 +141,14 @@ export default function SafeLandingPageBuilderPage() {
     }
   }
 
-  const showToast = (msg: string) => {
-    setToastMsg(msg)
-    setTimeout(() => setToastMsg(null), 3000)
+  const showToast = (message: string, type: "success" | "error" | "info" = "success") => {
+    setToast({ message, type })
+    setTimeout(() => setToast(null), 3000)
   }
 
   // Feature Bullet Points handlers
   const handleAddFeature = () => {
-    setFeatures([...features, "নতুন বিশেষ সুবিধা বা অফার"])
+    setFeatures([...features, "à¦¨à¦¤à§à¦¨ à¦¬à¦¿à¦¶à§‡à¦· à¦¸à§à¦¬à¦¿à¦§à¦¾ à¦¬à¦¾ à¦…à¦«à¦¾à¦°"])
   }
   const handleRemoveFeature = (index: number) => {
     if (features.length <= 1) return
@@ -165,7 +168,7 @@ export default function SafeLandingPageBuilderPage() {
   // Remove dropdown option
   const handleRemoveDropdownOption = (index: number) => {
     if (dropdownOptions.length <= 1) {
-      showToast("At least one package option is required!")
+      showToast("At least one package option is required!", "error")
       return
     }
     setDropdownOptions(dropdownOptions.filter((_, i) => i !== index))
@@ -175,7 +178,7 @@ export default function SafeLandingPageBuilderPage() {
   const handlePublishLandingPage = (e: React.FormEvent) => {
     e.preventDefault()
     if (!pageTitle.trim() || !headline.trim()) {
-      showToast("Project Name and Main Headline are required!")
+      showToast("Project Name and Main Headline are required!", "error")
       return
     }
 
@@ -237,17 +240,31 @@ export default function SafeLandingPageBuilderPage() {
     if (url) {
       setHeroImage(url)
       setShowAssetPicker(false)
-      showToast("Image selected from Asset Library!")
+      showToast("Image selected from Asset Library!", "success")
     }
   }
 
   return (
-    <div className="space-y-6 max-w-7xl">
+    <div className="space-y-6 max-w-7xl pb-24">
       {/* Toast Notification */}
-      {toastMsg && (
-        <div className="fixed top-4 right-4 z-50 bg-blue-600 text-white font-semibold text-xs px-4 py-2.5 rounded-xl shadow-2xl flex items-center gap-2 animate-in slide-in-from-top-2 duration-200">
-          <CheckCircle2 className="w-4 h-4 text-emerald-300" />
-          <span>{toastMsg}</span>
+      {toast && (
+        <div
+          className={`fixed top-4 right-4 z-50 text-white font-semibold text-xs px-4 py-2.5 rounded-xl shadow-2xl flex items-center gap-2 animate-in slide-in-from-top-2 duration-200 ${
+            toast.type === "error"
+              ? "bg-rose-600"
+              : toast.type === "info"
+              ? "bg-slate-800 text-slate-100"
+              : "bg-blue-600 text-white"
+          }`}
+        >
+          {toast.type === "error" ? (
+            <AlertCircle className="w-4 h-4 shrink-0 text-white" />
+          ) : toast.type === "info" ? (
+            <Info className="w-4 h-4 shrink-0 text-blue-300" />
+          ) : (
+            <CheckCircle2 className="w-4 h-4 shrink-0 text-white" />
+          )}
+          <span>{toast.message}</span>
         </div>
       )}
 
@@ -258,7 +275,7 @@ export default function SafeLandingPageBuilderPage() {
             <h1 className="text-2xl font-extrabold tracking-tight text-foreground">
               Smart Landing Page Builder
             </h1>
-            <span className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-xs font-bold px-2.5 py-0.5 rounded-full border border-emerald-500/20">
+            <span className="bg-blue-500/10 text-blue-600 dark:text-blue-400 text-xs font-bold px-2.5 py-0.5 rounded-full border border-blue-500/20">
               Interactive Dropdown & ADS Ready
             </span>
           </div>
@@ -266,43 +283,15 @@ export default function SafeLandingPageBuilderPage() {
             Build high-converting offer landing pages based on client categories. Features interactive variant dropdowns and Monetization Ad Slots.
           </p>
         </div>
-
-        {/* Device Preview Toggle */}
-        <div className="flex items-center space-x-1.5 bg-muted p-1 rounded-xl text-xs font-bold">
-          <button
-            type="button"
-            onClick={() => setPreviewDevice("Desktop")}
-            className={`px-3 py-1.5 rounded-lg transition flex items-center gap-1.5 ${
-              previewDevice === "Desktop"
-                ? "bg-card text-foreground shadow-xs"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            <Monitor className="w-3.5 h-3.5" />
-            <span>Desktop</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setPreviewDevice("Mobile")}
-            className={`px-3 py-1.5 rounded-lg transition flex items-center gap-1.5 ${
-              previewDevice === "Mobile"
-                ? "bg-card text-foreground shadow-xs"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            <Smartphone className="w-3.5 h-3.5" />
-            <span>Mobile</span>
-          </button>
-        </div>
       </div>
 
       {/* 2. Success Banner when Published */}
       {activePublishedPage && (
-        <div className="p-4 border border-emerald-500/30 bg-emerald-500/10 rounded-xl space-y-3 animate-in fade-in duration-200 text-xs">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-emerald-500/20 pb-2.5">
+        <div className="p-4 border border-blue-200 dark:border-blue-900/40 bg-blue-50/50 dark:bg-blue-950/20 rounded-xl space-y-3 animate-in fade-in duration-200 text-xs">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-blue-100 dark:border-blue-900/30 pb-2.5">
             <div className="flex items-center gap-2">
-              <CheckCircle2 className="w-5 h-5 text-emerald-500 shrink-0" />
-              <span className="font-extrabold text-emerald-600 dark:text-emerald-400 text-sm">
+              <CheckCircle2 className="w-5 h-5 text-blue-600 dark:text-blue-400 shrink-0" />
+              <span className="font-extrabold text-foreground text-sm">
                 Landing Page Published & Active on Subdomain!
               </span>
             </div>
@@ -321,7 +310,8 @@ export default function SafeLandingPageBuilderPage() {
                 className="bg-blue-500/10 hover:bg-blue-500/20 text-blue-600 dark:text-blue-400 border border-blue-500/20 font-bold px-3 py-1.5 rounded-lg transition flex items-center gap-1.5"
               >
                 <Link2 className="w-3.5 h-3.5" />
-                <span>Create Clickable Card →</span>
+                <span>Create Clickable Card</span>
+                <ArrowRight className="w-3.5 h-3.5" />
               </button>
             </div>
           </div>
@@ -342,8 +332,8 @@ export default function SafeLandingPageBuilderPage() {
                 onClick={() => handleCopyLink(activePublishedPage.slug)}
                 className="bg-blue-600 hover:bg-blue-700 text-white font-bold px-3 py-1.5 rounded-lg transition flex items-center gap-1.5 shadow-xs text-xs"
               >
-                {copiedSlug === activePublishedPage.slug ? <Check className="w-3.5 h-3.5 text-blue-200" /> : <Copy className="w-3.5 h-3.5" />}
-                <span>{copiedSlug === activePublishedPage.slug ? "Copied!" : "Copy URL"}</span>
+                {copiedSlug === activePublishedPage.slug ? <Check className="w-3.5 h-3.5 text-white" /> : <Copy className="w-3.5 h-3.5" />}
+                <span>{copiedSlug === activePublishedPage.slug ? "Copied" : "Copy URL"}</span>
               </button>
               <a
                 href={`/p/${activePublishedPage.slug}`}
@@ -382,7 +372,7 @@ export default function SafeLandingPageBuilderPage() {
               : "text-muted-foreground hover:text-foreground"
           }`}
         >
-          <Eye className="w-3.5 h-3.5 text-emerald-500" />
+          <Eye className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
           <span>2. Live Preview Viewport</span>
         </button>
       </div>
@@ -406,12 +396,12 @@ export default function SafeLandingPageBuilderPage() {
           <form onSubmit={handlePublishLandingPage} className="space-y-4">
             {/* ================= STEP 1: TOP BAR & BRANDING ================= */}
             <div className="border border-border bg-muted/20 p-4 rounded-xl space-y-3">
-              <div className="flex items-center justify-between border-b border-border pb-2">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-b border-border pb-2">
                 <div className="flex items-center gap-2">
-                  <span className="bg-blue-600 text-white text-[10px] font-black w-5 h-5 rounded-full flex items-center justify-center">1</span>
+                  <span className="bg-blue-600 text-white text-[10px] font-black w-5 h-5 rounded-full flex items-center justify-center shrink-0">1</span>
                   <h3 className="font-extrabold text-xs text-foreground">Top Announcement Bar & Branding</h3>
                 </div>
-                <div className="flex items-center gap-1.5">
+                <div className="flex items-center gap-1.5 flex-wrap">
                   <button
                     type="button"
                     onClick={() => toggleSection("announcementBar")}
@@ -449,7 +439,7 @@ export default function SafeLandingPageBuilderPage() {
                 <div className="relative">
                   <input
                     type="text"
-                    placeholder="সীমিত সময়ের ধামাকা অফার • সারাদেশে ক্যাশ অন হোম ডেলিভারি ফ্রি!"
+                    placeholder="à¦¸à§€à¦®à¦¿à¦¤ à¦¸à¦®à§Ÿà§‡à¦° à¦§à¦¾à¦®à¦¾à¦•à¦¾ à¦…à¦«à¦¾à¦° â€¢ à¦¸à¦¾à¦°à¦¾à¦¦à§‡à¦¶à§‡ à¦•à§à¦¯à¦¾à¦¶ à¦…à¦¨ à¦¹à§‹à¦® à¦¡à§‡à¦²à¦¿à¦­à¦¾à¦°à¦¿ à¦«à§à¦°à¦¿!"
                     value={announcementBar}
                     onChange={(e) => setAnnouncementBar(e.target.value)}
                     className="w-full pl-8 pr-3 py-2 border border-border rounded-lg bg-background text-foreground text-xs focus:ring-1 focus:ring-blue-500 font-medium"
@@ -494,9 +484,9 @@ export default function SafeLandingPageBuilderPage() {
 
             {/* ================= STEP 2: HOOK, MEDIA & HIGHLIGHTS ================= */}
             <div className="border border-border bg-muted/20 p-4 rounded-xl space-y-3">
-              <div className="flex items-center justify-between border-b border-border pb-2">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-b border-border pb-2">
                 <div className="flex items-center gap-2">
-                  <span className="bg-blue-600 text-white text-[10px] font-black w-5 h-5 rounded-full flex items-center justify-center">2</span>
+                  <span className="bg-blue-600 text-white text-[10px] font-black w-5 h-5 rounded-full flex items-center justify-center shrink-0">2</span>
                   <h3 className="font-extrabold text-xs text-foreground">Offer Hook, Product Media & Highlights</h3>
                 </div>
                 <div className="flex items-center gap-1.5 flex-wrap">
@@ -563,7 +553,7 @@ export default function SafeLandingPageBuilderPage() {
                 <input
                   type="text"
                   required
-                  placeholder="ঈদের সেরা ধামাকা অফারে কিনুন অরিজিনাল ওয়াচ!"
+                  placeholder="à¦ˆà¦¦à§‡à¦° à¦¸à§‡à¦°à¦¾ à¦§à¦¾à¦®à¦¾à¦•à¦¾ à¦…à¦«à¦¾à¦°à§‡ à¦•à¦¿à¦¨à§à¦¨ à¦…à¦°à¦¿à¦œà¦¿à¦¨à¦¾à¦² à¦“à§Ÿà¦¾à¦š!"
                   value={headline}
                   onChange={(e) => setHeadline(e.target.value)}
                   className="w-full px-3 py-2 border border-border rounded-lg bg-background text-foreground text-xs font-bold focus:ring-1 focus:ring-blue-500"
@@ -578,7 +568,7 @@ export default function SafeLandingPageBuilderPage() {
                 <textarea
                   rows={2}
                   required
-                  placeholder="ফ্রি হোম ডেলিভারি ও ১ বছরের ব্র্যান্ড ওয়ারেন্টি সহ।"
+                  placeholder="à¦«à§à¦°à¦¿ à¦¹à§‹à¦® à¦¡à§‡à¦²à¦¿à¦­à¦¾à¦°à¦¿ à¦“ à§§ à¦¬à¦›à¦°à§‡à¦° à¦¬à§à¦°à§à¦¯à¦¾à¦¨à§à¦¡ à¦“à¦¯à¦¼à¦¾à¦°à§‡à¦¨à§à¦Ÿà¦¿ à¦¸à¦¹à¥¤"
                   value={subheadline}
                   onChange={(e) => setSubheadline(e.target.value)}
                   className="w-full px-3 py-2 border border-border rounded-lg bg-background text-foreground text-xs focus:ring-1 focus:ring-blue-500 resize-none"
@@ -636,7 +626,7 @@ export default function SafeLandingPageBuilderPage() {
               <div className="space-y-2 pt-2 border-t border-border">
                 <div className="flex items-center justify-between">
                   <label className="font-bold text-foreground block text-[11px]">
-                    Product Highlights (কী কী সুবিধা পাবেন - বুলেট পয়েন্ট)
+                    Product Highlights (à¦•à§€ à¦•à§€ à¦¸à§à¦¬à¦¿à¦§à¦¾ à¦ªà¦¾à¦¬à§‡à¦¨ - à¦¬à§à¦²à§‡à¦Ÿ à¦ªà§Ÿà§‡à¦¨à§à¦Ÿ)
                   </label>
                   <button
                     type="button"
@@ -651,12 +641,12 @@ export default function SafeLandingPageBuilderPage() {
                 <div className="space-y-1.5">
                   {features.map((feat, fIdx) => (
                     <div key={fIdx} className="flex items-center gap-2">
-                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                      <CheckCircle2 className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 shrink-0" />
                       <input
                         type="text"
                         value={feat}
                         onChange={(e) => handleFeatureChange(fIdx, e.target.value)}
-                        placeholder="Feature advantage e.g. ১ বছরের ওয়ারেন্টি"
+                        placeholder="Feature advantage e.g. à§§ à¦¬à¦›à¦°à§‡à¦° à¦“à¦¯à¦¼à¦¾à¦°à§‡à¦¨à§à¦Ÿà¦¿"
                         className="flex-1 px-2.5 py-1.5 border border-border rounded-lg bg-background text-foreground text-xs"
                       />
                       {features.length > 1 && (
@@ -675,13 +665,13 @@ export default function SafeLandingPageBuilderPage() {
             </div>
 
             {/* ================= STEP 3: PRICING & PACKAGE VARIANTS ================= */}
-            <div className="border border-blue-500/30 bg-blue-500/5 p-4 rounded-xl space-y-3">
-              <div className="flex items-center justify-between border-b border-blue-500/20 pb-2">
+            <div className="border border-border bg-muted/20 p-4 rounded-xl space-y-3">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-b border-border pb-2">
                 <div className="flex items-center gap-2">
-                  <span className="bg-blue-600 text-white text-[10px] font-black w-5 h-5 rounded-full flex items-center justify-center">3</span>
-                  <h3 className="font-extrabold text-xs text-foreground">Pricing & Package Variants (ভ্যারিয়েন্ট ড্রপডাউন)</h3>
+                  <span className="bg-blue-600 text-white text-[10px] font-black w-5 h-5 rounded-full flex items-center justify-center shrink-0">3</span>
+                  <h3 className="font-extrabold text-xs text-foreground">Pricing & Package Variants</h3>
                 </div>
-                <div className="flex items-center gap-1.5">
+                <div className="flex items-center gap-1.5 flex-wrap">
                   <button
                     type="button"
                     onClick={() => toggleSection("pricingBadge")}
@@ -718,10 +708,10 @@ export default function SafeLandingPageBuilderPage() {
                 </label>
                 <input
                   type="text"
-                  placeholder="২,৪৯০ টাকা (রেগুলার ৩,৯৯০ টাকা)"
+                  placeholder="à§¨,à§ªà§¯à§¦ à¦Ÿà¦¾à¦•à¦¾ (à¦°à§‡à¦—à§à¦²à¦¾à¦° à§©,à§¯à§¯à§¦ à¦Ÿà¦¾à¦•à¦¾)"
                   value={productPrice}
                   onChange={(e) => setProductPrice(e.target.value)}
-                  className="w-full px-3 py-2 border border-border rounded-lg bg-background text-foreground text-xs font-bold text-emerald-600 dark:text-emerald-400"
+                  className="w-full px-3 py-2 border border-border rounded-lg bg-background text-foreground text-xs font-bold text-blue-600 dark:text-blue-400"
                 />
               </div>
 
@@ -771,7 +761,7 @@ export default function SafeLandingPageBuilderPage() {
                             next[idx].price = e.target.value
                             setDropdownOptions(next)
                           }}
-                          className="flex-1 sm:w-32 px-2.5 py-1.5 border border-border rounded bg-background text-foreground text-xs font-semibold text-emerald-600 dark:text-emerald-400"
+                          className="flex-1 sm:w-32 px-2.5 py-1.5 border border-border rounded bg-background text-foreground text-xs font-semibold text-blue-600 dark:text-blue-400"
                         />
                         <button
                           type="button"
@@ -790,9 +780,9 @@ export default function SafeLandingPageBuilderPage() {
 
             {/* ================= STEP 4: CALL TO ACTION & CHECKOUT ================= */}
             <div className="border border-border bg-muted/20 p-4 rounded-xl space-y-3">
-              <div className="flex items-center justify-between border-b border-border pb-2">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-b border-border pb-2">
                 <div className="flex items-center gap-2">
-                  <span className="bg-blue-600 text-white text-[10px] font-black w-5 h-5 rounded-full flex items-center justify-center">4</span>
+                  <span className="bg-blue-600 text-white text-[10px] font-black w-5 h-5 rounded-full flex items-center justify-center shrink-0">4</span>
                   <h3 className="font-extrabold text-xs text-foreground">Call To Action & Checkout Setup</h3>
                 </div>
                 <button
@@ -816,7 +806,7 @@ export default function SafeLandingPageBuilderPage() {
                 </label>
                 <input
                   type="text"
-                  placeholder="এখনই ক্যাশ অন ডেলিভারিতে অর্ডার করুন"
+                  placeholder="à¦à¦–à¦¨à¦‡ à¦•à§à¦¯à¦¾à¦¶ à¦…à¦¨ à¦¡à§‡à¦²à¦¿à¦­à¦¾à¦°à¦¿à¦¤à§‡ à¦…à¦°à§à¦¡à¦¾à¦° à¦•à¦°à§à¦¨"
                   value={ctaText}
                   onChange={(e) => setCtaText(e.target.value)}
                   className="w-full px-3 py-2 border border-border rounded-lg bg-background text-foreground text-xs font-bold"
@@ -856,24 +846,24 @@ export default function SafeLandingPageBuilderPage() {
             </div>
 
             {/* ================= STEP 5: TRUST BADGES & ADS ================= */}
-            <div className="border border-amber-500/30 bg-amber-500/5 p-4 rounded-xl space-y-3">
-              <div className="flex items-center justify-between border-b border-amber-500/20 pb-2">
+            <div className="border border-border bg-muted/20 p-4 rounded-xl space-y-3">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-b border-border pb-2">
                 <div className="flex items-center gap-2">
-                  <span className="bg-amber-600 text-white text-[10px] font-black w-5 h-5 rounded-full flex items-center justify-center">5</span>
+                  <span className="bg-blue-600 text-white text-[10px] font-black w-5 h-5 rounded-full flex items-center justify-center shrink-0">5</span>
                   <h3 className="font-extrabold text-xs text-foreground">Trust Guarantees & Monetization Ads</h3>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1.5 flex-wrap">
                   <button
                     type="button"
                     onClick={() => toggleSection("trustBadges")}
                     className={`px-2 py-0.5 rounded text-[10px] font-bold flex items-center gap-1 transition ${
                       visibleSections.trustBadges
-                        ? "bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300 border border-purple-300 dark:border-purple-700"
+                        ? "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 border border-blue-300 dark:border-blue-700"
                         : "bg-muted text-muted-foreground border border-border opacity-70"
                     }`}
                     title={visibleSections.trustBadges ? "Click to hide trust badges" : "Click to show trust badges"}
                   >
-                    {visibleSections.trustBadges ? <Eye className="w-3 h-3 text-purple-600" /> : <EyeOff className="w-3 h-3" />}
+                    {visibleSections.trustBadges ? <Eye className="w-3 h-3 text-blue-600" /> : <EyeOff className="w-3 h-3" />}
                     <span>Trust Badges</span>
                   </button>
                   <button
@@ -881,12 +871,12 @@ export default function SafeLandingPageBuilderPage() {
                     onClick={() => toggleSection("adSlot")}
                     className={`px-2 py-0.5 rounded text-[10px] font-bold flex items-center gap-1 transition ${
                       visibleSections.adSlot
-                        ? "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300 border border-amber-300 dark:border-amber-700"
+                        ? "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 border border-blue-300 dark:border-blue-700"
                         : "bg-muted text-muted-foreground border border-border opacity-70"
                     }`}
                     title={visibleSections.adSlot ? "Click to hide ad slot" : "Click to show ad slot"}
                   >
-                    {visibleSections.adSlot ? <Eye className="w-3 h-3 text-amber-600" /> : <EyeOff className="w-3 h-3" />}
+                    {visibleSections.adSlot ? <Eye className="w-3 h-3 text-blue-600" /> : <EyeOff className="w-3 h-3" />}
                     <span>Ad Slot</span>
                   </button>
                 </div>
@@ -899,7 +889,7 @@ export default function SafeLandingPageBuilderPage() {
                     type="checkbox"
                     checked={adEnabled}
                     onChange={(e) => setAdEnabled(e.target.checked)}
-                    className="rounded border-border text-amber-600 focus:ring-amber-500"
+                    className="rounded border-border text-blue-600 focus:ring-blue-500"
                   />
                   <span>Enable Ads</span>
                 </label>
@@ -983,8 +973,9 @@ export default function SafeLandingPageBuilderPage() {
                 onClick={() => setMobileStudioTab("preview")}
                 className="lg:hidden w-full bg-muted hover:bg-muted/80 text-foreground font-bold py-2.5 rounded-xl border border-border transition flex items-center justify-center gap-1.5 text-xs"
               >
-                <Eye className="w-3.5 h-3.5 text-emerald-500" />
-                <span>Switch to Live Preview Viewport →</span>
+                <Eye className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+                <span>Switch to Live Preview Viewport</span>
+                <ArrowRight className="w-3.5 h-3.5" />
               </button>
             </div>
           </form>
@@ -1003,7 +994,8 @@ export default function SafeLandingPageBuilderPage() {
               onClick={() => setMobileStudioTab("editor")}
               className="text-xs font-bold text-blue-600 dark:text-blue-400 flex items-center gap-1 hover:underline"
             >
-              <span>← Back to Edit Form</span>
+              <ArrowLeft className="w-3.5 h-3.5" />
+              <span>Back to Edit Form</span>
             </button>
             <span className="text-[11px] font-semibold text-muted-foreground bg-muted px-2 py-0.5 rounded">
               Live Preview Mode
@@ -1132,7 +1124,7 @@ export default function SafeLandingPageBuilderPage() {
                     className="w-full h-full object-cover"
                   />
                   <span className="absolute bottom-2 left-2 bg-black/75 backdrop-blur text-white font-bold text-[9px] px-2 py-0.5 rounded flex items-center gap-1">
-                    <CheckCircle2 className="w-2.5 h-2.5 text-emerald-400" />
+                    <CheckCircle2 className="w-2.5 h-2.5 text-blue-400" />
                     <span>100% Original Product</span>
                   </span>
                 </div>
@@ -1147,7 +1139,7 @@ export default function SafeLandingPageBuilderPage() {
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 text-[11px]">
                     {features.map((feat, idx) => (
                       <div key={idx} className="flex items-start gap-1.5 text-foreground font-medium">
-                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0 mt-0.5" />
+                        <CheckCircle2 className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" />
                         <span className="leading-tight">{feat}</span>
                       </div>
                     ))}
@@ -1157,16 +1149,16 @@ export default function SafeLandingPageBuilderPage() {
 
               {/* 6. Pricing & Savings Badge */}
               {visibleSections.pricingBadge && (
-                <div className="flex items-center justify-between p-2.5 border border-emerald-500/30 bg-emerald-500/10 rounded-xl">
+                <div className="flex items-center justify-between p-2.5 border border-blue-200 dark:border-blue-900/40 bg-blue-50/50 dark:bg-blue-950/20 rounded-xl">
                   <div>
-                    <span className="text-[9px] uppercase font-bold text-emerald-700 dark:text-emerald-400 block">Special Offer Price</span>
-                    <div className="text-sm font-black text-emerald-600 dark:text-emerald-400">
+                    <span className="text-[9px] uppercase font-bold text-muted-foreground block">Special Offer Price</span>
+                    <div className="text-sm font-black text-blue-600 dark:text-blue-400">
                       {dropdownOptions[selectedPreviewOptionIdx]?.price || productPrice}
                     </div>
                   </div>
-                  <span className="bg-emerald-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-xs flex items-center gap-1">
-                    <Flame className="w-3 h-3 text-amber-200" />
-                    <span>স্টক সীমিত</span>
+                  <span className="bg-blue-600 text-white text-[10px] font-bold px-2.5 py-0.5 rounded-full shadow-xs flex items-center gap-1">
+                    <Flame className="w-3 h-3 text-blue-200" />
+                    <span>à¦¸à§à¦Ÿà¦• à¦¸à§€à¦®à¦¿à¦¤</span>
                   </span>
                 </div>
               )}
@@ -1196,24 +1188,24 @@ export default function SafeLandingPageBuilderPage() {
                 <div className="border border-blue-500/30 bg-blue-500/5 p-3 rounded-xl space-y-2">
                   <span className="font-extrabold text-[11px] text-blue-700 dark:text-blue-400 flex items-center gap-1.5">
                     <ClipboardList className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
-                    <span>১-ক্লিক ক্যাশ অন ডেলিভারি অর্ডার ফরম</span>
+                    <span>à§§-à¦•à§à¦²à¦¿à¦• à¦•à§à¦¯à¦¾à¦¶ à¦…à¦¨ à¦¡à§‡à¦²à¦¿à¦­à¦¾à¦°à¦¿ à¦…à¦°à§à¦¡à¦¾à¦° à¦«à¦°à¦®</span>
                   </span>
                   <div className="space-y-1.5 text-xs">
                     <input
                       type="text"
-                      placeholder="আপনার সম্পূর্ণ নাম"
+                      placeholder="à¦†à¦ªà¦¨à¦¾à¦° à¦¸à¦®à§à¦ªà§‚à¦°à§à¦£ à¦¨à¦¾à¦®"
                       disabled
                       className="w-full p-1.5 border border-border rounded bg-background/80 text-[11px] text-muted-foreground"
                     />
                     <input
                       type="text"
-                      placeholder="আপনার সচল মোবাইল নম্বর (017...)"
+                      placeholder="à¦†à¦ªà¦¨à¦¾à¦° à¦¸à¦šà¦² à¦®à§‹à¦¬à¦¾à¦‡à¦² à¦¨à¦®à§à¦¬à¦° (017...)"
                       disabled
                       className="w-full p-1.5 border border-border rounded bg-background/80 text-[11px] text-muted-foreground"
                     />
                     <input
                       type="text"
-                      placeholder="সম্পূর্ণ ডেলিভারি ঠিকানা (জেলা ও থানা সহ)"
+                      placeholder="à¦¸à¦®à§à¦ªà§‚à¦°à§à¦£ à¦¡à§‡à¦²à¦¿à¦­à¦¾à¦°à¦¿ à¦ à¦¿à¦•à¦¾à¦¨à¦¾ (à¦œà§‡à¦²à¦¾ à¦“ à¦¥à¦¾à¦¨à¦¾ à¦¸à¦¹)"
                       disabled
                       className="w-full p-1.5 border border-border rounded bg-background/80 text-[11px] text-muted-foreground"
                     />
@@ -1228,7 +1220,7 @@ export default function SafeLandingPageBuilderPage() {
                   </button>
                   <span className="text-[9px] text-center text-muted-foreground flex items-center justify-center gap-1">
                     <Lock className="w-2.5 h-2.5 text-muted-foreground" />
-                    <span>১০০% নিরাপদ ক্যাশ অন ডেলিভারি (পণ্য হাতে পেয়ে টাকা পরিশোধ)</span>
+                    <span>à§§à§¦à§¦% à¦¨à¦¿à¦°à¦¾à¦ªà¦¦ à¦•à§à¦¯à¦¾à¦¶ à¦…à¦¨ à¦¡à§‡à¦²à¦¿à¦­à¦¾à¦°à¦¿ (à¦ªà¦£à§à¦¯ à¦¹à¦¾à¦¤à§‡ à¦ªà§‡à§Ÿà§‡ à¦Ÿà¦¾à¦•à¦¾ à¦ªà¦°à¦¿à¦¶à§‹à¦§)</span>
                   </span>
                 </div>
               )}
@@ -1238,26 +1230,26 @@ export default function SafeLandingPageBuilderPage() {
                 <div className="grid grid-cols-3 gap-1.5 pt-1 text-center">
                   <div className="bg-muted/40 p-1.5 rounded-lg border border-border flex flex-col items-center">
                     <Truck className="w-3.5 h-3.5 text-blue-500" />
-                    <span className="text-[9px] font-bold text-foreground mt-0.5">হোম ডেলিভারি</span>
-                    <span className="text-[8px] text-muted-foreground">সারা দেশে</span>
+                    <span className="text-[9px] font-bold text-foreground mt-0.5">à¦¹à§‹à¦® à¦¡à§‡à¦²à¦¿à¦­à¦¾à¦°à¦¿</span>
+                    <span className="text-[8px] text-muted-foreground">à¦¸à¦¾à¦°à¦¾ à¦¦à§‡à¦¶à§‡</span>
                   </div>
                   <div className="bg-muted/40 p-1.5 rounded-lg border border-border flex flex-col items-center">
-                    <DollarSign className="w-3.5 h-3.5 text-emerald-500" />
-                    <span className="text-[9px] font-bold text-foreground mt-0.5">ক্যাশ অন ডেলিভারি</span>
-                    <span className="text-[8px] text-muted-foreground">হাতে পেয়ে পেমেন্ট</span>
+                    <DollarSign className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+                    <span className="text-[9px] font-bold text-foreground mt-0.5">à¦•à§à¦¯à¦¾à¦¶ à¦…à¦¨ à¦¡à§‡à¦²à¦¿à¦­à¦¾à¦°à¦¿</span>
+                    <span className="text-[8px] text-muted-foreground">à¦¹à¦¾à¦¤à§‡ à¦ªà§‡à§Ÿà§‡ à¦ªà§‡à¦®à§‡à¦¨à§à¦Ÿ</span>
                   </div>
                   <div className="bg-muted/40 p-1.5 rounded-lg border border-border flex flex-col items-center">
-                    <ShieldCheck className="w-3.5 h-3.5 text-purple-500" />
-                    <span className="text-[9px] font-bold text-foreground mt-0.5">ওয়ারেন্টি গ্যারান্টি</span>
-                    <span className="text-[8px] text-muted-foreground">১০০% অরিজিনাল</span>
+                    <ShieldCheck className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+                    <span className="text-[9px] font-bold text-foreground mt-0.5">à¦“à§Ÿà¦¾à¦°à§‡à¦¨à§à¦Ÿà¦¿ à¦—à§à¦¯à¦¾à¦°à¦¾à¦¨à§à¦Ÿà¦¿</span>
+                    <span className="text-[8px] text-muted-foreground">à§§à§¦à§¦% à¦…à¦°à¦¿à¦œà¦¿à¦¨à¦¾à¦²</span>
                   </div>
                 </div>
               )}
 
               {/* 10. Working Ad Slot */}
               {visibleSections.adSlot && adEnabled && (
-                <div className="border border-amber-500/30 bg-amber-500/10 p-2 rounded-lg text-left space-y-1">
-                  <span className="text-[9px] font-bold text-amber-700 dark:text-amber-400 uppercase block">
+                <div className="border border-blue-200 dark:border-blue-900/40 bg-blue-50/30 dark:bg-blue-950/20 p-2 rounded-lg text-left space-y-1">
+                  <span className="text-[9px] font-bold text-blue-600 dark:text-blue-400 uppercase block">
                     Sponsored Ad Slot
                   </span>
                   {adType === "Banner Image" && adImageUrl ? (
@@ -1325,12 +1317,12 @@ export default function SafeLandingPageBuilderPage() {
                         <Eye className="w-3 h-3 mr-1" />
                         {p.viewsCount || 0}
                       </span>
-                      <span className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 font-bold px-1.5 py-0.5 rounded flex items-center">
+                      <span className="bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20 font-bold px-1.5 py-0.5 rounded flex items-center">
                         <ShoppingBag className="w-3 h-3 mr-1" />
                         {p.ordersCount || 0}
                       </span>
                       {p.adSlot?.enabled && (
-                        <span className="bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 font-bold px-1.5 py-0.5 rounded">
+                        <span className="bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20 font-bold px-1.5 py-0.5 rounded">
                           ADS
                         </span>
                       )}
@@ -1343,7 +1335,7 @@ export default function SafeLandingPageBuilderPage() {
                         className="p-1.5 border border-border hover:bg-muted text-foreground rounded-lg transition"
                         title="Copy Public Link"
                       >
-                        {copiedSlug === p.slug ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5 text-muted-foreground" />}
+                        {copiedSlug === p.slug ? <Check className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" /> : <Copy className="w-3.5 h-3.5 text-muted-foreground" />}
                       </button>
 
                       <a
@@ -1370,7 +1362,7 @@ export default function SafeLandingPageBuilderPage() {
                         onClick={() => {
                           if (confirm(`Delete landing page "${p.title}"?`)) {
                             deletePage(p.id)
-                            showToast("Page deleted.")
+                            showToast("Page deleted.", "info")
                           }
                         }}
                         className="p-1.5 border border-border hover:bg-destructive/10 text-destructive rounded-lg transition"
@@ -1431,7 +1423,7 @@ export default function SafeLandingPageBuilderPage() {
                             <Eye className="w-3 h-3 mr-1" />
                             {p.viewsCount || 0}
                           </span>
-                          <span className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 font-bold px-2 py-0.5 rounded text-[10px] flex items-center">
+                          <span className="bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20 font-bold px-2 py-0.5 rounded text-[10px] flex items-center">
                             <ShoppingBag className="w-3 h-3 mr-1" />
                             {p.ordersCount || 0}
                           </span>
@@ -1440,7 +1432,7 @@ export default function SafeLandingPageBuilderPage() {
 
                       <td className="py-3 px-3 text-center">
                         {p.adSlot?.enabled ? (
-                          <span className="bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 font-bold px-2 py-0.5 rounded text-[10px] inline-flex items-center gap-1">
+                          <span className="bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20 font-bold px-2 py-0.5 rounded text-[10px] inline-flex items-center gap-1">
                             <CheckCircle2 className="w-3 h-3" />
                             <span>ADS Active</span>
                           </span>
@@ -1461,7 +1453,7 @@ export default function SafeLandingPageBuilderPage() {
                             className="p-1.5 border border-border hover:bg-muted text-foreground rounded-lg transition"
                             title="Copy Public Link"
                           >
-                            {copiedSlug === p.slug ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5 text-muted-foreground" />}
+                            {copiedSlug === p.slug ? <Check className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" /> : <Copy className="w-3.5 h-3.5 text-muted-foreground" />}
                           </button>
 
                           <a
