@@ -18,6 +18,10 @@ import {
   Share2,
   Info,
   CheckCircle2,
+  AlertCircle,
+  ThumbsUp,
+  MessageSquare,
+  X,
   Upload,
 } from "lucide-react"
 import { useAssetLibrary } from "../../../../../hooks/useAssetLibrary"
@@ -37,25 +41,25 @@ export default function SafeClickableImagePage() {
   const [cardTitle, setCardTitle] = useState("Eid Mega Sale 2026 - Up to 50% Off Top Gadgets!")
   const [cardDescription, setCardDescription] = useState("Order original tech accessories & smartwatches with instant home delivery across BD.")
   const [displayDomain, setDisplayDomain] = useState("bmt.cards")
-  const [postCaption, setPostCaption] = useState("🔥 আজকের ধামাকা অফার! নিচের ছবিতে ক্লিক করে সরাসরি স্পেশাল ৫০% ডিসকাউন্ট লুফে নিন!")
+  const [postCaption, setPostCaption] = useState("আজকের বিশেষ অফার! নিচের ছবিতে ক্লিক করে সরাসরি স্পেশাল ৫০% ডিসকাউন্ট উপভোগ করুন।")
 
   // Generated state & toast
   const [activeCreatedCard, setActiveCreatedCard] = useState<ClickableCard | null>(null)
   const [copiedId, setCopiedId] = useState<string | null>(null)
   const [savedToLibId, setSavedToLibId] = useState<string | null>(null)
   const [showAssetPicker, setShowAssetPicker] = useState(false)
-  const [toastMsg, setToastMsg] = useState<string | null>(null)
+  const [toast, setToast] = useState<{ message: string; type: "success" | "error" | "info" } | null>(null)
 
-  const showToast = (msg: string) => {
-    setToastMsg(msg)
-    setTimeout(() => setToastMsg(null), 3000)
+  const showToast = (message: string, type: "success" | "error" | "info" = "success") => {
+    setToast({ message, type })
+    setTimeout(() => setToast(null), 3000)
   }
 
   // Generate Card Handler
   const handleGenerateClickableCard = (e: React.FormEvent) => {
     e.preventDefault()
     if (!destinationUrl.trim() || !cardTitle.trim()) {
-      showToast("⚠️ Destination URL and Card Title are required!")
+      showToast("Destination URL and Card Title are required!", "error")
       return
     }
 
@@ -69,7 +73,7 @@ export default function SafeClickableImagePage() {
     })
 
     setActiveCreatedCard(newCard)
-    showToast("✓ Clickable Image Card created successfully!")
+    showToast("Clickable Image Card created successfully!", "success")
   }
 
   // Copy shareable link
@@ -77,7 +81,7 @@ export default function SafeClickableImagePage() {
     const fullLink = `${window.location.origin}/c/${card.id}`
     navigator.clipboard.writeText(fullLink)
     setCopiedId(card.id)
-    showToast("✓ Shareable link copied to clipboard!")
+    showToast("Shareable link copied to clipboard!", "success")
     setTimeout(() => setCopiedId(null), 2500)
   }
 
@@ -93,7 +97,7 @@ export default function SafeClickableImagePage() {
       size: "1.8 MB (Clickable Card)",
     })
     setSavedToLibId(card.id)
-    showToast("✓ Saved to Central Asset Library (Link Cards)!")
+    showToast("Saved to Central Asset Library (Link Cards)!", "success")
   }
 
   // Pick Image from Asset Library
@@ -101,7 +105,7 @@ export default function SafeClickableImagePage() {
     if (assetUrl) {
       setImageUrl(assetUrl)
       setShowAssetPicker(false)
-      showToast("✓ Image selected from Asset Library!")
+      showToast("Image selected from Asset Library!", "success")
     }
   }
 
@@ -110,7 +114,7 @@ export default function SafeClickableImagePage() {
   const handleDirectLocalUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files || !e.target.files[0]) return
     const file = e.target.files[0]
-    showToast("⏳ Uploading image to storage...")
+    showToast("Uploading image to storage...", "info")
 
     try {
       const formData = new FormData()
@@ -123,26 +127,40 @@ export default function SafeClickableImagePage() {
       if (res.ok) {
         const data = await res.json()
         setImageUrl(data.url)
-        showToast("✓ Image uploaded from PC successfully!")
+        showToast("Image uploaded from PC successfully!", "success")
       } else {
         const localPreview = URL.createObjectURL(file)
         setImageUrl(localPreview)
-        showToast("✓ Image loaded from PC!")
+        showToast("Image loaded from PC!", "success")
       }
     } catch (err) {
       const localPreview = URL.createObjectURL(file)
       setImageUrl(localPreview)
-      showToast("✓ Image loaded from PC!")
+      showToast("Image loaded from PC!", "success")
     }
   }
 
   return (
-    <div className="max-w-6xl space-y-6">
+    <div className="max-w-6xl space-y-6 pb-20">
       {/* Toast Notification */}
-      {toastMsg && (
-        <div className="fixed top-4 right-4 z-50 bg-blue-600 text-white font-semibold text-xs px-4 py-2.5 rounded-xl shadow-2xl flex items-center gap-2 animate-in slide-in-from-top-2 duration-200">
-          <CheckCircle2 className="w-4 h-4 text-emerald-300" />
-          <span>{toastMsg}</span>
+      {toast && (
+        <div
+          className={`fixed top-4 right-4 z-50 text-white font-semibold text-xs px-4 py-2.5 rounded-xl shadow-2xl flex items-center gap-2 animate-in slide-in-from-top-2 duration-200 ${
+            toast.type === "error"
+              ? "bg-rose-600"
+              : toast.type === "info"
+              ? "bg-slate-800 text-slate-100"
+              : "bg-blue-600 text-white"
+          }`}
+        >
+          {toast.type === "error" ? (
+            <AlertCircle className="w-4 h-4 shrink-0 text-white" />
+          ) : toast.type === "info" ? (
+            <Info className="w-4 h-4 shrink-0 text-blue-300" />
+          ) : (
+            <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-300" />
+          )}
+          <span>{toast.message}</span>
         </div>
       )}
 
@@ -163,12 +181,12 @@ export default function SafeClickableImagePage() {
 
       {/* 2. Success Banner when Card is Generated */}
       {activeCreatedCard && (
-        <div className="p-4 border border-emerald-500/30 bg-emerald-500/10 rounded-xl space-y-3 animate-in fade-in duration-200 text-xs">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-emerald-500/20 pb-2.5">
+        <div className="p-4 border border-blue-200 dark:border-blue-900/40 bg-blue-50/50 dark:bg-blue-950/20 rounded-xl space-y-3 animate-in fade-in duration-200 text-xs">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-blue-100 dark:border-blue-900/30 pb-2.5">
             <div className="flex items-center gap-2">
-              <CheckCircle2 className="w-5 h-5 text-emerald-500 shrink-0" />
-              <span className="font-extrabold text-emerald-600 dark:text-emerald-400 text-sm">
-                Clickable Image Link Generated & Ready to Share!
+              <CheckCircle2 className="w-5 h-5 text-blue-600 dark:text-blue-400 shrink-0" />
+              <span className="font-extrabold text-foreground text-sm">
+                Clickable Image Link Generated & Ready to Share
               </span>
             </div>
             <div className="flex items-center gap-2">
@@ -182,15 +200,15 @@ export default function SafeClickableImagePage() {
                 }`}
               >
                 <FolderPlus className="w-3.5 h-3.5" />
-                <span>{savedToLibId === activeCreatedCard.id ? "✓ Saved to Library" : "📁 Save to Library"}</span>
+                <span>{savedToLibId === activeCreatedCard.id ? "Saved to Library" : "Save to Library"}</span>
               </button>
               <button
                 type="button"
                 onClick={() => router.push(`/workspace/${workspaceId}/safe/post-scheduler?clickableCardId=${activeCreatedCard.id}`)}
-                className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-3 py-1.5 rounded-lg transition flex items-center gap-1.5 shadow-xs"
+                className="bg-blue-600 hover:bg-blue-700 text-white font-bold px-3 py-1.5 rounded-lg transition flex items-center gap-1.5 shadow-xs"
               >
                 <CalendarClock className="w-3.5 h-3.5" />
-                <span>Post Scheduler →</span>
+                <span>Post Scheduler</span>
               </button>
             </div>
           </div>
@@ -212,8 +230,8 @@ export default function SafeClickableImagePage() {
                 onClick={() => handleCopyLink(activeCreatedCard)}
                 className="bg-blue-600 hover:bg-blue-700 text-white font-bold px-3 py-1.5 rounded-lg transition flex items-center gap-1.5 shadow-xs text-xs"
               >
-                {copiedId === activeCreatedCard.id ? <Check className="w-3.5 h-3.5 text-emerald-300" /> : <Copy className="w-3.5 h-3.5" />}
-                <span>{copiedId === activeCreatedCard.id ? "Copied!" : "Copy Link"}</span>
+                {copiedId === activeCreatedCard.id ? <Check className="w-3.5 h-3.5 text-white" /> : <Copy className="w-3.5 h-3.5" />}
+                <span>{copiedId === activeCreatedCard.id ? "Copied" : "Copy Link"}</span>
               </button>
               <a
                 href={`/c/${activeCreatedCard.id}`}
@@ -348,7 +366,7 @@ export default function SafeClickableImagePage() {
             </div>
 
             {/* Display Domain */}
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className="font-bold text-foreground block mb-1">
                   Display Domain / Brand Badge
@@ -425,7 +443,7 @@ export default function SafeClickableImagePage() {
 
             {/* The Clickable Image Card (1.91:1 standard aspect ratio) */}
             <div
-              onClick={() => showToast("ℹ️ On Facebook, clicking this card will instantly open your destination link!")}
+              onClick={() => showToast("On Facebook, clicking this card will instantly open your destination link.", "info")}
               className="group cursor-pointer border-y border-border/60 bg-muted/40 transition"
               title="Click preview card"
             >
@@ -459,14 +477,17 @@ export default function SafeClickableImagePage() {
 
             {/* FB Reaction Footer Bar */}
             <div className="p-2.5 flex items-center justify-between text-muted-foreground text-[11px] border-t border-border/40 font-semibold">
-              <span className="flex items-center gap-1 hover:text-foreground cursor-pointer">
-                👍 42 Likes
+              <span className="flex items-center gap-1.5 hover:text-foreground cursor-pointer transition">
+                <ThumbsUp className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+                <span>42 Likes</span>
               </span>
-              <span className="flex items-center gap-1 hover:text-foreground cursor-pointer">
-                💬 18 Comments
+              <span className="flex items-center gap-1.5 hover:text-foreground cursor-pointer transition">
+                <MessageSquare className="w-3.5 h-3.5 text-muted-foreground" />
+                <span>18 Comments</span>
               </span>
-              <span className="flex items-center gap-1 hover:text-foreground cursor-pointer">
-                ↗️ Share
+              <span className="flex items-center gap-1.5 hover:text-foreground cursor-pointer transition">
+                <Share2 className="w-3.5 h-3.5 text-muted-foreground" />
+                <span>Share</span>
               </span>
             </div>
           </div>
@@ -541,7 +562,7 @@ export default function SafeClickableImagePage() {
 
                     {/* Live Clicks */}
                     <td className="py-3 px-3 text-center">
-                      <span className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 font-bold px-2 py-0.5 rounded text-[11px]">
+                      <span className="bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-900/40 font-bold px-2 py-0.5 rounded text-[11px]">
                         {card.clickCount || 0} Clicks
                       </span>
                     </td>
@@ -561,7 +582,7 @@ export default function SafeClickableImagePage() {
                           className="p-1.5 border border-border hover:bg-muted text-foreground rounded-lg transition"
                           title="Copy Shareable Link"
                         >
-                          {copiedId === card.id ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5 text-muted-foreground" />}
+                          {copiedId === card.id ? <Check className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" /> : <Copy className="w-3.5 h-3.5 text-muted-foreground" />}
                         </button>
 
                         {/* Test Redirect in new tab */}
@@ -591,7 +612,7 @@ export default function SafeClickableImagePage() {
                           onClick={() => {
                             if (confirm(`Delete card "${card.title}"?`)) {
                               deleteCard(card.id)
-                              showToast("✓ Card removed.")
+                              showToast("Card removed.", "info")
                             }
                           }}
                           className="p-1.5 border border-border hover:bg-destructive/10 text-destructive rounded-lg transition"
@@ -623,9 +644,10 @@ export default function SafeClickableImagePage() {
               <button
                 type="button"
                 onClick={() => setShowAssetPicker(false)}
-                className="text-muted-foreground hover:text-foreground text-sm font-bold"
+                className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition"
+                aria-label="Close picker"
               >
-                ✕
+                <X className="w-4 h-4" />
               </button>
             </div>
 
