@@ -47,7 +47,7 @@ export default function PropertiesPanel() {
     return (
       <div className="space-y-4">
         <div className="flex items-center space-x-2 border-b border-border pb-2.5">
-          <Sliders className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+          <Sliders className="w-4 h-4 text-orange-600 dark:text-orange-400" />
           <h2 className="text-xs font-bold uppercase tracking-wider text-foreground">Properties Inspector</h2>
         </div>
         <div className="text-xs text-muted-foreground text-center py-12 flex flex-col items-center justify-center space-y-2">
@@ -62,10 +62,10 @@ export default function PropertiesPanel() {
     <div className="space-y-4">
       <div className="border-b border-border pb-2.5">
         <div className="flex items-center space-x-2">
-          <Sliders className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+          <Sliders className="w-4 h-4 text-orange-600 dark:text-orange-400" />
           <h2 className="text-xs font-bold uppercase tracking-wider text-foreground">Properties Inspector</h2>
         </div>
-        <span className="text-[10px] text-blue-600 dark:text-blue-400 font-bold block mt-1">
+        <span className="text-[10px] text-orange-600 dark:text-orange-400 font-bold block mt-1">
           {definition.name} (v{definition.version})
         </span>
       </div>
@@ -79,7 +79,7 @@ export default function PropertiesPanel() {
               {meta.type === "select" ? (
                 <select
                   {...register(key)}
-                  className="w-full rounded-lg border border-border px-2.5 py-1.5 bg-background text-xs text-foreground focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition min-h-[36px]"
+                  className="w-full rounded-lg border border-border px-2.5 py-1.5 bg-background text-xs text-foreground focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 outline-none transition min-h-[36px]"
                 >
                   <option value="">Select Option</option>
                   {meta.options?.map((opt) => (
@@ -91,7 +91,7 @@ export default function PropertiesPanel() {
               ) : meta.type === "textarea" ? (
                 <textarea
                   {...register(key)}
-                  className="w-full rounded-lg border border-border px-2.5 py-1.5 bg-background text-xs text-foreground focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition h-20"
+                  className="w-full rounded-lg border border-border px-2.5 py-1.5 bg-background text-xs text-foreground focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 outline-none transition h-20"
                 />
               ) : meta.type === "secret" ? (
                 <div className="space-y-1">
@@ -99,7 +99,7 @@ export default function PropertiesPanel() {
                     type="text"
                     placeholder="Reference e.g. secret-credentials-id"
                     {...register(`${key}.credentialId`)}
-                    className="w-full rounded-lg border border-border px-2.5 py-1.5 bg-background text-xs text-foreground font-mono focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition min-h-[36px]"
+                    className="w-full rounded-lg border border-border px-2.5 py-1.5 bg-background text-xs text-foreground font-mono focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 outline-none transition min-h-[36px]"
                   />
                   <span className="text-[9px] text-muted-foreground block">
                     Resolves credentials via vault reference securely.
@@ -109,7 +109,7 @@ export default function PropertiesPanel() {
                 <input
                   type={meta.type === "password" ? "password" : "text"}
                   {...register(key)}
-                  className="w-full rounded-lg border border-border px-2.5 py-1.5 bg-background text-xs text-foreground focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition min-h-[36px]"
+                  className="w-full rounded-lg border border-border px-2.5 py-1.5 bg-background text-xs text-foreground focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 outline-none transition min-h-[36px]"
                 />
               )}
 
@@ -124,7 +124,7 @@ export default function PropertiesPanel() {
 
         <button
           type="submit"
-          className="w-full rounded-lg bg-blue-600 hover:bg-blue-700 py-2.5 text-xs font-semibold text-white shadow-xs transition mt-4 flex items-center justify-center space-x-1.5 min-h-[38px]"
+          className="w-full rounded-lg bg-orange-600 hover:bg-orange-700 py-2.5 text-xs font-semibold text-white shadow-xs transition mt-4 flex items-center justify-center space-x-1.5 min-h-[38px]"
         >
           <CheckCircle2 className="w-3.5 h-3.5" />
           <span>Validate Node Config</span>

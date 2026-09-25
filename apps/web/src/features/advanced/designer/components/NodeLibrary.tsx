@@ -37,22 +37,22 @@ export default function NodeLibrary() {
   const getCategoryIcon = (category: string) => {
     switch (category) {
       case "TRIGGER":
-        return <Zap className="w-3 h-3 text-blue-500" />
+        return <Zap className="w-3 h-3 text-orange-500" />
       case "ACTION":
-        return <Play className="w-3 h-3 text-blue-500" />
+        return <Play className="w-3 h-3 text-orange-500" />
       case "CONDITION":
-        return <GitBranch className="w-3 h-3 text-blue-500" />
+        return <GitBranch className="w-3 h-3 text-orange-500" />
       case "AI":
-        return <Sparkles className="w-3 h-3 text-blue-500" />
+        return <Sparkles className="w-3 h-3 text-orange-500" />
       default:
-        return <Cpu className="w-3 h-3 text-blue-500" />
+        return <Cpu className="w-3 h-3 text-orange-500" />
     }
   }
 
   return (
     <div className="space-y-4">
       <div className="flex items-center space-x-2 border-b border-border pb-2.5">
-        <Layers className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+        <Layers className="w-4 h-4 text-orange-600 dark:text-orange-400" />
         <h2 className="text-xs font-bold uppercase tracking-wider text-foreground">Node Library SDK</h2>
       </div>
 
@@ -65,7 +65,7 @@ export default function NodeLibrary() {
             placeholder="Search nodes..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full rounded-lg border border-border pl-8 pr-3 py-1.5 bg-background text-xs text-foreground focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition min-h-[36px]"
+            className="w-full rounded-lg border border-border pl-8 pr-3 py-1.5 bg-background text-xs text-foreground focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 outline-none transition min-h-[36px]"
           />
         </div>
 
@@ -76,7 +76,7 @@ export default function NodeLibrary() {
               onClick={() => setSelectedCategory(cat)}
               className={`px-2.5 py-1 rounded-md text-[10px] font-semibold border transition whitespace-nowrap min-h-[28px] ${
                 selectedCategory === cat
-                  ? "bg-blue-600 border-blue-600 text-white shadow-xs"
+                  ? "bg-orange-600 border-orange-500 text-white shadow-xs"
                   : "bg-card border-border text-muted-foreground hover:bg-muted hover:text-foreground"
               }`}
             >
@@ -93,10 +93,10 @@ export default function NodeLibrary() {
             key={node.id}
             draggable
             onDragStart={(e) => onDragStart(e, node.id, node.category, node.name)}
-            className="border border-border bg-card hover:border-blue-500/50 hover:bg-muted/40 p-3 rounded-lg text-xs font-medium cursor-grab text-foreground flex flex-col space-y-1.5 transition shadow-xs select-none"
+            className="border border-border bg-card hover:border-orange-500/50 hover:bg-muted/40 p-3 rounded-lg text-xs font-medium cursor-grab text-foreground flex flex-col space-y-1.5 transition shadow-xs select-none"
           >
             <div className="flex items-center justify-between">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-blue-600 dark:text-blue-400 flex items-center space-x-1">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-orange-600 dark:text-orange-400 flex items-center space-x-1">
                 {getCategoryIcon(node.category)}
                 <span>{node.category}</span>
               </span>

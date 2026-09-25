@@ -28,11 +28,11 @@ export default function ExecutionConsole() {
     <div className="h-full flex flex-col justify-between">
       <div className="flex items-center justify-between border-b border-border pb-2 mb-2">
         <div className="flex items-center space-x-2">
-          <Terminal className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+          <Terminal className="w-4 h-4 text-orange-600 dark:text-orange-400" />
           <h2 className="text-xs font-bold uppercase tracking-wider text-foreground">
             Execution Log Streams
           </h2>
-          <span className="h-2 w-2 rounded-full bg-blue-600 dark:bg-blue-400 animate-pulse" />
+          <span className="h-2 w-2 rounded-full bg-orange-600 dark:bg-orange-400 animate-pulse" />
         </div>
 
         <div className="flex items-center space-x-1.5">
@@ -52,7 +52,7 @@ export default function ExecutionConsole() {
           </button>
           <button
             onClick={handleCompile}
-            className="px-3 py-1 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold shadow-xs transition min-h-[32px] flex items-center space-x-1"
+            className="px-3 py-1 rounded-lg bg-orange-600 hover:bg-orange-700 text-white text-xs font-semibold shadow-xs transition min-h-[32px] flex items-center space-x-1"
           >
             <Play className="w-3 h-3" />
             <span>Compile Rules</span>

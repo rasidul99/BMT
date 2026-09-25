@@ -23,7 +23,7 @@ export default function AdvancedDesignerPage() {
           onClick={() => setMobileTab("CANVAS")}
           className={`flex items-center space-x-1.5 px-3 py-2 rounded-lg text-xs font-semibold whitespace-nowrap transition min-h-[38px] ${
             mobileTab === "CANVAS"
-              ? "bg-blue-600 text-white shadow-xs"
+              ? "bg-orange-600 text-white shadow-xs"
               : "bg-muted/70 text-muted-foreground hover:bg-muted hover:text-foreground"
           }`}
         >
@@ -35,7 +35,7 @@ export default function AdvancedDesignerPage() {
           onClick={() => setMobileTab("NODES")}
           className={`flex items-center space-x-1.5 px-3 py-2 rounded-lg text-xs font-semibold whitespace-nowrap transition min-h-[38px] ${
             mobileTab === "NODES"
-              ? "bg-blue-600 text-white shadow-xs"
+              ? "bg-orange-600 text-white shadow-xs"
               : "bg-muted/70 text-muted-foreground hover:bg-muted hover:text-foreground"
           }`}
         >
@@ -47,7 +47,7 @@ export default function AdvancedDesignerPage() {
           onClick={() => setMobileTab("PROPERTIES")}
           className={`flex items-center space-x-1.5 px-3 py-2 rounded-lg text-xs font-semibold whitespace-nowrap transition min-h-[38px] ${
             mobileTab === "PROPERTIES"
-              ? "bg-blue-600 text-white shadow-xs"
+              ? "bg-orange-600 text-white shadow-xs"
               : "bg-muted/70 text-muted-foreground hover:bg-muted hover:text-foreground"
           }`}
         >
@@ -59,7 +59,7 @@ export default function AdvancedDesignerPage() {
           onClick={() => setMobileTab("LOGS")}
           className={`flex items-center space-x-1.5 px-3 py-2 rounded-lg text-xs font-semibold whitespace-nowrap transition min-h-[38px] ${
             mobileTab === "LOGS"
-              ? "bg-blue-600 text-white shadow-xs"
+              ? "bg-orange-600 text-white shadow-xs"
               : "bg-muted/70 text-muted-foreground hover:bg-muted hover:text-foreground"
           }`}
         >
