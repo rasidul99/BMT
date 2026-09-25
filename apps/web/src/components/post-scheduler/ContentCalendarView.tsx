@@ -154,13 +154,13 @@ export function ContentCalendarView({
   const getStatusBadge = (status: string) => {
     switch (status) {
       case "Posted":
-        return <span className="text-emerald-500 font-bold text-[9px]">✓ Posted</span>
+        return <span className="text-emerald-500 font-bold text-[9px]">Posted</span>
       case "Processing":
-        return <span className="text-amber-500 font-bold text-[9px]">● Queue</span>
+        return <span className="text-amber-500 font-bold text-[9px]">Queue</span>
       case "Failed":
-        return <span className="text-rose-500 font-bold text-[9px]">✕ Failed</span>
+        return <span className="text-rose-500 font-bold text-[9px]">Failed</span>
       default:
-        return <span className="text-blue-500 font-bold text-[9px]">🕒 Scheduled</span>
+        return <span className="text-blue-500 font-bold text-[9px]">Scheduled</span>
     }
   }
 

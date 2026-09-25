@@ -28,6 +28,11 @@ import {
   Send,
   Film,
   Pin,
+  Key,
+  Shuffle,
+  RotateCcw,
+  X,
+  Check,
 } from "lucide-react"
 import { useCtaPinTemplates } from "../../../../../hooks/useCtaPinTemplates"
 
@@ -76,10 +81,10 @@ export default function SafePostSchedulerPage() {
   const [postFormat, setPostFormat] = useState<"Text" | "Image" | "Video" | "Reel" | "Story" | "Poll">("Image")
   const [title, setTitle] = useState("Eid Special Premium Watch Collection Offer 2026")
   const [description, setDescription] = useState(
-    "🔥 ঈদ অফারে পাচ্ছেন প্রিমিয়াম ওয়াচ কালেকশনে ৪০% পর্যন্ত ছাড়! স্টক সীমিত। অর্ডার করতে এখনই নিচের লিংকে ভিসিট করুন।"
+    "ঈদ অফারে পাচ্ছেন প্রিমিয়াম ওয়াচ কালেকশনে ৪০% পর্যন্ত ছাড়! স্টক সীমিত। অর্ডার করতে এখনই নিচের লিংকে ভিসিট করুন।"
   )
   const [hashtags, setHashtags] = useState("#EidSale #FashionBD #WatchOffer #SpecialDiscount")
-  const [emoji, setEmoji] = useState("🔥 ⌚ 🎁 ⚡")
+  const [emoji, setEmoji] = useState("")
   const [cta, setCta] = useState("Order Now: https://bmt.link/eid-watch-sale")
   const [mediaUrl, setMediaUrl] = useState(
     "https://images.unsplash.com/photo-1522335789203-aabd1fc54bc9?w=600&auto=format&fit=crop"
@@ -711,7 +716,7 @@ export default function SafePostSchedulerPage() {
     setCalendarEvents(updatedCalendar)
     saveCalendarEventsToStorage(updatedCalendar)
 
-    setScheduleSuccess(`✓ ${postFormat} successfully scheduled for ${formattedTime} on ${accountsToSchedule.length} account(s)! Added to Queue & Content Calendar.`)
+    setScheduleSuccess(`${postFormat} successfully scheduled for ${formattedTime} on ${accountsToSchedule.length} account(s)! Added to Queue & Content Calendar.`)
     setTimeout(() => {
       setActiveTab("Calendar")
     }, 1200)
@@ -735,55 +740,79 @@ export default function SafePostSchedulerPage() {
   return (
     <div className="space-y-6 max-w-6xl">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b pb-4">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-border pb-4">
         <div>
-          <div className="flex items-center space-x-3">
-            <h1 className="text-2xl font-extrabold tracking-tight">AI Post Scheduler & Content Calendar</h1>
-            <button
-              onClick={() => setShowTokenModal(true)}
-              className="bg-blue-100 hover:bg-blue-200 dark:bg-blue-950 dark:hover:bg-blue-900 text-blue-700 dark:text-blue-300 font-extrabold text-xs px-3 py-1.5 rounded-lg border border-blue-300 dark:border-blue-800 transition flex items-center space-x-1.5"
-            >
-              <span>🔑</span>
-              <span>Manage FB Page Token</span>
-            </button>
-            <a
-              href={`/workspace/workspace-1/safe/ai-variations`}
-              className="bg-purple-100 hover:bg-purple-200 dark:bg-purple-950 dark:hover:bg-purple-900 text-purple-700 dark:text-purple-300 font-extrabold text-xs px-3 py-1.5 rounded-lg border border-purple-300 dark:border-purple-800 transition flex items-center space-x-1.5"
-            >
-              <Sparkles className="w-3.5 h-3.5" />
-              <span>Generate AI Variations</span>
-            </a>
+          <div className="flex flex-wrap items-center gap-2.5">
+            <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground">
+              AI Post Scheduler & Content Calendar
+            </h1>
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                onClick={() => setShowTokenModal(true)}
+                className="bg-card hover:bg-muted text-foreground font-semibold text-xs px-3 py-1.5 rounded-xl border border-border transition flex items-center gap-1.5 shadow-xs"
+              >
+                <Key className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+                <span>Manage FB Page Token</span>
+              </button>
+              <a
+                href={`/workspace/workspace-1/safe/ai-variations`}
+                className="bg-blue-50 dark:bg-blue-950/50 hover:bg-blue-100 dark:hover:bg-blue-900/50 text-blue-600 dark:text-blue-400 font-semibold text-xs px-3 py-1.5 rounded-xl border border-blue-200 dark:border-blue-800 transition flex items-center gap-1.5 shadow-xs"
+              >
+                <Sparkles className="w-3.5 h-3.5" />
+                <span>Generate AI Variations</span>
+              </a>
+            </div>
           </div>
-          <p className="text-xs text-muted-foreground mt-1">
+          <p className="text-xs text-muted-foreground mt-1 max-w-2xl">
             Master Post Creator, Gemini Pro Variations, Bull Queue Delay Engine (Min 5m delay), and Drag & Drop Calendar.
           </p>
         </div>
 
-        {/* Navigation Tabs */}
-        <div className="flex items-center space-x-1.5 bg-muted p-1 rounded-xl text-xs font-bold">
+        {/* Navigation Tabs (Mobile Horizontally Scrollable) */}
+        <div className="flex items-center gap-1 bg-muted/60 p-1 rounded-xl text-xs font-semibold overflow-x-auto no-scrollbar max-w-full">
           <button
             onClick={() => setActiveTab("Scheduler")}
-            className={`px-3 py-1.5 rounded-lg transition ${activeTab === "Scheduler" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
+            className={`px-3 py-1.5 rounded-lg transition whitespace-nowrap flex items-center gap-1.5 shrink-0 ${
+              activeTab === "Scheduler"
+                ? "bg-blue-600 text-white shadow-xs font-bold"
+                : "text-muted-foreground hover:text-foreground hover:bg-muted"
+            }`}
           >
-            🚀 Master Scheduler
+            <Send className="w-3.5 h-3.5" />
+            <span>Master Scheduler</span>
           </button>
           <button
             onClick={() => setActiveTab("Calendar")}
-            className={`px-3 py-1.5 rounded-lg transition ${activeTab === "Calendar" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
+            className={`px-3 py-1.5 rounded-lg transition whitespace-nowrap flex items-center gap-1.5 shrink-0 ${
+              activeTab === "Calendar"
+                ? "bg-blue-600 text-white shadow-xs font-bold"
+                : "text-muted-foreground hover:text-foreground hover:bg-muted"
+            }`}
           >
-            📅 Content Calendar
+            <CalendarIcon className="w-3.5 h-3.5" />
+            <span>Content Calendar</span>
           </button>
           <button
             onClick={() => setActiveTab("QueueMonitor")}
-            className={`px-3 py-1.5 rounded-lg transition ${activeTab === "QueueMonitor" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
+            className={`px-3 py-1.5 rounded-lg transition whitespace-nowrap flex items-center gap-1.5 shrink-0 ${
+              activeTab === "QueueMonitor"
+                ? "bg-blue-600 text-white shadow-xs font-bold"
+                : "text-muted-foreground hover:text-foreground hover:bg-muted"
+            }`}
           >
-            ⚙️ Bull Queue Monitor ({queueJobs.length})
+            <Layers className="w-3.5 h-3.5" />
+            <span>Bull Queue Monitor ({queueJobs.length})</span>
           </button>
           <button
             onClick={() => setActiveTab("BestTimes")}
-            className={`px-3 py-1.5 rounded-lg transition ${activeTab === "BestTimes" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
+            className={`px-3 py-1.5 rounded-lg transition whitespace-nowrap flex items-center gap-1.5 shrink-0 ${
+              activeTab === "BestTimes"
+                ? "bg-blue-600 text-white shadow-xs font-bold"
+                : "text-muted-foreground hover:text-foreground hover:bg-muted"
+            }`}
           >
-            💡 Best Posting Times
+            <Sparkles className="w-3.5 h-3.5" />
+            <span>Best Posting Times</span>
           </button>
         </div>
       </div>
@@ -792,29 +821,31 @@ export default function SafePostSchedulerPage() {
       {activeTab === "Scheduler" && (
         <div className="grid gap-6 lg:grid-cols-12 animate-in fade-in duration-200">
           {/* Master Form */}
-          <div className="lg:col-span-7 space-y-5 border bg-card p-5 rounded-xl shadow-sm">
-            <div className="flex items-center justify-between border-b pb-2">
-              <h2 className="font-extrabold text-sm">Master Post Creator</h2>
-              <span className="text-[11px] font-bold text-blue-600 dark:text-blue-400">FB Graph API v20.0</span>
+          <div className="lg:col-span-7 space-y-5 border border-border bg-card p-4 sm:p-5 rounded-2xl shadow-xs">
+            <div className="flex items-center justify-between border-b border-border pb-2.5">
+              <h2 className="font-bold text-sm text-foreground">Master Post Creator</h2>
+              <span className="text-[11px] font-semibold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/40 px-2 py-0.5 rounded-md border border-blue-200 dark:border-blue-900/40">
+                FB Graph API v20.0
+              </span>
             </div>
 
             {/* Target Account / Page Selector (Multi-Select Support) */}
-            <div className="bg-blue-50/50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-900 p-3.5 rounded-xl space-y-2">
+            <div className="bg-muted/30 border border-border p-3.5 rounded-xl space-y-2.5">
               <div className="flex items-center justify-between">
-                <label className="font-extrabold text-xs text-blue-700 dark:text-blue-300 flex items-center space-x-1.5">
-                  <Shield className="w-4 h-4 text-blue-500" />
-                  <span>📘 Target Pages & Accounts ({allSelectableAccounts.length} Connected)</span>
+                <label className="font-semibold text-xs text-foreground flex items-center gap-1.5">
+                  <Shield className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+                  <span>Target Pages & Accounts ({allSelectableAccounts.length} Connected)</span>
                 </label>
-                <span className="text-[10px] text-blue-600 bg-blue-100 dark:bg-blue-900/50 px-2 py-0.5 rounded font-bold">
+                <span className="text-[10px] text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-900/60 px-2 py-0.5 rounded-full font-semibold">
                   {selectedTargetAccounts.length} Selected
                 </span>
               </div>
-              <div className="space-y-1.5 bg-background border rounded-lg p-2.5 max-h-36 overflow-y-auto">
+              <div className="space-y-1.5 bg-background border border-border rounded-xl p-2.5 max-h-36 overflow-y-auto">
                 {allSelectableAccounts.map((acc) => {
                   const isChecked = selectedTargetAccounts.includes(acc.name)
                   return (
-                    <label key={acc.id} className="flex items-center justify-between space-x-2.5 text-xs font-bold cursor-pointer hover:bg-muted/50 p-1.5 rounded transition">
-                      <div className="flex items-center space-x-2 min-w-0">
+                    <label key={acc.id} className="flex items-center justify-between gap-2 text-xs font-medium cursor-pointer hover:bg-muted/50 p-1.5 rounded-lg transition">
+                      <div className="flex items-center gap-2 min-w-0">
                         <input
                           type="checkbox"
                           checked={isChecked}
@@ -829,15 +860,15 @@ export default function SafePostSchedulerPage() {
                           }}
                           className="rounded text-blue-600 focus:ring-blue-500"
                         />
-                        <span className={`truncate ${isChecked ? "text-blue-700 dark:text-blue-300 font-extrabold" : "text-foreground"}`}>
+                        <span className={`truncate text-xs ${isChecked ? "text-blue-600 dark:text-blue-400 font-semibold" : "text-foreground"}`}>
                           {acc.name}
                         </span>
                       </div>
-                      <div className="flex items-center space-x-1.5 text-[9px] shrink-0">
-                        <span className="bg-muted px-1.5 py-0.5 rounded text-muted-foreground font-semibold">
+                      <div className="flex items-center gap-1.5 text-[10px] shrink-0">
+                        <span className="bg-muted px-1.5 py-0.5 rounded-md text-muted-foreground font-medium">
                           {acc.category}
                         </span>
-                        <span className={`px-1.5 py-0.5 rounded font-bold ${acc.status.includes("Active") || acc.status.includes("Connected") ? "bg-emerald-500/10 text-emerald-500" : "bg-amber-500/10 text-amber-500"}`}>
+                        <span className={`px-1.5 py-0.5 rounded-md font-semibold ${acc.status.includes("Active") || acc.status.includes("Connected") ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400" : "bg-amber-500/10 text-amber-600 dark:text-amber-400"}`}>
                           {acc.status}
                         </span>
                       </div>
@@ -1187,13 +1218,13 @@ export default function SafePostSchedulerPage() {
           {/* Settings & Delay System */}
           <div className="lg:col-span-5 space-y-5">
             {/* Target Schedule Time Picker Card */}
-            <div className="border bg-card p-5 rounded-xl space-y-4 shadow-sm">
-              <div className="flex items-center justify-between border-b pb-2">
-                <h2 className="font-extrabold text-sm flex items-center space-x-1.5">
-                  <span>📅</span>
+            <div className="border border-border bg-card p-4 sm:p-5 rounded-2xl space-y-4 shadow-xs">
+              <div className="flex items-center justify-between border-b border-border pb-2.5">
+                <h2 className="font-bold text-sm flex items-center gap-2 text-foreground">
+                  <Clock className="w-4 h-4 text-blue-600 dark:text-blue-400" />
                   <span>Schedule Time & Delay Engine</span>
                 </h2>
-                <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-950/40 px-2 py-0.5 rounded">
+                <span className="text-[10px] font-semibold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-900/40 px-2 py-0.5 rounded-full">
                   Active
                 </span>
               </div>
@@ -1201,33 +1232,43 @@ export default function SafePostSchedulerPage() {
               {/* Schedule Mode: Immediate vs Specific Time */}
               <div className="space-y-3 text-xs">
                 <div>
-                  <label className="font-bold block mb-1.5">Publish Schedule Type</label>
+                  <label className="font-semibold block mb-1.5 text-foreground">Publish Schedule Type</label>
                   <div className="grid grid-cols-2 gap-2">
                     <button
                       type="button"
                       onClick={() => setScheduleMode("SpecificTime")}
-                      className={`py-2 rounded-lg border font-extrabold text-xs transition ${scheduleMode === "SpecificTime" ? "bg-emerald-600 text-white border-emerald-600 shadow-sm" : "hover:bg-muted"}`}
+                      className={`py-2 px-3 rounded-xl border text-xs font-semibold transition flex items-center justify-center gap-1.5 ${
+                        scheduleMode === "SpecificTime"
+                          ? "bg-blue-600 text-white border-blue-600 shadow-xs font-bold"
+                          : "bg-card border-border hover:bg-muted text-muted-foreground hover:text-foreground"
+                      }`}
                     >
-                      📅 Specific Time ({getFormattedSelectedTime()})
+                      <Clock className="w-3.5 h-3.5" />
+                      <span>Specific Time ({getFormattedSelectedTime()})</span>
                     </button>
                     <button
                       type="button"
                       onClick={() => setScheduleMode("Immediate")}
-                      className={`py-2 rounded-lg border font-extrabold text-xs transition ${scheduleMode === "Immediate" ? "bg-blue-600 text-white border-blue-600 shadow-sm" : "hover:bg-muted"}`}
+                      className={`py-2 px-3 rounded-xl border text-xs font-semibold transition flex items-center justify-center gap-1.5 ${
+                        scheduleMode === "Immediate"
+                          ? "bg-blue-600 text-white border-blue-600 shadow-xs font-bold"
+                          : "bg-card border-border hover:bg-muted text-muted-foreground hover:text-foreground"
+                      }`}
                     >
-                      ⚡ Immediate Queue
+                      <Send className="w-3.5 h-3.5" />
+                      <span>Immediate Queue</span>
                     </button>
                   </div>
                 </div>
 
                 {/* Specific Date & Time Input */}
                 {scheduleMode === "SpecificTime" && (
-                  <div className="p-3.5 border border-emerald-500/30 bg-emerald-50/40 dark:bg-emerald-950/20 rounded-xl space-y-2.5">
+                  <div className="p-3.5 border border-border bg-muted/20 rounded-xl space-y-2.5">
                     <div className="flex items-center justify-between">
-                      <label className="font-extrabold text-xs text-emerald-700 dark:text-emerald-400 block">
+                      <label className="font-semibold text-xs text-foreground block">
                         Select Target Date & Time
                       </label>
-                      <span className="text-[10px] font-bold bg-emerald-200 dark:bg-emerald-900 text-emerald-900 dark:text-emerald-200 px-2 py-0.5 rounded-full">
+                      <span className="text-[10px] font-semibold bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-900/60 px-2 py-0.5 rounded-full">
                         {getFormattedSelectedTime()} Selected
                       </span>
                     </div>
@@ -1242,7 +1283,7 @@ export default function SafePostSchedulerPage() {
                             ;(e.target as HTMLInputElement).showPicker?.()
                           } catch {}
                         }}
-                        className="w-full px-3 py-2 border border-emerald-300 dark:border-emerald-700 rounded-lg bg-background text-xs font-bold text-foreground focus:ring-2 focus:ring-emerald-500 cursor-pointer shadow-sm"
+                        className="w-full px-3 py-2 border border-border rounded-xl bg-background text-xs font-semibold text-foreground focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 cursor-pointer shadow-xs transition"
                       />
                     </div>
 
@@ -1250,109 +1291,134 @@ export default function SafePostSchedulerPage() {
                     <div className="flex flex-wrap gap-1.5 pt-1">
                       <button
                         onClick={() => setQuickPreset("now")}
-                        className="text-[10px] bg-card hover:bg-muted px-2 py-0.5 rounded border font-semibold text-foreground"
+                        className="text-[11px] bg-card hover:bg-muted px-2.5 py-1 rounded-lg border border-border font-medium text-foreground transition flex items-center gap-1"
                       >
-                        ⚡ Now
+                        <Clock className="w-3 h-3 text-blue-600 dark:text-blue-400" />
+                        <span>Now</span>
                       </button>
                       <button
                         onClick={() => setQuickPreset("1hour")}
-                        className="text-[10px] bg-card hover:bg-muted px-2 py-0.5 rounded border font-semibold text-foreground"
+                        className="text-[11px] bg-card hover:bg-muted px-2.5 py-1 rounded-lg border border-border font-medium text-foreground transition flex items-center gap-1"
                       >
-                        ⏱️ In 1 Hour
+                        <Clock className="w-3 h-3 text-blue-600 dark:text-blue-400" />
+                        <span>In 1 Hour</span>
                       </button>
                       <button
                         onClick={() => setQuickPreset("tomorrow_morning")}
-                        className="text-[10px] bg-card hover:bg-muted px-2 py-0.5 rounded border font-semibold text-foreground"
+                        className="text-[11px] bg-card hover:bg-muted px-2.5 py-1 rounded-lg border border-border font-medium text-foreground transition flex items-center gap-1"
                       >
-                        🌅 Tomorrow 10 AM
+                        <CalendarIcon className="w-3 h-3 text-blue-600 dark:text-blue-400" />
+                        <span>Tomorrow 10 AM</span>
                       </button>
                       <button
                         onClick={() => setQuickPreset("tomorrow_evening")}
-                        className="text-[10px] bg-card hover:bg-muted px-2 py-0.5 rounded border font-semibold text-foreground"
+                        className="text-[11px] bg-card hover:bg-muted px-2.5 py-1 rounded-lg border border-border font-medium text-foreground transition flex items-center gap-1"
                       >
-                        🌆 Tomorrow 7:30 PM
+                        <CalendarIcon className="w-3 h-3 text-blue-600 dark:text-blue-400" />
+                        <span>Tomorrow 7:30 PM</span>
                       </button>
                     </div>
 
-                    <p className="text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold pt-1 border-t border-emerald-200 dark:border-emerald-900/60">
-                      ⏰ Post will automatically publish to <strong>{selectedTargetAccount}</strong> at exact scheduled time.
+                    <p className="text-[11px] text-muted-foreground font-medium pt-1.5 border-t border-border flex items-center gap-1.5">
+                      <CheckCircle2 className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 shrink-0" />
+                      <span>Post will automatically publish to <strong className="text-foreground">{selectedTargetAccount}</strong> at exact scheduled time.</span>
                     </p>
                   </div>
                 )}
 
                 <div>
-                  <label className="font-bold block mb-1">Delay Mode</label>
+                  <label className="font-semibold block mb-1 text-foreground">Delay Mode</label>
                   <div className="grid grid-cols-2 gap-2">
                     <button
                       onClick={() => setDelayType("Randomized")}
-                      className={`py-1.5 rounded-lg border font-bold ${delayType === "Randomized" ? "bg-blue-600 text-white border-blue-600 shadow-sm" : "hover:bg-muted"}`}
+                      className={`py-2 px-3 rounded-xl border text-xs font-semibold transition flex items-center justify-center gap-1.5 ${
+                        delayType === "Randomized"
+                          ? "bg-blue-600 text-white border-blue-600 shadow-xs font-bold"
+                          : "bg-card border-border hover:bg-muted text-muted-foreground hover:text-foreground"
+                      }`}
                     >
-                      🎲 Randomized Delays
+                      <Shuffle className="w-3.5 h-3.5" />
+                      <span>Randomized Delays</span>
                     </button>
                     <button
                       onClick={() => setDelayType("Fixed")}
-                      className={`py-1.5 rounded-lg border font-bold ${delayType === "Fixed" ? "bg-blue-600 text-white border-blue-600 shadow-sm" : "hover:bg-muted"}`}
+                      className={`py-2 px-3 rounded-xl border text-xs font-semibold transition flex items-center justify-center gap-1.5 ${
+                        delayType === "Fixed"
+                          ? "bg-blue-600 text-white border-blue-600 shadow-xs font-bold"
+                          : "bg-card border-border hover:bg-muted text-muted-foreground hover:text-foreground"
+                      }`}
                     >
-                      ⏱️ Fixed Interval
+                      <Clock className="w-3.5 h-3.5" />
+                      <span>Fixed Interval</span>
                     </button>
                   </div>
                 </div>
 
                 {delayType === "Randomized" ? (
                   <div>
-                    <label className="font-bold block mb-1">Random Delay Range (Minutes)</label>
-                    <div className="p-2.5 border rounded-lg bg-muted/20 text-muted-foreground font-medium">
+                    <label className="font-semibold block mb-1 text-foreground">Random Delay Range (Minutes)</label>
+                    <div className="p-2.5 border border-border rounded-xl bg-muted/20 text-muted-foreground font-medium text-xs">
                       Random intervals: 10m, 20m, 30m, 50m (Minimum {minDelay} mins enforced)
                     </div>
                   </div>
                 ) : (
                   <div>
-                    <label className="font-bold block mb-1">Interval (Every X Minutes)</label>
+                    <label className="font-semibold block mb-1 text-foreground">Interval (Every X Minutes)</label>
                     <input
                       type="number"
                       min={5}
                       value={fixedInterval}
                       onChange={(e) => setFixedInterval(Math.max(5, Number(e.target.value)))}
-                      className="w-full px-3 py-1.5 border rounded-lg bg-background"
+                      className="w-full px-3 py-2 border border-border rounded-xl bg-background text-xs"
                     />
                   </div>
                 )}
 
                 {/* Auto Assign Mode */}
                 <div>
-                  <label className="font-bold block mb-1">Account Assignment Mode</label>
+                  <label className="font-semibold block mb-1 text-foreground">Account Assignment Mode</label>
                   <div className="grid grid-cols-2 gap-2">
                     <button
                       onClick={() => setAssignMode("Auto")}
-                      className={`py-1.5 rounded-lg border font-bold ${assignMode === "Auto" ? "bg-purple-600 text-white border-purple-600 shadow-sm" : "hover:bg-muted"}`}
+                      className={`py-2 px-3 rounded-xl border text-xs font-semibold transition flex items-center justify-center gap-1.5 ${
+                        assignMode === "Auto"
+                          ? "bg-blue-600 text-white border-blue-600 shadow-xs font-bold"
+                          : "bg-card border-border hover:bg-muted text-muted-foreground hover:text-foreground"
+                      }`}
                     >
-                      🤖 AI Auto Assign
+                      <Sparkles className="w-3.5 h-3.5" />
+                      <span>AI Auto Assign</span>
                     </button>
                     <button
                       onClick={() => setAssignMode("Manual")}
-                      className={`py-1.5 rounded-lg border font-bold ${assignMode === "Manual" ? "bg-purple-600 text-white border-purple-600 shadow-sm" : "hover:bg-muted"}`}
+                      className={`py-2 px-3 rounded-xl border text-xs font-semibold transition flex items-center justify-center gap-1.5 ${
+                        assignMode === "Manual"
+                          ? "bg-blue-600 text-white border-blue-600 shadow-xs font-bold"
+                          : "bg-card border-border hover:bg-muted text-muted-foreground hover:text-foreground"
+                      }`}
                     >
-                      🖐️ Manual Drag/Drop
+                      <Layers className="w-3.5 h-3.5" />
+                      <span>Manual Drag/Drop</span>
                     </button>
                   </div>
                 </div>
 
                 {/* Module 11 CTA Pin Comment Integration */}
-                <div className="p-3.5 border border-blue-500/30 bg-blue-50/30 dark:bg-blue-950/20 rounded-xl space-y-2.5">
+                <div className="p-3.5 border border-border bg-muted/20 rounded-xl space-y-2.5">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-1.5">
                       <Pin className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
-                      <span className="font-extrabold text-xs text-blue-900 dark:text-blue-300">
+                      <span className="font-bold text-xs text-foreground">
                         1st Comment Pin Automation
                       </span>
                     </div>
-                    <span className="text-[10px] bg-blue-500/10 text-blue-600 dark:text-blue-400 font-bold px-2 py-0.5 rounded-full border border-blue-500/20">
+                    <span className="text-[10px] bg-blue-500/10 text-blue-600 dark:text-blue-400 font-semibold px-2 py-0.5 rounded-full border border-blue-500/20">
                       Module 11 • Anti-Reach Penalty
                     </span>
                   </div>
 
                   <div className="flex items-center justify-between pt-0.5">
-                    <label className="text-xs font-bold text-foreground cursor-pointer flex items-center gap-2">
+                    <label className="text-xs font-medium text-foreground cursor-pointer flex items-center gap-2">
                       <input
                         type="checkbox"
                         checked={enableCtaPinComment}
@@ -1365,21 +1431,21 @@ export default function SafePostSchedulerPage() {
                       href={`/workspace/workspace-1/safe/cta-pin-comment`}
                       target="_blank"
                       rel="noreferrer"
-                      className="text-[10px] font-bold text-blue-600 hover:underline flex items-center gap-1"
+                      className="text-[10px] font-semibold text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1"
                     >
                       Studio <ExternalLink className="w-2.5 h-2.5" />
                     </a>
                   </div>
 
                   {enableCtaPinComment && (
-                    <div className="space-y-2 pt-2 border-t border-blue-500/20 text-xs">
+                    <div className="space-y-2 pt-2 border-t border-border text-xs">
                       <div className="grid grid-cols-2 gap-2">
                         <div>
-                          <label className="text-[10px] font-bold text-muted-foreground uppercase">Template</label>
+                          <label className="text-[10px] font-semibold text-muted-foreground uppercase">Template</label>
                           <select
                             value={selectedCtaTemplateId}
                             onChange={(e) => handleSelectCtaTemplate(e.target.value)}
-                            className="w-full mt-1 p-1.5 border rounded-lg bg-background text-xs font-semibold"
+                            className="w-full mt-1 p-2 border border-border rounded-xl bg-background text-xs font-medium"
                           >
                             {ctaTemplates.map((t) => (
                               <option key={t.id} value={t.id}>
@@ -1390,14 +1456,14 @@ export default function SafePostSchedulerPage() {
                         </div>
 
                         <div>
-                          <label className="text-[10px] font-bold text-muted-foreground uppercase">Anti-Ban Delay</label>
+                          <label className="text-[10px] font-semibold text-muted-foreground uppercase">Anti-Ban Delay</label>
                           <select
                             value={ctaDelaySeconds}
                             onChange={(e) => setCtaDelaySeconds(Number(e.target.value))}
-                            className="w-full mt-1 p-1.5 border rounded-lg bg-background text-xs font-semibold"
+                            className="w-full mt-1 p-2 border border-border rounded-xl bg-background text-xs font-medium"
                           >
                             <option value={0}>0s (Immediate)</option>
-                            <option value={15}>15s (Natural ✨)</option>
+                            <option value={15}>15s (Natural Flow)</option>
                             <option value={30}>30s (Safe)</option>
                             <option value={60}>60s (Conservative)</option>
                           </select>
@@ -1405,12 +1471,12 @@ export default function SafePostSchedulerPage() {
                       </div>
 
                       <div>
-                        <label className="text-[10px] font-bold text-muted-foreground uppercase">CTA Comment Body</label>
+                        <label className="text-[10px] font-semibold text-muted-foreground uppercase">CTA Comment Body</label>
                         <textarea
                           rows={2}
                           value={ctaCommentText}
                           onChange={(e) => setCtaCommentText(e.target.value)}
-                          className="w-full mt-1 p-2 border rounded-lg bg-background text-xs"
+                          className="w-full mt-1 p-2.5 border border-border rounded-xl bg-background text-xs"
                           placeholder="Comment text to post and pin..."
                         />
                       </div>
@@ -1419,16 +1485,18 @@ export default function SafePostSchedulerPage() {
                 </div>
 
                 {scheduleSuccess && (
-                  <div className="p-3 border border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 font-extrabold text-xs rounded-xl">
-                    {scheduleSuccess}
+                  <div className="p-3 border border-blue-500/30 bg-blue-50/50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-300 font-semibold text-xs rounded-xl flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 shrink-0 text-blue-600 dark:text-blue-400" />
+                    <span>{scheduleSuccess}</span>
                   </div>
                 )}
 
                 <button
                   onClick={handleSchedulePostToQueue}
-                  className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold py-2.5 rounded-lg shadow-sm transition text-xs flex items-center justify-center space-x-2"
+                  className="w-full h-11 bg-blue-600 hover:bg-blue-700 active:scale-[0.99] text-white font-bold rounded-xl shadow-xs transition text-xs flex items-center justify-center gap-2"
                 >
-                  <span>🚀 Schedule Master Post into Bull Queue</span>
+                  <Send className="w-4 h-4" />
+                  <span>Schedule Master Post into Bull Queue</span>
                 </button>
               </div>
             </div>
@@ -1454,28 +1522,28 @@ export default function SafePostSchedulerPage() {
 
       {/* TAB 3: BULL QUEUE MONITOR */}
       {activeTab === "QueueMonitor" && (
-        <div className="border bg-card p-5 rounded-xl space-y-5 shadow-sm animate-in fade-in duration-200">
-          <div className="flex items-center justify-between border-b pb-3">
+        <div className="border border-border bg-card p-4 sm:p-5 rounded-2xl space-y-5 shadow-xs animate-in fade-in duration-200">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-b border-border pb-3">
             <div>
-              <h2 className="font-extrabold text-base">Bull Queue & Redis Job Monitor</h2>
+              <h2 className="font-bold text-base text-foreground">Bull Queue & Redis Job Monitor</h2>
               <p className="text-xs text-muted-foreground mt-0.5">
                 Automated rate-limited queue processing with 3x retry policy and Admin Notification alerts on failure.
               </p>
             </div>
             <div className="flex items-center space-x-2">
-              <span className="bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 text-xs font-bold px-3 py-1 rounded-full">
+              <span className="bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-900/40 text-xs font-semibold px-3 py-1 rounded-full">
                 ● Redis Queue Worker Online
               </span>
             </div>
           </div>
 
-          {/* Meta Graph API Integration Warning / Status Note */}
-          <div className="p-3 border border-amber-500/30 bg-amber-500/10 rounded-xl text-amber-800 dark:text-amber-300 text-xs space-y-1">
-            <div className="font-extrabold flex items-center space-x-1.5">
-              <span>🔑</span>
+          {/* Meta Graph API Integration Requirement Note */}
+          <div className="p-3.5 border border-border bg-muted/20 rounded-xl text-foreground text-xs space-y-1">
+            <div className="font-semibold flex items-center gap-1.5 text-blue-600 dark:text-blue-400">
+              <Key className="w-4 h-4 shrink-0" />
               <span>Meta Graph API Live Integration Requirement:</span>
             </div>
-            <p className="text-[11px] leading-relaxed">
+            <p className="text-[11px] text-muted-foreground leading-relaxed">
               Queue processing transitions jobs to <strong>Posted</strong>. For posts to appear on live Facebook Pages (like <em>CARE HUB BD</em>), valid <strong>Meta Page Access Tokens (`EAAG...`)</strong> with <code>pages_manage_posts</code> permission must be connected in <strong>Connect Accounts</strong>.
             </p>
           </div>
@@ -1483,11 +1551,11 @@ export default function SafePostSchedulerPage() {
           {/* Queue Jobs Table */}
           <div className="space-y-3 text-xs">
             {queueJobs.map((job) => (
-              <div key={job.id} className="border p-4 rounded-xl space-y-2 bg-muted/10">
+              <div key={job.id} className="border border-border p-4 rounded-xl space-y-2 bg-muted/10">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                   <div className="space-y-0.5">
-                    <span className="font-extrabold text-sm text-foreground block">{job.variationTitle}</span>
-                    <div className="flex items-center space-x-2 text-muted-foreground text-[11px]">
+                    <span className="font-bold text-sm text-foreground block">{job.variationTitle}</span>
+                    <div className="flex flex-wrap items-center gap-2 text-muted-foreground text-[11px]">
                       <span>Target: <strong className="text-foreground">{job.accountName}</strong></span>
                       <span>•</span>
                       <span>Enforced Delay: <strong className="text-blue-600">{job.delayMinutes} mins</strong></span>
@@ -1496,36 +1564,40 @@ export default function SafePostSchedulerPage() {
                     </div>
                   </div>
 
-                  <div className="flex items-center space-x-3">
+                  <div className="flex items-center gap-2 shrink-0">
                     <span
-                      className={`px-3 py-1 rounded-full text-xs font-bold ${
+                      className={`px-3 py-1 rounded-full text-xs font-semibold ${
                         job.status === "Posted"
-                          ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300"
+                          ? "bg-blue-50 text-blue-600 dark:bg-blue-950/60 dark:text-blue-400 border border-blue-200 dark:border-blue-900/60"
                           : job.status === "Processing"
                           ? "bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300 animate-pulse"
                           : job.status === "Failed"
-                          ? "bg-destructive/20 text-destructive"
-                          : "bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300"
+                          ? "bg-destructive/10 text-destructive border border-destructive/20"
+                          : "bg-muted text-muted-foreground"
                       }`}
                     >
-                      {job.status === "Posted" ? "✓ Posted (Graph API)" : job.status}
+                      {job.status === "Posted" ? "Posted (Graph API)" : job.status}
                     </span>
 
                     {job.status === "Failed" && (
                       <button
                         onClick={() => handleRetryJob(job.id)}
-                        className="bg-blue-600 hover:bg-blue-700 text-white font-bold px-3 py-1 rounded-lg text-xs"
+                        className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-3 py-1 rounded-lg text-xs flex items-center gap-1 transition"
                       >
-                        🔄 Retry Job ({job.retryCount}/{job.maxRetries})
+                        <RotateCcw className="w-3.5 h-3.5" />
+                        <span>Retry Job ({job.retryCount}/{job.maxRetries})</span>
                       </button>
                     )}
                   </div>
                 </div>
 
                 {job.lastError && (
-                  <div className="p-2.5 bg-destructive/10 border border-destructive/30 rounded-lg text-destructive text-[11px] font-semibold flex items-center justify-between">
-                    <span>⚠️ Error: {job.lastError} (Retried {job.retryCount}/{job.maxRetries} times)</span>
-                    <span className="bg-destructive text-white text-[9px] font-black px-2 py-0.5 rounded uppercase">
+                  <div className="p-2.5 bg-destructive/10 border border-destructive/30 rounded-xl text-destructive text-[11px] font-medium flex items-center justify-between">
+                    <span className="flex items-center gap-1.5">
+                      <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                      <span>Error: {job.lastError} (Retried {job.retryCount}/{job.maxRetries} times)</span>
+                    </span>
+                    <span className="bg-destructive text-white text-[9px] font-bold px-2 py-0.5 rounded-md uppercase">
                       Admin Notified
                     </span>
                   </div>
@@ -1538,9 +1610,9 @@ export default function SafePostSchedulerPage() {
 
       {/* TAB 4: BEST POSTING TIME ANALYSIS */}
       {activeTab === "BestTimes" && (
-        <div className="border bg-card p-5 rounded-xl space-y-5 shadow-sm animate-in fade-in duration-200">
-          <div className="border-b pb-3">
-            <h2 className="font-extrabold text-base">Best Posting Time Analysis (Graph API Page Insights)</h2>
+        <div className="border border-border bg-card p-4 sm:p-5 rounded-2xl space-y-5 shadow-xs animate-in fade-in duration-200">
+          <div className="border-b border-border pb-3">
+            <h2 className="font-bold text-base text-foreground">Best Posting Time Analysis (Graph API Page Insights)</h2>
             <p className="text-xs text-muted-foreground mt-0.5">
               AI analyzes Facebook Page Insights & historical engagement patterns to suggest 5-8 optimal posting slots converted to local timezone.
             </p>
@@ -1548,25 +1620,25 @@ export default function SafePostSchedulerPage() {
 
           <div className="grid gap-4 md:grid-cols-2">
             {bestTimes.map((item, idx) => (
-              <div key={idx} className="border p-4 rounded-xl space-y-2 bg-muted/10 hover:border-blue-500 transition text-xs">
+              <div key={idx} className="border border-border p-4 rounded-xl space-y-2 bg-muted/10 hover:border-blue-500/50 transition text-xs">
                 <div className="flex items-center justify-between">
-                  <span className="font-extrabold text-sm text-foreground">{item.slot}</span>
-                  <span className="bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300 font-bold px-2.5 py-0.5 rounded text-[11px]">
+                  <span className="font-bold text-sm text-foreground">{item.slot}</span>
+                  <span className="bg-blue-50 text-blue-600 dark:bg-blue-950/60 dark:text-blue-400 border border-blue-200 dark:border-blue-900/60 font-semibold px-2.5 py-0.5 rounded-full text-[11px]">
                     {item.expectedReachBoost}
                   </span>
                 </div>
 
                 <div className="space-y-1 text-muted-foreground">
-                  <div className="flex items-center space-x-2">
-                    <span className="font-semibold text-foreground">Local Time:</span>
-                    <span className="bg-blue-100 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300 font-bold px-2 py-0.5 rounded text-[11px]">
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium text-foreground">Local Time:</span>
+                    <span className="bg-blue-100/50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 font-semibold px-2 py-0.5 rounded-md text-[11px]">
                       {item.localTime}
                     </span>
                   </div>
                   <div>Day: <strong className="text-foreground">{item.day}</strong> ({item.targetTimezone})</div>
                 </div>
 
-                <p className="text-muted-foreground text-[11px] pt-1 border-t italic">{item.reason}</p>
+                <p className="text-muted-foreground text-[11px] pt-1.5 border-t border-border italic">{item.reason}</p>
               </div>
             ))}
           </div>
@@ -1575,18 +1647,20 @@ export default function SafePostSchedulerPage() {
 
       {/* Meta Page Access Token Management Modal */}
       {showTokenModal && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-card border rounded-2xl p-6 max-w-lg w-full space-y-4 shadow-2xl animate-in zoom-in-95 duration-200">
-            <div className="flex items-center justify-between border-b pb-3">
-              <div className="flex items-center space-x-2">
-                <span className="text-xl">🔑</span>
-                <h3 className="font-extrabold text-base">Meta Facebook Page Access Token</h3>
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-card border border-border rounded-2xl p-5 sm:p-6 max-w-lg w-full space-y-4 shadow-2xl animate-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between border-b border-border pb-3">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 flex items-center justify-center">
+                  <Key className="w-4 h-4" />
+                </div>
+                <h3 className="font-bold text-base text-foreground">Meta Facebook Page Access Token</h3>
               </div>
               <button
                 onClick={() => setShowTokenModal(false)}
-                className="text-muted-foreground hover:text-foreground text-sm font-bold p-1"
+                className="w-8 h-8 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition"
               >
-                ✕
+                <X className="w-4 h-4" />
               </button>
             </div>
 
@@ -1595,27 +1669,27 @@ export default function SafePostSchedulerPage() {
             </p>
 
             <div className="space-y-2 text-xs">
-              <label className="font-bold text-foreground block">Facebook Page Access Token (EAAG...)</label>
+              <label className="font-semibold text-foreground block">Facebook Page Access Token (EAAG...)</label>
               <textarea
                 value={activePageToken}
                 onChange={(e) => setActivePageToken(e.target.value)}
                 rows={4}
-                className="w-full border rounded-xl p-3 font-mono text-[11px] bg-muted/20 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full border border-border rounded-xl p-3 font-mono text-[11px] bg-muted/20 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition text-foreground"
                 placeholder="EAAG..."
               />
             </div>
 
             {tokenSaved && (
-              <div className="p-2.5 bg-emerald-500/10 border border-emerald-500/30 text-emerald-700 dark:text-emerald-300 text-xs rounded-xl font-bold flex items-center space-x-2">
-                <span>✓</span>
+              <div className="p-3 bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-900/40 text-blue-700 dark:text-blue-300 text-xs rounded-xl font-semibold flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 text-blue-600 dark:text-blue-400 shrink-0" />
                 <span>Meta Page Access Token updated! Real Graph API publishing active.</span>
               </div>
             )}
 
-            <div className="flex items-center justify-end space-x-2 pt-2 border-t">
+            <div className="flex items-center justify-end space-x-2 pt-3 border-t border-border">
               <button
                 onClick={() => setShowTokenModal(false)}
-                className="px-4 py-2 border rounded-xl text-xs font-bold hover:bg-muted transition"
+                className="h-9 px-4 border border-border rounded-xl text-xs font-semibold hover:bg-muted text-muted-foreground transition"
               >
                 Close
               </button>
@@ -1624,7 +1698,7 @@ export default function SafePostSchedulerPage() {
                   setTokenSaved(true)
                   setTimeout(() => setTokenSaved(false), 3000)
                 }}
-                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-extrabold transition shadow-md"
+                className="h-9 px-4 bg-blue-600 hover:bg-blue-700 active:scale-[0.98] text-white rounded-xl text-xs font-semibold transition shadow-xs"
               >
                 Save Meta Token
               </button>
