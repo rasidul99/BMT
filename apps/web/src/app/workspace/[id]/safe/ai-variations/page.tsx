@@ -13,7 +13,7 @@ import {
   Download,
   Key,
   ChevronRight,
-  Flame,
+  TrendingUp,
   Zap,
   Heart,
   ShieldCheck,
@@ -27,6 +27,8 @@ import {
   RefreshCw,
   Sliders,
   CheckCircle2,
+  Share2,
+  Award,
 } from "lucide-react"
 
 interface VariationItem {
@@ -75,13 +77,13 @@ export default function SafeAIVariationsPage() {
   const [savedToLibraryIds, setSavedToLibraryIds] = useState<string[]>([])
   const [bulkSaveNotice, setBulkSaveNotice] = useState<string | null>(null)
 
-  // Generated Variations State
+  // Generated Variations State (Zero Emojis)
   const [variations, setVariations] = useState<VariationItem[]>([
     {
       id: "var-1",
       tone: "Curiosity",
       hookScore: 98,
-      headline: "🔥 আপনি কি জানেন ৯০% মানুষ স্মার্টওয়াচ কেনার পর এই ভুলটি করে আফসোস করেন?",
+      headline: "আপনি কি জানেন ৯০% মানুষ স্মার্টওয়াচ কেনার পর এই ভুলটি করে আফসোস করেন?",
       body: "বাজারে হাজারো কপি ঘড়ির ভিড়ে আসল প্রিমিয়াম এক্সপেরিয়েন্স পাওয়া এখন সত্যি কঠিন। কিন্তু আপনি যদি এমন একটি ওয়াচ খোঁজেন যার ডিসপ্লে রোদেও চকচক করবে এবং বারবার চার্জ দেওয়ার ঝামেলা থাকবে না—তাহলে এই ওয়াচটি আপনার জন্যই। 7 দিনের ব্যাটারি ব্যাকআপ আর ক্রিস্টাল ক্লিয়ার ব্লুটুথ কলিং নিয়ে এটি এখন বাংলাদেশের সবচেয়ে আলোচিত গ্যাজেট!",
       hashtags: "#SmartwatchBD #TechLoversBD #GadgetReview #AmoledDisplay #BMTMarketing",
       cta: "অফার প্রাইসে আজই অর্ডার করতে ভিজিট করুন: https://bmt.link/smartwatch-offer",
@@ -92,7 +94,7 @@ export default function SafeAIVariationsPage() {
       id: "var-2",
       tone: "Urgency",
       hookScore: 96,
-      headline: "🚨 আর মাত্র ২৪ ঘণ্টা! স্টক প্রায় শেষ—৪০% স্পেশাল ফ্ল্যাশ সেল!",
+      headline: "আর মাত্র ২৪ ঘণ্টা! স্টক প্রায় শেষ—৪০% স্পেশাল ফ্ল্যাশ সেল!",
       body: "ঈদ উপলক্ষে প্রিমিয়াম AMOLED স্মার্টওয়াচে পাচ্ছেন অবিশ্বাস্য ডিসকাউন্ট! স্টক দ্রুত ফুরিয়ে যাচ্ছে। আর মাত্র ১৫টি পিস অবশিষ্ট রয়েছে। সাথে পাচ্ছেন ১ বছরের অফিশিয়াল রিপ্লেসমেন্ট ওয়ারেন্টি এবং সারা বাংলাদেশে ক্যাশ অন ডেলিভারি সুবিধা। স্টক শেষ হওয়ার আগেই লুফে নিন!",
       hashtags: "#FlashSaleBD #EidOffer #LimitedStock #DiscountDeals #OnlineShoppingBD",
       cta: "ক্যাশ অন ডেলিভারিতে অর্ডার করতে এখনই ইনবক্স করুন অথবা লিংকে যান: https://bmt.link/smartwatch-offer",
@@ -103,7 +105,7 @@ export default function SafeAIVariationsPage() {
       id: "var-3",
       tone: "Social Proof",
       hookScore: 94,
-      headline: "⭐⭐⭐⭐⭐ 'এত কম দামে এমন প্রিমিয়াম AMOLED ডিসপ্লে সত্যি আশা করিনি!' - তানভীর ভাই (ধানমন্ডি)",
+      headline: "'এত কম দামে এমন প্রিমিয়াম AMOLED ডিসপ্লে সত্যি আশা করিনি!' - তানভীর ভাই (ধানমন্ডি)",
       body: "ইতিমধ্যেই ৫,০০০+ হ্যাপি কাস্টমার তাদের দৈনন্দিন লাইফস্টাইল আপগ্রেড করেছেন এই স্মার্টওয়াচ দিয়ে। ক্রিস্টাল ক্লিয়ার কলিং, নির্ভুল হার্ট-রেট মনিটর আর প্রিমিয়াম মেটাল ফিনিশ—সব মিলিয়ে এটি এই সিজনের সেরা বেস্টসেলার। গ্রাহকদের রিভিউ এবং আনবক্সিং ভিডিও দেখতে পেজে চোখ রাখুন!",
       hashtags: "#CustomerReview #VerifiedPurchase #HappyClients #BestGadgetBD #BDShoppers",
       cta: "হাজারো সন্তুষ্ট গ্রাহকের দলে যুক্ত হতে এখনই অর্ডার করুন: https://bmt.link/smartwatch-offer",
@@ -114,7 +116,7 @@ export default function SafeAIVariationsPage() {
       id: "var-4",
       tone: "Storytelling",
       hookScore: 95,
-      headline: "📖 বাইক চালানোর সময় ফোন রিসিভ করতে গিয়ে রিয়াদ ভাই বড় বিপদে পড়তে যাচ্ছিলেন...",
+      headline: "বাইক চালানোর সময় ফোন রিসিভ করতে গিয়ে রিয়াদ ভাই বড় বিপদে পড়তে যাচ্ছিলেন...",
       body: "হঠাৎ কল আসলে পকেট থেকে ফোন বের করা কতটা ঝুঁকিপূর্ণ তা আমরা অনেকেই জানি। কিন্তু স্মার্টওয়াচে সিঙ্গেল ট্যাপে কল রিসিভ এবং কথা বলার সুবিধা রিয়াদ ভাইয়ের প্রতিদিনের রাইডকে করে তুলেছে ১০০% নিরাপদ ও সহজ। টেকনোলজি যখন জীবনকে সহজ ও নিরাপদ করে, তখনই তা সার্থক!",
       hashtags: "#LifeStory #SmartLiving #SafetyFirst #BikerLifeBD #SmartGadgets",
       cta: "আপনার প্রতিদিনের জীবনকে আরও সহজ করতে আজই সংগ্রহ করুন: https://bmt.link/smartwatch-offer",
@@ -123,7 +125,7 @@ export default function SafeAIVariationsPage() {
     },
   ])
 
-  // Generator Logic (Multi-Language, Multi-Tone Marketing Framework)
+  // Generator Logic (Zero Emojis, Multi-Language, Multi-Tone Marketing Framework)
   const handleGenerateVariations = () => {
     setIsGenerating(true)
 
@@ -140,25 +142,25 @@ export default function SafeAIVariationsPage() {
 
         if (language === "Bengali") {
           hashtags = `#${productName.split(" ")[0]}BD #${category.replace(/[^a-zA-Z]/g, "")} #SpecialOffer #BMT`
-          cta = `👉 এখনই বিশেষ অফারে অর্ডার করতে ভিজিট করুন: https://bmt.link/${productName.toLowerCase().replace(/[^a-z0-9]/g, "-")}`
+          cta = `এখনই বিশেষ অফারে অর্ডার করতে ভিজিট করুন: https://bmt.link/${productName.toLowerCase().replace(/[^a-z0-9]/g, "-")}`
 
           if (tone === "Curiosity") {
-            headline = `🔥 ${productName} নিয়ে কেন এত আলোচনা? জেনে নিন গোপন কারণ!`
+            headline = `${productName} নিয়ে কেন এত আলোচনা? জেনে নিন আসল কারণ!`
             body = `আপনি কি জানেন এই একটি ফিচারের কারণেই হাজার হাজার ক্রেতা বেছে নিচ্ছেন এই প্রোডাক্টটি? ${keyBenefits}। সাধারণ গ্যাজেট থেকে নিজেকে আলাদা করতে এর চেয়ে সেরা সমাধান আর হতে পারে না। বিস্তারিত জানতে পুরো পোস্টটি পড়ুন!`
           } else if (tone === "Urgency") {
-            headline = `⚡ শেষ সুযোগ! স্টক একদম সীমিত—আজকের স্পেশাল ডিসকাউন্ট মিস করবেন না!`
+            headline = `শেষ সুযোগ! স্টক একদম সীমিত—আজকের স্পেশাল ডিসকাউন্ট মিস করবেন না!`
             body = `চাহিদা তুঙ্গে থাকায় আমাদের স্টক দ্রুত শেষ হয়ে যাচ্ছে! যারা প্রিমিয়াম কোয়ালিটি নিশ্চিত করতে চান, তাদের জন্য এটাই সেরা সময়। ${keyBenefits}। আর দেরি না করে এখনই বুকিং সম্পন্ন করুন!`
           } else if (tone === "Emotional") {
-            headline = `❤️ প্রিয়জনের মুখে হাসি ফোটাতে এর চেয়ে সেরা উপহার আর কী হতে পারে?`
+            headline = `প্রিয়জনের মুখে হাসি ফোটাতে এর চেয়ে সেরা উপহার আর কী হতে পারে?`
             body = `ভালোবাসা প্রকাশে একটি পারফেক্ট উপহারের গুরুত্ব অনেক। ${productName} আপনার যত্ন আর আভিজাত্য প্রকাশ করবে প্রতিটি মুহূর্তে। আকর্ষণীয় প্যাকেজিং ও ${keyBenefits} এর সাথে আজই পাঠিয়ে দিন আপনার ভালোবাসার মানুষের ঠিকানায়।`
           } else if (tone === "Social Proof") {
-            headline = `⭐⭐⭐⭐⭐ 'দাম অনুযায়ী কোয়ালিটি ১০০ তে ১০০!' - আমাদের ভেরিফায়েড কাস্টমারদের মতামত`
+            headline = `'দাম অনুযায়ী কোয়ালিটি ১০০ তে ১০০!' - আমাদের ভেরিফায়েড কাস্টমারদের মতামত`
             body = `সারা বাংলাদেশ থেকে ইতিমধ্যে শত শত সন্তুষ্ট ক্রেতা ব্যবহার করছেন এবং সন্তুষ্টি প্রকাশ করেছেন। ${keyBenefits} যা প্রতিটি ইউজারকে মুগ্ধ করেছে। আপনিও কোনো রকম ঝুঁকি ছাড়াই ক্যাশ অন ডেলিভারিতে ট্রাই করতে পারেন!`
           } else if (tone === "Storytelling") {
-            headline = `📖 এক মাস আগে যখন আমরা এই প্রোডাক্টটি লঞ্চ করেছিলাম, তখন ভাবিনি এত সাড়া পাবো...`
+            headline = `এক মাস আগে যখন আমরা এই প্রোডাক্টটি লঞ্চ করেছিলাম, তখন ভাবিনি এত সাড়া পাবো...`
             body = `আমাদের লক্ষ্য ছিল একটাই—সুলভ মূল্যে সর্বোচ্চ প্রিমিয়াম অভিজ্ঞতা প্রদান করা। ক্রেতাদের সরাসরি ফিডব্যাক ও ${keyBenefits} এর সমন্বয়ে এটি আজ বাংলাদেশের মার্কেটে অনন্য অবস্থান তৈরি করেছে। এই অনুপ্রেরণাদায়ক জার্নির অংশ হতে আপনাকে স্বাগতম!`
           } else {
-            headline = `😄 এই প্রোডাক্টটি থাকলে আপনার আর কী প্রয়োজন বলুন তো?`
+            headline = `এই প্রোডাক্টটি থাকলে আপনার আর কী প্রয়োজন বলুন তো?`
             body = `যখন একটি গ্যাজেটেই পেয়ে যাচ্ছেন ${keyBenefits}—তখন অতিরিক্ত চিন্তা করার কোনো মানেই হয় না! ঝটপট নিয়ে নিন আর নিজের লাইফস্টাইলকে করে তুলুন এক ধাপ স্মার্ট ও রিল্যাক্সড!`
           }
         } else if (language === "Banglish") {
@@ -166,28 +168,28 @@ export default function SafeAIVariationsPage() {
           cta = `Order korte inbox korun ba link e click korun: https://bmt.link/deal`
 
           if (tone === "Curiosity") {
-            headline = `🔥 Apni ki janen keno sobai ekhon ei ${productName} kinte chaiche?`
+            headline = `Apni ki janen keno sobai ekhon ei ${productName} kinte chaiche?`
             body = `Emon sob features ja age kokhono ei budget e pawa jay ni! ${keyBenefits}. Detail na dekhe onno kothao theke kine thoke jaben na jeno!`
           } else if (tone === "Urgency") {
-            headline = `🚨 Last Chance! Stock khub e limited, 40% discount cholche!`
+            headline = `Last Chance! Stock khub e limited, 40% discount cholche!`
             body = `Stock shesh hoye gele ei price e ar paben na! Already 80% stock booked. ${keyBenefits}. Quick order confirm korun cash on delivery te!`
           } else {
-            headline = `⭐ 100% Genuine & Premium Quality ${productName}`
+            headline = `100% Genuine & Premium Quality ${productName}`
             body = `Customer ra ek kothay bolche 'Best product in town'. ${keyBenefits}. 1 Year replacement warranty shoho order korte ekhon e message din!`
           }
         } else {
           // English
           hashtags = `#${productName.split(" ")[0]} #PremiumQuality #SpecialOffer #ShopNow`
-          cta = `👉 Order yours today with exclusive discount: https://bmt.link/deal`
+          cta = `Order yours today with exclusive discount: https://bmt.link/deal`
 
           if (tone === "Curiosity") {
-            headline = `🔥 Why is everyone talking about the new ${productName}?`
+            headline = `Why is everyone talking about the new ${productName}?`
             body = `Discover the breakthrough quality that thousands of satisfied customers swear by. Engineered with ${keyBenefits}. Experience the difference yourself before it sells out!`
           } else if (tone === "Urgency") {
-            headline = `🚨 Limited Stock Alert: Save up to 40% OFF Today Only!`
+            headline = `Limited Stock Alert: Save up to 40% OFF Today Only!`
             body = `Due to overwhelming demand, our current batch is selling out fast. Get your hands on ${productName} featuring ${keyBenefits}. Full official warranty & cash on delivery included!`
           } else {
-            headline = `⭐ Rated 4.9/5 Stars by over 5,000+ Verified Buyers!`
+            headline = `Rated 4.9/5 Stars by over 5,000+ Verified Buyers!`
             body = `Don't just take our word for it—join thousands of smart buyers who upgraded their experience with ${productName}. Packed with ${keyBenefits}. 100% satisfaction guaranteed.`
           }
         }
@@ -240,7 +242,7 @@ export default function SafeAIVariationsPage() {
       })
     })
 
-    setBulkSaveNotice(`✓ Successfully saved all ${variations.length} variations to Central Asset Library!`)
+    setBulkSaveNotice(`Successfully saved all ${variations.length} variations to Central Asset Library!`)
     setTimeout(() => setBulkSaveNotice(null), 3500)
   }
 
@@ -300,55 +302,57 @@ export default function SafeAIVariationsPage() {
   const getToneIcon = (tone: string) => {
     switch (tone) {
       case "Curiosity":
-        return <Flame className="w-3.5 h-3.5 text-amber-500" />
+        return <TrendingUp className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
       case "Urgency":
-        return <Zap className="w-3.5 h-3.5 text-rose-500" />
+        return <Zap className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
       case "Emotional":
-        return <Heart className="w-3.5 h-3.5 text-pink-500" />
+        return <Heart className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
       case "Social Proof":
-        return <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
+        return <ShieldCheck className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
       case "Storytelling":
-        return <BookOpen className="w-3.5 h-3.5 text-blue-500" />
+        return <BookOpen className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
       default:
-        return <Smile className="w-3.5 h-3.5 text-purple-500" />
+        return <Smile className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
     }
   }
 
   return (
     <div className="space-y-6 max-w-6xl pb-12">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b pb-4">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-border pb-4">
         <div>
-          <div className="flex items-center space-x-2.5">
-            <span className="p-2 bg-purple-600/10 text-purple-600 rounded-xl">
-              <Sparkles className="w-5 h-5" />
-            </span>
-            <h1 className="text-2xl font-extrabold tracking-tight">AI Post Variation Generator</h1>
-            <span className="text-[11px] font-bold bg-purple-500/10 text-purple-600 px-2.5 py-0.5 rounded-full border border-purple-500/20">
+          <div className="flex flex-wrap items-center gap-2.5">
+            <div className="w-8 h-8 rounded-xl bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0">
+              <Sparkles className="w-4 h-4" />
+            </div>
+            <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground">
+              AI Post Variation Generator
+            </h1>
+            <span className="text-[10px] font-semibold bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 px-2.5 py-0.5 rounded-full border border-blue-200 dark:border-blue-900/40">
               Module 10 • Multi-Tone Engine
             </span>
           </div>
-          <p className="text-xs text-muted-foreground mt-1">
+          <p className="text-xs text-muted-foreground mt-1 max-w-2xl">
             Transform a single product or idea into high-converting copy variations across 6 proven marketing tones.
             Directly connected to Central Asset Library and Post Scheduler.
           </p>
         </div>
 
-        {/* Action Controls */}
-        <div className="flex items-center space-x-2">
+        {/* Action Controls (Responsive on Mobile) */}
+        <div className="flex flex-wrap items-center gap-2">
           <button
             type="button"
             onClick={() => setShowApiKeyDrawer(!showApiKeyDrawer)}
-            className="px-3 py-1.5 rounded-xl border text-xs font-bold hover:bg-muted transition flex items-center space-x-1.5"
+            className="h-9 px-3 rounded-xl border border-border bg-card text-xs font-semibold hover:bg-muted text-foreground transition flex items-center gap-1.5 shadow-xs"
           >
-            <Key className="w-3.5 h-3.5 text-amber-500" />
+            <Key className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
             <span>{apiKey ? "API Key Configured" : "Custom AI Key (Optional)"}</span>
           </button>
 
           <button
             type="button"
             onClick={handleExportCSV}
-            className="px-3 py-1.5 rounded-xl border text-xs font-bold hover:bg-muted transition flex items-center space-x-1.5"
+            className="h-9 px-3 rounded-xl border border-border bg-card text-xs font-semibold hover:bg-muted text-foreground transition flex items-center gap-1.5 shadow-xs"
           >
             <Download className="w-3.5 h-3.5 text-muted-foreground" />
             <span>Export CSV</span>
@@ -357,7 +361,7 @@ export default function SafeAIVariationsPage() {
           <button
             type="button"
             onClick={handleBulkSaveToLibrary}
-            className="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-extrabold shadow-sm transition flex items-center space-x-1.5"
+            className="h-9 px-3.5 bg-blue-600 hover:bg-blue-700 active:scale-[0.98] text-white rounded-xl text-xs font-semibold shadow-xs transition flex items-center gap-1.5"
           >
             <FolderPlus className="w-3.5 h-3.5" />
             <span>Save All to Library</span>
@@ -367,38 +371,38 @@ export default function SafeAIVariationsPage() {
 
       {/* Bulk Save Feedback Toast */}
       {bulkSaveNotice && (
-        <div className="p-3 bg-emerald-500/10 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 text-xs font-bold rounded-xl flex items-center space-x-2 animate-in fade-in">
-          <CheckCircle2 className="w-4 h-4" />
+        <div className="p-3 bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-900/40 text-blue-700 dark:text-blue-300 text-xs font-semibold rounded-xl flex items-center gap-2 animate-in fade-in">
+          <CheckCircle2 className="w-4 h-4 text-blue-600 dark:text-blue-400 shrink-0" />
           <span>{bulkSaveNotice}</span>
         </div>
       )}
 
       {/* Optional Custom API Key Drawer */}
       {showApiKeyDrawer && (
-        <div className="p-4 bg-muted/30 border rounded-2xl space-y-2 text-xs animate-in slide-in-from-top-2 duration-200">
-          <div className="flex items-center justify-between">
-            <span className="font-extrabold text-foreground flex items-center space-x-1.5">
-              <Key className="w-4 h-4 text-amber-500" />
+        <div className="p-4 bg-muted/30 border border-border rounded-2xl space-y-2 text-xs animate-in slide-in-from-top-2 duration-150">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+            <span className="font-bold text-foreground flex items-center gap-1.5">
+              <Key className="w-4 h-4 text-blue-600 dark:text-blue-400" />
               <span>Custom Gemini Pro / OpenAI API Key (Optional)</span>
             </span>
             <span className="text-[11px] text-muted-foreground">
               By default, the built-in High-Converting Copy Engine generates instant copy variations without requiring an external key.
             </span>
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-col sm:flex-row gap-2 pt-1">
             <input
               type="password"
               placeholder="Paste your Google Gemini API key or OpenRouter key..."
               value={apiKey}
               onChange={(e) => setApiKey(e.target.value)}
-              className="flex-1 p-2 border rounded-xl bg-background font-mono text-xs focus:ring-2 focus:ring-purple-500 focus:outline-none"
+              className="flex-1 h-9 px-3 border border-border rounded-xl bg-background font-mono text-xs focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 focus:outline-none transition text-foreground"
             />
             <button
               onClick={() => {
                 setApiKeySaved(true)
                 setTimeout(() => setApiKeySaved(false), 2500)
               }}
-              className="px-4 py-2 bg-primary text-primary-foreground font-bold rounded-xl text-xs"
+              className="h-9 px-4 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl text-xs transition"
             >
               {apiKeySaved ? "Saved!" : "Save Key"}
             </button>
@@ -409,20 +413,20 @@ export default function SafeAIVariationsPage() {
       {/* MAIN TWO-COLUMN STUDIO */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* LEFT COLUMN: INPUT STUDIO */}
-        <div className="lg:col-span-5 space-y-4 border bg-card p-5 rounded-2xl shadow-sm h-fit">
-          <div className="flex items-center justify-between border-b pb-2.5">
-            <h2 className="font-extrabold text-sm flex items-center space-x-1.5">
-              <Wand2 className="w-4 h-4 text-purple-600" />
+        <div className="lg:col-span-5 space-y-4 border border-border bg-card p-4 sm:p-5 rounded-2xl shadow-xs h-fit">
+          <div className="flex items-center justify-between border-b border-border pb-2.5">
+            <h2 className="font-bold text-sm flex items-center gap-1.5 text-foreground">
+              <Wand2 className="w-4 h-4 text-blue-600 dark:text-blue-400" />
               <span>Master Concept & Promotion Studio</span>
             </h2>
-            <span className="text-[10px] font-bold bg-muted px-2 py-0.5 rounded text-muted-foreground">
+            <span className="text-[10px] font-semibold bg-muted px-2 py-0.5 rounded-md text-muted-foreground">
               Step 1 of 2
             </span>
           </div>
 
           {/* Product / Offer Title */}
           <div>
-            <label className="text-[10px] font-bold text-muted-foreground uppercase">
+            <label className="text-[11px] font-semibold text-muted-foreground uppercase block mb-1">
               Product / Campaign Name *
             </label>
             <input
@@ -430,13 +434,13 @@ export default function SafeAIVariationsPage() {
               value={productName}
               onChange={(e) => setProductName(e.target.value)}
               placeholder="e.g. Premium Leather Handbag or Smart Earbuds"
-              className="w-full mt-1 p-2.5 border rounded-xl bg-background text-xs font-bold focus:ring-2 focus:ring-purple-500 focus:outline-none"
+              className="w-full h-10 px-3 border border-border rounded-xl bg-background text-xs font-semibold text-foreground focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 focus:outline-none transition"
             />
           </div>
 
           {/* Key Selling Points / Features */}
           <div>
-            <label className="text-[10px] font-bold text-muted-foreground uppercase">
+            <label className="text-[11px] font-semibold text-muted-foreground uppercase block mb-1">
               Key Features & Benefits (USPs) *
             </label>
             <textarea
@@ -444,18 +448,18 @@ export default function SafeAIVariationsPage() {
               value={keyBenefits}
               onChange={(e) => setKeyBenefits(e.target.value)}
               placeholder="List main specs, warranty, discount percentage, delivery terms..."
-              className="w-full mt-1 p-2.5 border rounded-xl bg-background text-xs focus:ring-2 focus:ring-purple-500 focus:outline-none leading-relaxed"
+              className="w-full p-3 border border-border rounded-xl bg-background text-xs focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 focus:outline-none leading-relaxed transition text-foreground"
             />
           </div>
 
           {/* Category & Language */}
-          <div className="grid grid-cols-2 gap-2 text-xs">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
             <div>
-              <label className="text-[10px] font-bold text-muted-foreground uppercase">Category</label>
+              <label className="text-[11px] font-semibold text-muted-foreground uppercase block mb-1">Category</label>
               <select
                 value={category}
                 onChange={(e) => setCategory(e.target.value)}
-                className="w-full mt-1 p-2 border rounded-xl bg-background text-xs font-semibold"
+                className="w-full h-10 px-3 border border-border rounded-xl bg-background text-xs font-semibold text-foreground focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 focus:outline-none transition"
               >
                 <option value="Gadgets & Electronics">Gadgets & Tech</option>
                 <option value="Fashion & Lifestyle">Fashion & Apparel</option>
@@ -467,11 +471,11 @@ export default function SafeAIVariationsPage() {
             </div>
 
             <div>
-              <label className="text-[10px] font-bold text-muted-foreground uppercase">Language</label>
+              <label className="text-[11px] font-semibold text-muted-foreground uppercase block mb-1">Language</label>
               <select
                 value={language}
                 onChange={(e) => setLanguage(e.target.value as any)}
-                className="w-full mt-1 p-2 border rounded-xl bg-background text-xs font-bold"
+                className="w-full h-10 px-3 border border-border rounded-xl bg-background text-xs font-semibold text-foreground focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 focus:outline-none transition"
               >
                 <option value="Bengali">বাংলা (Bangla Formal)</option>
                 <option value="Banglish">Banglish (Social Media)</option>
@@ -482,19 +486,19 @@ export default function SafeAIVariationsPage() {
 
           {/* Format Selector */}
           <div>
-            <label className="text-[10px] font-bold text-muted-foreground uppercase block mb-1">
+            <label className="text-[11px] font-semibold text-muted-foreground uppercase block mb-1.5">
               Target Post Format
             </label>
-            <div className="grid grid-cols-5 gap-1 text-[11px] font-bold">
+            <div className="grid grid-cols-5 gap-1.5 text-xs font-semibold">
               {(["Post", "Reel", "Story", "Poll", "Group Share"] as const).map((fmt) => (
                 <button
                   key={fmt}
                   type="button"
                   onClick={() => setTargetFormat(fmt)}
-                  className={`py-1.5 rounded-lg border transition text-center ${
+                  className={`py-2 px-1 rounded-xl border text-center transition ${
                     targetFormat === fmt
-                      ? "bg-purple-600 text-white border-purple-600 shadow-sm"
-                      : "hover:bg-muted text-muted-foreground"
+                      ? "bg-blue-600 text-white border-blue-600 shadow-xs font-bold"
+                      : "bg-card border-border hover:bg-muted text-muted-foreground hover:text-foreground"
                   }`}
                 >
                   {fmt}
@@ -505,10 +509,10 @@ export default function SafeAIVariationsPage() {
 
           {/* Tones Selection (Multi-select) */}
           <div className="space-y-1.5">
-            <label className="text-[10px] font-bold text-muted-foreground uppercase block">
+            <label className="text-[11px] font-semibold text-muted-foreground uppercase block">
               Desired Marketing Tones (Select to generate)
             </label>
-            <div className="grid grid-cols-2 gap-1.5 text-xs">
+            <div className="grid grid-cols-2 gap-2 text-xs">
               {[
                 { name: "Curiosity", desc: "High Click-Through Hook" },
                 { name: "Urgency", desc: "FOMO & Limited Time" },
@@ -531,16 +535,18 @@ export default function SafeAIVariationsPage() {
                         setSelectedTones([...selectedTones, t.name])
                       }
                     }}
-                    className={`p-2 rounded-xl border text-left transition flex items-center space-x-2 ${
+                    className={`p-2.5 rounded-xl border text-left transition flex items-center gap-2 ${
                       isChecked
-                        ? "border-purple-600 bg-purple-500/10 text-foreground"
-                        : "border-border text-muted-foreground hover:bg-muted"
+                        ? "border-blue-600 bg-blue-50/70 dark:bg-blue-950/40 text-foreground shadow-xs"
+                        : "border-border text-muted-foreground hover:bg-muted hover:text-foreground"
                     }`}
                   >
-                    {getToneIcon(t.name)}
-                    <div className="min-w-0">
-                      <span className="font-extrabold text-[11px] block">{t.name}</span>
-                      <span className="text-[9px] text-muted-foreground block truncate">{t.desc}</span>
+                    <div className="w-7 h-7 rounded-lg bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0">
+                      {getToneIcon(t.name)}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <span className="font-bold text-xs block truncate">{t.name}</span>
+                      <span className="text-[10px] text-muted-foreground block truncate">{t.desc}</span>
                     </div>
                   </button>
                 )
@@ -553,7 +559,7 @@ export default function SafeAIVariationsPage() {
             type="button"
             disabled={isGenerating || !productName.trim()}
             onClick={handleGenerateVariations}
-            className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-extrabold py-3 rounded-xl shadow-md transition flex items-center justify-center space-x-2 text-xs"
+            className="w-full h-11 bg-blue-600 hover:bg-blue-700 active:scale-[0.99] text-white font-bold rounded-xl shadow-xs transition flex items-center justify-center gap-2 text-xs disabled:opacity-50"
           >
             {isGenerating ? (
               <>
@@ -571,16 +577,16 @@ export default function SafeAIVariationsPage() {
 
         {/* RIGHT COLUMN: GENERATED VARIATIONS STREAM */}
         <div className="lg:col-span-7 space-y-4">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
             <div>
-              <h2 className="font-extrabold text-sm text-foreground">
+              <h2 className="font-bold text-sm text-foreground">
                 High-Converting Variations ({variations.length})
               </h2>
               <p className="text-[11px] text-muted-foreground">
                 Click any variation to edit inline, save to Library, or send to Post Scheduler
               </p>
             </div>
-            <span className="text-[10px] font-bold bg-emerald-500/10 text-emerald-600 px-2.5 py-1 rounded-full border border-emerald-500/20">
+            <span className="text-[10px] font-semibold bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 px-2.5 py-1 rounded-full border border-blue-200 dark:border-blue-900/40 w-fit">
               Avg. Hook Score: 95.8%
             </span>
           </div>
@@ -594,26 +600,26 @@ export default function SafeAIVariationsPage() {
               return (
                 <div
                   key={item.id}
-                  className="border border-border/90 hover:border-purple-500/80 bg-card rounded-2xl p-4 space-y-3 shadow-xs transition duration-200"
+                  className="border border-border hover:border-blue-500/50 bg-card rounded-2xl p-4 sm:p-5 space-y-3 shadow-xs transition duration-200"
                 >
                   {/* Card Top Meta */}
-                  <div className="flex items-center justify-between border-b pb-2.5">
-                    <div className="flex items-center space-x-2">
-                      <span className="p-1 rounded-md bg-muted text-muted-foreground font-extrabold text-[10px]">
+                  <div className="flex items-center justify-between border-b border-border pb-2.5">
+                    <div className="flex items-center gap-2">
+                      <span className="px-1.5 py-0.5 rounded-md bg-muted text-muted-foreground font-bold text-[10px]">
                         #{index + 1}
                       </span>
-                      <span className="px-2 py-0.5 rounded-lg bg-purple-500/10 text-purple-600 dark:text-purple-400 font-extrabold text-xs flex items-center space-x-1">
+                      <span className="px-2 py-0.5 rounded-lg bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 font-semibold text-xs flex items-center gap-1 border border-blue-200 dark:border-blue-900/40">
                         {getToneIcon(item.tone)}
                         <span>{item.tone} Tone</span>
                       </span>
-                      <span className="text-[10px] font-bold text-muted-foreground bg-muted px-2 py-0.5 rounded">
+                      <span className="text-[10px] font-semibold text-muted-foreground bg-muted px-2 py-0.5 rounded-md">
                         {item.format}
                       </span>
                     </div>
 
-                    <div className="flex items-center space-x-2">
-                      <span className="text-[10px] font-extrabold text-emerald-600 dark:text-emerald-400 flex items-center space-x-0.5">
-                        <Flame className="w-3 h-3 text-amber-500 fill-amber-500" />
+                    <div className="flex items-center gap-1">
+                      <span className="text-[11px] font-semibold text-blue-600 dark:text-blue-400 flex items-center gap-1 bg-blue-50 dark:bg-blue-950/40 px-2 py-0.5 rounded-full border border-blue-200 dark:border-blue-900/40">
+                        <Award className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
                         <span>Hook Score: {item.hookScore}/100</span>
                       </span>
                     </div>
@@ -621,9 +627,9 @@ export default function SafeAIVariationsPage() {
 
                   {/* Headline / Hook */}
                   <div className="space-y-1">
-                    <label className="text-[9px] font-bold text-muted-foreground uppercase flex items-center justify-between">
+                    <label className="text-[10px] font-semibold text-muted-foreground uppercase flex items-center justify-between">
                       <span>Attention-Grabbing Hook</span>
-                      <span className="text-purple-500 font-normal lowercase">editable</span>
+                      <span className="text-blue-600 dark:text-blue-400 font-normal lowercase">editable</span>
                     </label>
                     <textarea
                       rows={2}
@@ -634,15 +640,15 @@ export default function SafeAIVariationsPage() {
                         updated[index].isEdited = true
                         setVariations(updated)
                       }}
-                      className="w-full p-2 border border-border/80 rounded-lg bg-background text-xs font-bold leading-relaxed focus:ring-1 focus:ring-purple-500 focus:outline-none"
+                      className="w-full p-2.5 border border-border rounded-xl bg-background text-xs font-semibold leading-relaxed focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 focus:outline-none transition text-foreground"
                     />
                   </div>
 
                   {/* Core Body Copy */}
                   <div className="space-y-1">
-                    <label className="text-[9px] font-bold text-muted-foreground uppercase flex items-center justify-between">
+                    <label className="text-[10px] font-semibold text-muted-foreground uppercase flex items-center justify-between">
                       <span>Main Value Proposition & Ad Copy</span>
-                      <span className="text-purple-500 font-normal lowercase">editable</span>
+                      <span className="text-blue-600 dark:text-blue-400 font-normal lowercase">editable</span>
                     </label>
                     <textarea
                       rows={4}
@@ -653,40 +659,40 @@ export default function SafeAIVariationsPage() {
                         updated[index].isEdited = true
                         setVariations(updated)
                       }}
-                      className="w-full p-2 border border-border/80 rounded-lg bg-background text-xs leading-relaxed focus:ring-1 focus:ring-purple-500 focus:outline-none"
+                      className="w-full p-2.5 border border-border rounded-xl bg-background text-xs leading-relaxed focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 focus:outline-none transition text-foreground"
                     />
                   </div>
 
                   {/* Hashtags & CTA Link */}
-                  <div className="p-2.5 bg-muted/20 border border-border/60 rounded-xl space-y-1.5 text-xs">
+                  <div className="p-3 bg-muted/20 border border-border rounded-xl space-y-1 text-xs">
                     <p className="font-mono text-[11px] text-blue-600 dark:text-blue-400 font-semibold">
                       {item.hashtags}
                     </p>
-                    <p className="text-[11px] font-bold text-foreground">
+                    <p className="text-[11px] font-medium text-foreground">
                       {item.cta}
                     </p>
                   </div>
 
-                  {/* Bottom Action Bar */}
-                  <div className="flex items-center justify-between pt-1">
-                    <div className="flex items-center space-x-1 text-[11px] text-muted-foreground font-semibold">
+                  {/* Bottom Action Bar (Responsive Mobile Alignment) */}
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pt-1">
+                    <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground font-medium">
                       <span>{item.body.split(/\s+/).length} words</span>
                       <span>•</span>
                       <span>{item.language}</span>
-                      {item.isEdited && <span className="text-purple-500 font-bold">• Edited</span>}
+                      {item.isEdited && <span className="text-blue-600 dark:text-blue-400 font-semibold">• Edited</span>}
                     </div>
 
-                    <div className="flex items-center space-x-2">
+                    <div className="flex flex-wrap items-center gap-2">
                       {/* Copy Button */}
                       <button
                         type="button"
                         onClick={() => handleCopyText(item)}
-                        className="px-2.5 py-1.5 border rounded-lg hover:bg-muted text-xs font-bold flex items-center space-x-1 transition"
+                        className="h-9 px-3 border border-border rounded-xl hover:bg-muted text-xs font-semibold flex items-center gap-1.5 transition text-foreground"
                       >
                         {isCopied ? (
                           <>
-                            <Check className="w-3.5 h-3.5 text-emerald-500" />
-                            <span className="text-emerald-500">Copied</span>
+                            <Check className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+                            <span className="text-blue-600 dark:text-blue-400">Copied</span>
                           </>
                         ) : (
                           <>
@@ -700,20 +706,20 @@ export default function SafeAIVariationsPage() {
                       <button
                         type="button"
                         onClick={() => handleSaveToLibrary(item)}
-                        className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition flex items-center space-x-1.5 ${
+                        className={`h-9 px-3.5 rounded-xl text-xs font-semibold border transition flex items-center gap-1.5 ${
                           isSaved
-                            ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/30"
-                            : "bg-blue-600/10 hover:bg-blue-600/20 text-blue-600 dark:text-blue-400 border-blue-600/20"
+                            ? "bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-900/60"
+                            : "bg-card border-border hover:bg-muted text-foreground"
                         }`}
                       >
                         {isSaved ? (
                           <>
-                            <Check className="w-3.5 h-3.5 text-emerald-600" />
+                            <Check className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
                             <span>Saved in Library!</span>
                           </>
                         ) : (
                           <>
-                            <FolderPlus className="w-3.5 h-3.5" />
+                            <FolderPlus className="w-3.5 h-3.5 text-muted-foreground" />
                             <span>Save to Library</span>
                           </>
                         )}
@@ -723,7 +729,7 @@ export default function SafeAIVariationsPage() {
                       <button
                         type="button"
                         onClick={() => handleSendToScheduler(item)}
-                        className="px-3 py-1.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white rounded-lg text-xs font-extrabold shadow-xs transition flex items-center space-x-1.5"
+                        className="h-9 px-3.5 bg-blue-600 hover:bg-blue-700 active:scale-[0.98] text-white rounded-xl text-xs font-semibold shadow-xs transition flex items-center gap-1.5"
                       >
                         <CalendarClock className="w-3.5 h-3.5" />
                         <span>Schedule Post</span>
