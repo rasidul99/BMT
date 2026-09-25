@@ -27,8 +27,8 @@ import { useSidebarStore } from "../../stores/sidebar.store"
 // Custom SVG Icons
 function FacebookSvgIcon({ className = "w-5 h-5" }: { className?: string }) {
   return (
-    <svg className={className} viewBox="0 0 24 24" fill="currentColor">
-      <path d="M13.397 20.997v-8.196h2.765l.411-3.209h-3.176V7.548c0-.926.258-1.56 1.587-1.56h1.684V3.127A22.336 22.336 0 0 0 14.201 3c-2.444 0-4.122 1.492-4.122 4.231v2.355H7.332v3.209h2.753v8.202h3.312z" />
+    <svg className={className} viewBox="-125 -44 600 600" fill="currentColor">
+      <path d="M279.14 288l14.22-92.66h-88.91v-60.13c0-25.35 12.42-50.06 52.24-50.06h40.42V6.26S260.43 0 225.36 0c-73.22 0-121.08 44.38-121.08 124.72v70.62H22.89V288h81.39v224h100.17V288z" />
     </svg>
   )
 }
@@ -196,7 +196,7 @@ export function TopPlatformHeader({ currentMode = "SAFE" }: TopPlatformHeaderPro
         </div>
 
         {/* 2. Middle: Collapse Button + Platform Icons */}
-        <div className="flex-1 flex items-center space-x-2 sm:space-x-3 px-2 sm:px-4 overflow-x-auto no-scrollbar">
+        <div className="flex-1 flex items-center space-x-2 sm:space-x-3 px-2 sm:px-4 overflow-x-auto no-scrollbar h-full py-1">
           {/* Sidebar Collapse Toggle Button */}
           <button
             onClick={() => {
@@ -215,12 +215,12 @@ export function TopPlatformHeader({ currentMode = "SAFE" }: TopPlatformHeaderPro
           <div className="h-6 w-px bg-border shrink-0" />
 
           {/* Platform Icons (Icon only, hover shows name tooltip) */}
-          <nav className="flex items-center space-x-2">
+          <nav className="flex items-center space-x-2 h-full py-1">
             {platforms.map((p) => {
               const isCurrentActive = p.id === "facebook"
               const IconComponent = p.iconComponent
               return (
-                <div key={p.id} className="relative group">
+                <div key={p.id} className="relative group flex items-center justify-center">
                   <button
                     onClick={() => handlePlatformClick(p)}
                     aria-label={p.name}
@@ -230,7 +230,7 @@ export function TopPlatformHeader({ currentMode = "SAFE" }: TopPlatformHeaderPro
                   >
                     <IconComponent className="w-5 h-5" />
                     {isCurrentActive && (
-                      <span className="absolute -top-1 -right-1 h-2.5 w-2.5 rounded-full bg-emerald-400 ring-2 ring-card animate-pulse" />
+                      <span className="absolute top-1 right-1 h-2 w-2 rounded-full bg-emerald-400 ring-2 ring-blue-600 animate-pulse" />
                     )}
                   </button>
 
