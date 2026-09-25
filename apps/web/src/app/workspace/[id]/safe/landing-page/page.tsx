@@ -244,10 +244,24 @@ export default function SafeLandingPageBuilderPage() {
   return (
     <div className="space-y-6 max-w-7xl pb-24">
       {/* Toast Notification */}
-      {toastMsg && (
-        <div className="fixed top-4 right-4 z-50 bg-blue-600 text-white font-semibold text-xs px-4 py-2.5 rounded-xl shadow-2xl flex items-center gap-2 animate-in slide-in-from-top-2 duration-200">
-          <CheckCircle2 className="w-4 h-4 text-emerald-300" />
-          <span>{toastMsg}</span>
+      {toast && (
+        <div
+          className={`fixed top-4 right-4 z-50 text-white font-semibold text-xs px-4 py-2.5 rounded-xl shadow-2xl flex items-center gap-2 animate-in slide-in-from-top-2 duration-200 ${
+            toast.type === "error"
+              ? "bg-rose-600"
+              : toast.type === "info"
+              ? "bg-slate-800 text-slate-100"
+              : "bg-blue-600 text-white"
+          }`}
+        >
+          {toast.type === "error" ? (
+            <AlertCircle className="w-4 h-4 shrink-0 text-white" />
+          ) : toast.type === "info" ? (
+            <Info className="w-4 h-4 shrink-0 text-blue-300" />
+          ) : (
+            <CheckCircle2 className="w-4 h-4 shrink-0 text-white" />
+          )}
+          <span>{toast.message}</span>
         </div>
       )}
 
