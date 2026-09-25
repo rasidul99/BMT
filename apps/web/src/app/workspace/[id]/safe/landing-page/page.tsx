@@ -26,6 +26,11 @@ import {
   Truck,
   ShieldCheck,
   Lock,
+  X,
+  Flame,
+  ClipboardList,
+  Send,
+  AlertCircle,
 } from "lucide-react"
 import { useAssetLibrary } from "../../../../../hooks/useAssetLibrary"
 import { useLandingPages, LandingPageProject, DropdownOption, SectionVisibility } from "../../../../../hooks/useLandingPages"
@@ -64,7 +69,7 @@ export default function SafeLandingPageBuilderPage() {
   const [mobileStudioTab, setMobileStudioTab] = useState<"editor" | "preview">("editor")
 
   // Editor states
-  const [announcementBar, setAnnouncementBar] = useState("🎉 সীমিত সময়ের ধামাকা অফার • সারাদেশে ক্যাশ অন হোম ডেলিভারি ফ্রি!")
+  const [announcementBar, setAnnouncementBar] = useState("সীমিত সময়ের ধামাকা অফার • সারাদেশে ক্যাশ অন হোম ডেলিভারি ফ্রি!")
   const [category, setCategory] = useState<LandingPageProject["category"]>("E-Commerce & Gadgets")
   const [pageTitle, setPageTitle] = useState("Eid Special Premium Watch Landing Page")
   const [headline, setHeadline] = useState("ঈদের সেরা ধামাকা অফারে কিনুন অরিজিনাল আল্ট্রা স্মার্ট ওয়াচ!")
@@ -109,7 +114,7 @@ export default function SafeLandingPageBuilderPage() {
   const handleDirectImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files || !e.target.files[0]) return
     const file = e.target.files[0]
-    showToast("⏳ Uploading hero image...")
+    showToast("Uploading hero image...")
     try {
       const formData = new FormData()
       formData.append("file", file)
@@ -120,16 +125,16 @@ export default function SafeLandingPageBuilderPage() {
       if (res.ok) {
         const data = await res.json()
         setHeroImage(data.url)
-        showToast("✓ Hero image uploaded from PC!")
+        showToast("Hero image uploaded from PC!")
       } else {
         const localPreview = URL.createObjectURL(file)
         setHeroImage(localPreview)
-        showToast("✓ Hero image loaded from PC!")
+        showToast("Hero image loaded from PC!")
       }
     } catch {
       const localPreview = URL.createObjectURL(file)
       setHeroImage(localPreview)
-      showToast("✓ Hero image loaded from PC!")
+      showToast("Hero image loaded from PC!")
     }
   }
 
@@ -160,7 +165,7 @@ export default function SafeLandingPageBuilderPage() {
   // Remove dropdown option
   const handleRemoveDropdownOption = (index: number) => {
     if (dropdownOptions.length <= 1) {
-      showToast("⚠️ At least one package option is required!")
+      showToast("At least one package option is required!")
       return
     }
     setDropdownOptions(dropdownOptions.filter((_, i) => i !== index))
@@ -170,7 +175,7 @@ export default function SafeLandingPageBuilderPage() {
   const handlePublishLandingPage = (e: React.FormEvent) => {
     e.preventDefault()
     if (!pageTitle.trim() || !headline.trim()) {
-      showToast("⚠️ Project Name and Main Headline are required!")
+      showToast("Project Name and Main Headline are required!")
       return
     }
 
@@ -201,7 +206,7 @@ export default function SafeLandingPageBuilderPage() {
     })
 
     setActivePublishedPage(newPage)
-    showToast("✓ Smart Landing Page Published Successfully!")
+    showToast("Smart Landing Page Published Successfully!")
   }
 
   // Copy Link
@@ -209,7 +214,7 @@ export default function SafeLandingPageBuilderPage() {
     const fullUrl = `${window.location.origin}/p/${slug}`
     navigator.clipboard.writeText(fullUrl)
     setCopiedSlug(slug)
-    showToast("✓ Landing page URL copied to clipboard!")
+    showToast("Landing page URL copied to clipboard!")
     setTimeout(() => setCopiedSlug(null), 2500)
   }
 
@@ -224,7 +229,7 @@ export default function SafeLandingPageBuilderPage() {
       tags: ["landing-page", page.category.toLowerCase().replace(/[^a-z0-9]+/g, "-"), "offer"],
       size: "2.1 MB (Landing Page)",
     })
-    showToast("✓ Landing page link saved to Central Asset Library!")
+    showToast("Landing page link saved to Central Asset Library!")
   }
 
   // Pick Image from Asset Library
@@ -232,7 +237,7 @@ export default function SafeLandingPageBuilderPage() {
     if (url) {
       setHeroImage(url)
       setShowAssetPicker(false)
-      showToast("✓ Image selected from Asset Library!")
+      showToast("Image selected from Asset Library!")
     }
   }
 
@@ -444,7 +449,7 @@ export default function SafeLandingPageBuilderPage() {
                 <div className="relative">
                   <input
                     type="text"
-                    placeholder="🎉 সীমিত সময়ের ধামাকা অফার • সারাদেশে ক্যাশ অন হোম ডেলিভারি ফ্রি!"
+                    placeholder="সীমিত সময়ের ধামাকা অফার • সারাদেশে ক্যাশ অন হোম ডেলিভারি ফ্রি!"
                     value={announcementBar}
                     onChange={(e) => setAnnouncementBar(e.target.value)}
                     className="w-full pl-8 pr-3 py-2 border border-border rounded-lg bg-background text-foreground text-xs focus:ring-1 focus:ring-blue-500 font-medium"
@@ -463,11 +468,11 @@ export default function SafeLandingPageBuilderPage() {
                   onChange={(e) => setCategory(e.target.value as any)}
                   className="w-full px-3 py-2 border border-border rounded-lg bg-background text-foreground text-xs font-semibold focus:ring-1 focus:ring-blue-500"
                 >
-                  <option value="E-Commerce & Gadgets">🛍️ E-Commerce & Gadgets (Physical Products, Watches, Electronics)</option>
-                  <option value="Health & Beauty">🌿 Health & Beauty (Cosmetics, Herbal, Skincare)</option>
-                  <option value="Courses & Education">🎓 Courses & Education (Digital Courses, Webinars, E-books)</option>
-                  <option value="Affiliate Offers">🔥 Affiliate Offers (CPA Networks, High-Payout Lead Magnets)</option>
-                  <option value="Services & Real Estate">🏢 Services & Real Estate (Agencies, Consultations, Properties)</option>
+                  <option value="E-Commerce & Gadgets">E-Commerce & Gadgets (Physical Products, Watches, Electronics)</option>
+                  <option value="Health & Beauty">Health & Beauty (Cosmetics, Herbal, Skincare)</option>
+                  <option value="Courses & Education">Courses & Education (Digital Courses, Webinars, E-books)</option>
+                  <option value="Affiliate Offers">Affiliate Offers (CPA Networks, High-Payout Lead Magnets)</option>
+                  <option value="Services & Real Estate">Services & Real Estate (Agencies, Consultations, Properties)</option>
                 </select>
               </div>
 
@@ -646,7 +651,7 @@ export default function SafeLandingPageBuilderPage() {
                 <div className="space-y-1.5">
                   {features.map((feat, fIdx) => (
                     <div key={fIdx} className="flex items-center gap-2">
-                      <span className="text-emerald-500 font-bold text-xs">✓</span>
+                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
                       <input
                         type="text"
                         value={feat}
@@ -828,8 +833,8 @@ export default function SafeLandingPageBuilderPage() {
                     onChange={(e) => setCtaAction(e.target.value as any)}
                     className="w-full px-3 py-2 border border-border rounded-lg bg-background text-foreground text-xs font-semibold"
                   >
-                    <option value="Order Form">📝 1-Click COD Order Form (Recommended)</option>
-                    <option value="WhatsApp Checkout">💬 Direct WhatsApp Checkout</option>
+                    <option value="Order Form">1-Click COD Order Form (Recommended)</option>
+                    <option value="WhatsApp Checkout">Direct WhatsApp Checkout</option>
                   </select>
                 </div>
 
@@ -970,7 +975,7 @@ export default function SafeLandingPageBuilderPage() {
                 className="w-full bg-blue-600 hover:bg-blue-700 text-white font-extrabold py-3 rounded-xl shadow-xs transition flex items-center justify-center gap-2 text-xs"
               >
                 <Sparkles className="w-4 h-4" />
-                <span>🚀 Publish Smart Landing Page to BMT Subdomain</span>
+                <span>Publish Smart Landing Page to BMT Subdomain</span>
               </button>
 
               <button
@@ -1159,8 +1164,9 @@ export default function SafeLandingPageBuilderPage() {
                       {dropdownOptions[selectedPreviewOptionIdx]?.price || productPrice}
                     </div>
                   </div>
-                  <span className="bg-emerald-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-xs">
-                    🔥 স্টক সীমিত
+                  <span className="bg-emerald-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-xs flex items-center gap-1">
+                    <Flame className="w-3 h-3 text-amber-200" />
+                    <span>স্টক সীমিত</span>
                   </span>
                 </div>
               )}
@@ -1188,8 +1194,9 @@ export default function SafeLandingPageBuilderPage() {
               {/* 8. Real 1-Click COD Checkout Box Mockup */}
               {visibleSections.checkoutForm && (
                 <div className="border border-blue-500/30 bg-blue-500/5 p-3 rounded-xl space-y-2">
-                  <span className="font-extrabold text-[11px] text-blue-700 dark:text-blue-400 block">
-                    📝 ১-ক্লিক ক্যাশ অন ডেলিভারি অর্ডার ফরম
+                  <span className="font-extrabold text-[11px] text-blue-700 dark:text-blue-400 flex items-center gap-1.5">
+                    <ClipboardList className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+                    <span>১-ক্লিক ক্যাশ অন ডেলিভারি অর্ডার ফরম</span>
                   </span>
                   <div className="space-y-1.5 text-xs">
                     <input
@@ -1219,8 +1226,9 @@ export default function SafeLandingPageBuilderPage() {
                     <ShoppingBag className="w-3.5 h-3.5" />
                     <span>{ctaText}</span>
                   </button>
-                  <span className="text-[9px] text-center text-muted-foreground block">
-                    🔒 ১০০% নিরাপদ ক্যাশ অন ডেলিভারি (পণ্য হাতে পেয়ে টাকা পরিশোধ)
+                  <span className="text-[9px] text-center text-muted-foreground flex items-center justify-center gap-1">
+                    <Lock className="w-2.5 h-2.5 text-muted-foreground" />
+                    <span>১০০% নিরাপদ ক্যাশ অন ডেলিভারি (পণ্য হাতে পেয়ে টাকা পরিশোধ)</span>
                   </span>
                 </div>
               )}
@@ -1313,11 +1321,13 @@ export default function SafeLandingPageBuilderPage() {
 
                   <div className="flex items-center justify-between pt-2 border-t border-border text-[10px]">
                     <div className="flex items-center gap-1.5 flex-wrap">
-                      <span className="bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20 font-bold px-1.5 py-0.5 rounded">
-                        👁️ {p.viewsCount || 0}
+                      <span className="bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20 font-bold px-1.5 py-0.5 rounded flex items-center">
+                        <Eye className="w-3 h-3 mr-1" />
+                        {p.viewsCount || 0}
                       </span>
-                      <span className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 font-bold px-1.5 py-0.5 rounded">
-                        🛒 {p.ordersCount || 0}
+                      <span className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 font-bold px-1.5 py-0.5 rounded flex items-center">
+                        <ShoppingBag className="w-3 h-3 mr-1" />
+                        {p.ordersCount || 0}
                       </span>
                       {p.adSlot?.enabled && (
                         <span className="bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 font-bold px-1.5 py-0.5 rounded">
@@ -1360,7 +1370,7 @@ export default function SafeLandingPageBuilderPage() {
                         onClick={() => {
                           if (confirm(`Delete landing page "${p.title}"?`)) {
                             deletePage(p.id)
-                            showToast("✓ Page deleted.")
+                            showToast("Page deleted.")
                           }
                         }}
                         className="p-1.5 border border-border hover:bg-destructive/10 text-destructive rounded-lg transition"
@@ -1417,19 +1427,22 @@ export default function SafeLandingPageBuilderPage() {
 
                       <td className="py-3 px-3 text-center">
                         <div className="flex items-center justify-center gap-2">
-                          <span className="bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20 font-bold px-2 py-0.5 rounded text-[10px]">
-                            👁️ {p.viewsCount || 0}
+                          <span className="bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20 font-bold px-2 py-0.5 rounded text-[10px] flex items-center">
+                            <Eye className="w-3 h-3 mr-1" />
+                            {p.viewsCount || 0}
                           </span>
-                          <span className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 font-bold px-2 py-0.5 rounded text-[10px]">
-                            🛒 {p.ordersCount || 0}
+                          <span className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 font-bold px-2 py-0.5 rounded text-[10px] flex items-center">
+                            <ShoppingBag className="w-3 h-3 mr-1" />
+                            {p.ordersCount || 0}
                           </span>
                         </div>
                       </td>
 
                       <td className="py-3 px-3 text-center">
                         {p.adSlot?.enabled ? (
-                          <span className="bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 font-bold px-2 py-0.5 rounded text-[10px]">
-                            ✓ ADS Active
+                          <span className="bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 font-bold px-2 py-0.5 rounded text-[10px] inline-flex items-center gap-1">
+                            <CheckCircle2 className="w-3 h-3" />
+                            <span>ADS Active</span>
                           </span>
                         ) : (
                           <span className="text-muted-foreground text-[10px]">Disabled</span>
@@ -1475,7 +1488,7 @@ export default function SafeLandingPageBuilderPage() {
                             onClick={() => {
                               if (confirm(`Delete landing page "${p.title}"?`)) {
                                 deletePage(p.id)
-                                showToast("✓ Page deleted.")
+                                showToast("Page deleted.")
                               }
                             }}
                             className="p-1.5 border border-border hover:bg-destructive/10 text-destructive rounded-lg transition"
@@ -1508,9 +1521,10 @@ export default function SafeLandingPageBuilderPage() {
               <button
                 type="button"
                 onClick={() => setShowAssetPicker(false)}
-                className="text-muted-foreground hover:text-foreground text-sm font-bold"
+                className="p-1 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition"
+                title="Close"
               >
-                ✕
+                <X className="w-4 h-4" />
               </button>
             </div>
 
