@@ -110,27 +110,27 @@ export default function PublicLandingPageView() {
       )}
 
       {/* Main Container */}
-      <main className="max-w-3xl mx-auto px-4 py-6 sm:py-10 space-y-6">
+      <main className="max-w-3xl mx-auto px-3 sm:px-4 py-4 sm:py-8 space-y-4 sm:space-y-6">
         {page && (
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl overflow-hidden shadow-2xl space-y-6">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl sm:rounded-3xl overflow-hidden shadow-2xl space-y-5 sm:space-y-6">
             {/* Header Brand Bar */}
             {(page.visibleSections?.categoryBadge ?? true) && (
-              <div className="p-4 sm:p-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50/50 dark:bg-slate-900/50">
-                <div className="flex items-center gap-2.5">
-                  <div className="h-9 w-9 rounded-xl bg-blue-600 text-white font-black flex items-center justify-center text-sm shadow-md">
+              <div className="p-3.5 sm:p-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50/50 dark:bg-slate-900/50 gap-2">
+                <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
+                  <div className="h-8 w-8 sm:h-9 sm:w-9 rounded-xl bg-blue-600 text-white font-black flex items-center justify-center text-xs sm:text-sm shadow-md shrink-0">
                     BMT
                   </div>
-                  <div>
-                    <span className="font-extrabold text-sm text-slate-900 dark:text-white block leading-tight">
+                  <div className="min-w-0 truncate">
+                    <span className="font-extrabold text-xs sm:text-sm text-slate-900 dark:text-white block leading-tight truncate">
                       {page.title}
                     </span>
-                    <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold flex items-center gap-1">
-                      <ShieldCheck className="w-3 h-3" />
-                      <span>Verified Official Merchant ({page.category})</span>
+                    <span className="text-[9px] sm:text-[10px] text-emerald-600 dark:text-emerald-400 font-bold flex items-center gap-1">
+                      <ShieldCheck className="w-3 h-3 shrink-0" />
+                      <span className="truncate">Official Merchant ({page.category})</span>
                     </span>
                   </div>
                 </div>
-                <span className="bg-blue-600/10 text-blue-600 dark:text-blue-400 font-bold text-[11px] px-3 py-1 rounded-full border border-blue-500/20">
+                <span className="bg-blue-600/10 text-blue-600 dark:text-blue-400 font-bold text-[10px] sm:text-[11px] px-2.5 py-0.5 sm:px-3 sm:py-1 rounded-full border border-blue-500/20 shrink-0">
                   {page.category}
                 </span>
               </div>
@@ -138,7 +138,7 @@ export default function PublicLandingPageView() {
 
             {/* Hero Image */}
             {(page.visibleSections?.heroImage ?? true) && (
-              <div className="px-4 sm:px-6">
+              <div className="px-3 sm:px-6">
                 <div className="rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-800 aspect-video sm:aspect-[16/9] bg-slate-900 shadow-inner relative group">
                   <img
                     src={page.heroImage}
@@ -155,7 +155,7 @@ export default function PublicLandingPageView() {
 
             {/* Headline & Description */}
             {((page.visibleSections?.headline ?? true) || (page.visibleSections?.subheadline ?? true) || (page.visibleSections?.pricingBadge ?? true)) && (
-              <div className="px-4 sm:px-6 text-center space-y-3">
+              <div className="px-3 sm:px-6 text-center space-y-3">
                 {(page.visibleSections?.headline ?? true) && (
                   <h1 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white leading-tight">
                     {page.headline}
@@ -179,7 +179,7 @@ export default function PublicLandingPageView() {
 
             {/* Key Features & Advantages */}
             {(page.visibleSections?.features ?? true) && page.features && page.features.length > 0 && (
-              <div className="px-4 sm:px-6">
+              <div className="px-3 sm:px-6">
                 <div className="bg-slate-50 dark:bg-slate-800/60 p-4 sm:p-5 rounded-2xl border border-slate-200 dark:border-slate-700/60 space-y-2.5 shadow-xs">
                   <span className="text-[11px] font-extrabold text-slate-500 uppercase tracking-wider block">
                     প্রোডাক্টের বিশেষ সুবিধাসমূহ (Key Highlights):
@@ -198,7 +198,7 @@ export default function PublicLandingPageView() {
 
             {/* CLIENT SPECIFICATION: Interactive Offer Dropdown */}
             {(page.visibleSections?.variantsDropdown ?? true) && page.dropdownOptions && page.dropdownOptions.length > 0 && (
-              <div className="px-4 sm:px-6">
+              <div className="px-3 sm:px-6">
                 <div className="bg-blue-50 dark:bg-blue-950/40 border-2 border-blue-500/30 rounded-2xl p-4 sm:p-5 space-y-3 shadow-sm">
                   <div className="flex items-center justify-between">
                     <label className="font-extrabold text-xs sm:text-sm text-blue-950 dark:text-blue-200 flex items-center gap-2">
@@ -237,7 +237,7 @@ export default function PublicLandingPageView() {
 
             {/* CLIENT SPECIFICATION: Monetization Ad Slot */}
             {(page.visibleSections?.adSlot ?? true) && page.adSlot && page.adSlot.enabled && (
-              <div className="px-4 sm:px-6">
+              <div className="px-3 sm:px-6">
                 <div className="border border-amber-500/30 bg-amber-500/5 rounded-2xl p-3 sm:p-4 space-y-2">
                   <div className="flex items-center justify-between text-[10px] text-amber-700 dark:text-amber-400 font-bold uppercase tracking-wider">
                     <span>Sponsored Advertisement</span>
@@ -273,7 +273,7 @@ export default function PublicLandingPageView() {
 
             {/* Trust Badges Row */}
             {(page.visibleSections?.trustBadges ?? true) && (
-              <div className="px-4 sm:px-6">
+              <div className="px-3 sm:px-6">
                 <div className="grid grid-cols-3 gap-2 text-center p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/60">
                   <div className="flex flex-col items-center">
                     <Truck className="w-4 h-4 text-blue-500" />
@@ -296,7 +296,7 @@ export default function PublicLandingPageView() {
 
             {/* Order Confirmation / Lead Form */}
             {(page.visibleSections?.checkoutForm ?? true) && (
-              <div className="px-4 sm:px-6 pb-6 sm:pb-8">
+              <div className="px-3 sm:px-6 pb-6 sm:pb-8">
                 <div className="border-2 border-emerald-500/30 bg-emerald-500/5 rounded-2xl p-5 sm:p-6 space-y-4 shadow-md">
                   <div className="text-center space-y-1">
                     <h3 className="font-black text-base sm:text-lg text-slate-900 dark:text-white">

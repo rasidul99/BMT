@@ -60,6 +60,9 @@ export default function SafeLandingPageBuilderPage() {
     }))
   }
 
+  // Mobile Studio responsive tab state (< lg screens)
+  const [mobileStudioTab, setMobileStudioTab] = useState<"editor" | "preview">("editor")
+
   // Editor states
   const [announcementBar, setAnnouncementBar] = useState("🎉 সীমিত সময়ের ধামাকা অফার • সারাদেশে ক্যাশ অন হোম ডেলিভারি ফ্রি!")
   const [category, setCategory] = useState<LandingPageProject["category"]>("E-Commerce & Gadgets")
@@ -351,10 +354,42 @@ export default function SafeLandingPageBuilderPage() {
         </div>
       )}
 
+      {/* Mobile Studio Responsive Navigation Switcher (< lg screens) */}
+      <div className="lg:hidden flex items-center bg-muted/60 p-1 rounded-xl border border-border">
+        <button
+          type="button"
+          onClick={() => setMobileStudioTab("editor")}
+          className={`flex-1 py-2 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 transition ${
+            mobileStudioTab === "editor"
+              ? "bg-card text-foreground shadow-xs border border-border"
+              : "text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          <Sparkles className="w-3.5 h-3.5 text-blue-500" />
+          <span>1. Edit Offer Form</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setMobileStudioTab("preview")}
+          className={`flex-1 py-2 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 transition ${
+            mobileStudioTab === "preview"
+              ? "bg-card text-foreground shadow-xs border border-border"
+              : "text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          <Eye className="w-3.5 h-3.5 text-emerald-500" />
+          <span>2. Live Preview Viewport</span>
+        </button>
+      </div>
+
       {/* 3. Studio Main Grid: Controls & Device Preview */}
       <div className="grid gap-6 lg:grid-cols-12 text-xs items-start">
         {/* Editor Controls (7 cols) */}
-        <div className="lg:col-span-7 space-y-4 border border-border bg-card p-5 rounded-xl shadow-xs">
+        <div
+          className={`lg:col-span-7 space-y-4 border border-border bg-card p-4 sm:p-5 rounded-xl shadow-xs ${
+            mobileStudioTab === "editor" ? "block" : "hidden lg:block"
+          }`}
+        >
           <div className="flex items-center justify-between border-b border-border pb-3">
             <div className="flex items-center gap-2">
               <Sparkles className="w-4 h-4 text-blue-500" />
@@ -551,11 +586,11 @@ export default function SafeLandingPageBuilderPage() {
                   <label className="font-bold text-foreground">
                     Hero Image / Product Photo *
                   </label>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 w-full sm:w-auto">
                     <button
                       type="button"
                       onClick={() => localImageInputRef.current?.click()}
-                      className="text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/40 px-2 py-0.5 rounded border border-blue-500/20 font-bold text-[11px] flex items-center gap-1 transition"
+                      className="flex-1 sm:flex-none justify-center text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/40 px-2.5 py-1 rounded-lg border border-blue-500/20 font-bold text-[11px] flex items-center gap-1 transition"
                     >
                       <Upload className="w-3 h-3" />
                       <span>Upload from PC</span>
@@ -563,7 +598,7 @@ export default function SafeLandingPageBuilderPage() {
                     <button
                       type="button"
                       onClick={() => setShowAssetPicker(true)}
-                      className="text-foreground hover:bg-muted px-2 py-0.5 rounded border border-border font-bold text-[11px] flex items-center gap-1 transition"
+                      className="flex-1 sm:flex-none justify-center text-foreground hover:bg-muted px-2.5 py-1 rounded-lg border border-border font-bold text-[11px] flex items-center gap-1 transition"
                     >
                       <FolderOpen className="w-3 h-3 text-amber-500" />
                       <span>Pick from Library</span>
@@ -709,7 +744,7 @@ export default function SafeLandingPageBuilderPage() {
 
                 <div className="space-y-1.5 pt-1">
                   {dropdownOptions.map((opt, idx) => (
-                    <div key={idx} className="flex items-center gap-2 bg-card p-1.5 rounded-lg border border-border">
+                    <div key={idx} className="flex flex-col sm:flex-row sm:items-center gap-2 bg-card p-2 rounded-lg border border-border">
                       <input
                         type="text"
                         placeholder="Option Name (e.g. 1x Watch - Black)"
@@ -719,26 +754,29 @@ export default function SafeLandingPageBuilderPage() {
                           next[idx].label = e.target.value
                           setDropdownOptions(next)
                         }}
-                        className="flex-1 px-2.5 py-1 border border-border rounded bg-background text-foreground text-xs"
+                        className="w-full sm:flex-1 px-2.5 py-1.5 border border-border rounded bg-background text-foreground text-xs"
                       />
-                      <input
-                        type="text"
-                        placeholder="Price"
-                        value={opt.price}
-                        onChange={(e) => {
-                          const next = [...dropdownOptions]
-                          next[idx].price = e.target.value
-                          setDropdownOptions(next)
-                        }}
-                        className="w-32 px-2.5 py-1 border border-border rounded bg-background text-foreground text-xs font-semibold text-emerald-600 dark:text-emerald-400"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveDropdownOption(idx)}
-                        className="p-1 text-muted-foreground hover:text-destructive transition"
-                      >
-                        <Trash2 className="w-3 h-3" />
-                      </button>
+                      <div className="flex items-center gap-2 w-full sm:w-auto">
+                        <input
+                          type="text"
+                          placeholder="Price"
+                          value={opt.price}
+                          onChange={(e) => {
+                            const next = [...dropdownOptions]
+                            next[idx].price = e.target.value
+                            setDropdownOptions(next)
+                          }}
+                          className="flex-1 sm:w-32 px-2.5 py-1.5 border border-border rounded bg-background text-foreground text-xs font-semibold text-emerald-600 dark:text-emerald-400"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveDropdownOption(idx)}
+                          className="p-1.5 text-muted-foreground hover:text-destructive transition shrink-0"
+                          title="Remove option"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -780,7 +818,7 @@ export default function SafeLandingPageBuilderPage() {
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-3 pt-1">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
                 <div>
                   <label className="font-bold text-foreground block mb-1">
                     Checkout Mode
@@ -925,19 +963,48 @@ export default function SafeLandingPageBuilderPage() {
               )}
             </div>
 
-            {/* Publish Button */}
-            <button
-              type="submit"
-              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-extrabold py-3 rounded-xl shadow-xs transition flex items-center justify-center gap-2 text-xs"
-            >
-              <Sparkles className="w-4 h-4" />
-              <span>🚀 Publish Smart Landing Page to BMT Subdomain</span>
-            </button>
+            {/* Action Buttons */}
+            <div className="space-y-2">
+              <button
+                type="submit"
+                className="w-full bg-blue-600 hover:bg-blue-700 text-white font-extrabold py-3 rounded-xl shadow-xs transition flex items-center justify-center gap-2 text-xs"
+              >
+                <Sparkles className="w-4 h-4" />
+                <span>🚀 Publish Smart Landing Page to BMT Subdomain</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setMobileStudioTab("preview")}
+                className="lg:hidden w-full bg-muted hover:bg-muted/80 text-foreground font-bold py-2.5 rounded-xl border border-border transition flex items-center justify-center gap-1.5 text-xs"
+              >
+                <Eye className="w-3.5 h-3.5 text-emerald-500" />
+                <span>Switch to Live Preview Viewport →</span>
+              </button>
+            </div>
           </form>
         </div>
 
         {/* Live Device Preview (5 cols) - EXACT 1-TO-1 VISUAL SERIAL ALIGNMENT */}
-        <div className="lg:col-span-5 border border-border bg-card p-5 rounded-xl space-y-4 shadow-xs flex flex-col items-center">
+        <div
+          className={`lg:col-span-5 border border-border bg-card p-4 sm:p-5 rounded-xl space-y-4 shadow-xs flex flex-col items-center ${
+            mobileStudioTab === "preview" ? "block" : "hidden lg:block"
+          }`}
+        >
+          {/* Mobile Back-to-Edit Bar (< lg screens) */}
+          <div className="lg:hidden w-full flex items-center justify-between pb-2 border-b border-border">
+            <button
+              type="button"
+              onClick={() => setMobileStudioTab("editor")}
+              className="text-xs font-bold text-blue-600 dark:text-blue-400 flex items-center gap-1 hover:underline"
+            >
+              <span>← Back to Edit Form</span>
+            </button>
+            <span className="text-[11px] font-semibold text-muted-foreground bg-muted px-2 py-0.5 rounded">
+              Live Preview Mode
+            </span>
+          </div>
+
           <div className="w-full flex items-center justify-between border-b border-border pb-3">
             <h2 className="font-extrabold text-sm text-foreground">
               Live {previewDevice} Viewport
@@ -1014,7 +1081,7 @@ export default function SafeLandingPageBuilderPage() {
           <div
             className={`border rounded-2xl overflow-hidden bg-background shadow-xl transition-all duration-300 ${
               previewDevice === "Mobile"
-                ? "w-[330px] border-4 border-slate-700"
+                ? "max-w-[340px] w-full border-4 border-slate-700 mx-auto"
                 : "w-full border border-border"
             }`}
           >
@@ -1219,121 +1286,211 @@ export default function SafeLandingPageBuilderPage() {
             No landing pages created yet. Use the editor above to publish your first smart offer page!
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-xs text-left">
-              <thead>
-                <tr className="border-b border-border text-muted-foreground uppercase text-[10px] font-bold">
-                  <th className="py-2.5 px-3">Project & Category</th>
-                  <th className="py-2.5 px-3">Public Subdomain Link</th>
-                  <th className="py-2.5 px-3 text-center">Traffic & Orders</th>
-                  <th className="py-2.5 px-3 text-center">ADS Slot</th>
-                  <th className="py-2.5 px-3">Created</th>
-                  <th className="py-2.5 px-3 text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border">
-                {pages.map((p) => (
-                  <tr key={p.id} className="hover:bg-muted/40 transition">
-                    <td className="py-3 px-3">
-                      <div className="flex items-center gap-3">
-                        <div className="w-14 h-9 rounded-md overflow-hidden bg-muted border border-border shrink-0">
-                          <img src={p.heroImage} alt={p.title} className="w-full h-full object-cover" />
-                        </div>
-                        <div className="space-y-0.5">
-                          <h4 className="font-bold text-foreground line-clamp-1 max-w-xs">{p.title}</h4>
-                          <span className="text-[10px] text-blue-600 dark:text-blue-400 font-semibold block">
-                            {p.category}
-                          </span>
-                        </div>
-                      </div>
-                    </td>
-
-                    <td className="py-3 px-3">
+          <>
+            {/* Mobile Cards List (< md screens) */}
+            <div className="md:hidden space-y-3">
+              {pages.map((p) => (
+                <div key={p.id} className="p-3.5 bg-muted/20 border border-border rounded-xl space-y-3">
+                  <div className="flex items-start gap-3">
+                    <div className="w-16 h-12 rounded-lg overflow-hidden bg-muted border border-border shrink-0">
+                      <img src={p.heroImage} alt={p.title} className="w-full h-full object-cover" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h4 className="font-bold text-foreground text-xs line-clamp-1">{p.title}</h4>
+                      <span className="text-[10px] text-blue-600 dark:text-blue-400 font-semibold block">
+                        {p.category}
+                      </span>
                       <a
                         href={`/p/${p.slug}`}
                         target="_blank"
                         rel="noreferrer"
-                        className="text-blue-600 dark:text-blue-400 hover:underline max-w-xs truncate block font-mono text-[11px]"
+                        className="text-blue-600 dark:text-blue-400 hover:underline truncate block font-mono text-[10px] mt-0.5"
                       >
                         /p/{p.slug}
                       </a>
-                    </td>
+                    </div>
+                  </div>
 
-                    <td className="py-3 px-3 text-center">
-                      <div className="flex items-center justify-center gap-2">
-                        <span className="bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20 font-bold px-2 py-0.5 rounded text-[10px]">
-                          👁️ {p.viewsCount || 0}
+                  <div className="flex items-center justify-between pt-2 border-t border-border text-[10px]">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20 font-bold px-1.5 py-0.5 rounded">
+                        👁️ {p.viewsCount || 0}
+                      </span>
+                      <span className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 font-bold px-1.5 py-0.5 rounded">
+                        🛒 {p.ordersCount || 0}
+                      </span>
+                      {p.adSlot?.enabled && (
+                        <span className="bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 font-bold px-1.5 py-0.5 rounded">
+                          ADS
                         </span>
-                        <span className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 font-bold px-2 py-0.5 rounded text-[10px]">
-                          🛒 {p.ordersCount || 0}
-                        </span>
-                      </div>
-                    </td>
-
-                    <td className="py-3 px-3 text-center">
-                      {p.adSlot?.enabled ? (
-                        <span className="bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 font-bold px-2 py-0.5 rounded text-[10px]">
-                          ✓ ADS Active
-                        </span>
-                      ) : (
-                        <span className="text-muted-foreground text-[10px]">Disabled</span>
                       )}
-                    </td>
+                    </div>
 
-                    <td className="py-3 px-3 text-muted-foreground text-[11px]">
-                      {p.createdAt}
-                    </td>
+                    <div className="flex items-center gap-1">
+                      <button
+                        type="button"
+                        onClick={() => handleCopyLink(p.slug)}
+                        className="p-1.5 border border-border hover:bg-muted text-foreground rounded-lg transition"
+                        title="Copy Public Link"
+                      >
+                        {copiedSlug === p.slug ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5 text-muted-foreground" />}
+                      </button>
 
-                    <td className="py-3 px-3 text-right">
-                      <div className="flex items-center justify-end gap-1.5">
-                        <button
-                          type="button"
-                          onClick={() => handleCopyLink(p.slug)}
-                          className="p-1.5 border border-border hover:bg-muted text-foreground rounded-lg transition"
-                          title="Copy Public Link"
-                        >
-                          {copiedSlug === p.slug ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5 text-muted-foreground" />}
-                        </button>
+                      <a
+                        href={`/p/${p.slug}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="p-1.5 border border-border hover:bg-muted text-foreground rounded-lg transition"
+                        title="Open Live Landing Page"
+                      >
+                        <ExternalLink className="w-3.5 h-3.5 text-muted-foreground" />
+                      </a>
 
+                      <button
+                        type="button"
+                        onClick={() => handleSaveToLibrary(p)}
+                        className="p-1.5 border border-border hover:bg-blue-500/10 text-blue-600 dark:text-blue-400 rounded-lg transition"
+                        title="Save Link Card to Asset Library"
+                      >
+                        <FolderPlus className="w-3.5 h-3.5" />
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (confirm(`Delete landing page "${p.title}"?`)) {
+                            deletePage(p.id)
+                            showToast("✓ Page deleted.")
+                          }
+                        }}
+                        className="p-1.5 border border-border hover:bg-destructive/10 text-destructive rounded-lg transition"
+                        title="Delete Page"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Desktop Table View (>= md screens) */}
+            <div className="hidden md:block overflow-x-auto">
+              <table className="w-full text-xs text-left">
+                <thead>
+                  <tr className="border-b border-border text-muted-foreground uppercase text-[10px] font-bold">
+                    <th className="py-2.5 px-3">Project & Category</th>
+                    <th className="py-2.5 px-3">Public Subdomain Link</th>
+                    <th className="py-2.5 px-3 text-center">Traffic & Orders</th>
+                    <th className="py-2.5 px-3 text-center">ADS Slot</th>
+                    <th className="py-2.5 px-3">Created</th>
+                    <th className="py-2.5 px-3 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {pages.map((p) => (
+                    <tr key={p.id} className="hover:bg-muted/40 transition">
+                      <td className="py-3 px-3">
+                        <div className="flex items-center gap-3">
+                          <div className="w-14 h-9 rounded-md overflow-hidden bg-muted border border-border shrink-0">
+                            <img src={p.heroImage} alt={p.title} className="w-full h-full object-cover" />
+                          </div>
+                          <div className="space-y-0.5">
+                            <h4 className="font-bold text-foreground line-clamp-1 max-w-xs">{p.title}</h4>
+                            <span className="text-[10px] text-blue-600 dark:text-blue-400 font-semibold block">
+                              {p.category}
+                            </span>
+                          </div>
+                        </div>
+                      </td>
+
+                      <td className="py-3 px-3">
                         <a
                           href={`/p/${p.slug}`}
                           target="_blank"
                           rel="noreferrer"
-                          className="p-1.5 border border-border hover:bg-muted text-foreground rounded-lg transition"
-                          title="Open Live Landing Page"
+                          className="text-blue-600 dark:text-blue-400 hover:underline max-w-xs truncate block font-mono text-[11px]"
                         >
-                          <ExternalLink className="w-3.5 h-3.5 text-muted-foreground" />
+                          /p/{p.slug}
                         </a>
+                      </td>
 
-                        <button
-                          type="button"
-                          onClick={() => handleSaveToLibrary(p)}
-                          className="p-1.5 border border-border hover:bg-blue-500/10 text-blue-600 dark:text-blue-400 rounded-lg transition"
-                          title="Save Link Card to Asset Library"
-                        >
-                          <FolderPlus className="w-3.5 h-3.5" />
-                        </button>
+                      <td className="py-3 px-3 text-center">
+                        <div className="flex items-center justify-center gap-2">
+                          <span className="bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20 font-bold px-2 py-0.5 rounded text-[10px]">
+                            👁️ {p.viewsCount || 0}
+                          </span>
+                          <span className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 font-bold px-2 py-0.5 rounded text-[10px]">
+                            🛒 {p.ordersCount || 0}
+                          </span>
+                        </div>
+                      </td>
 
-                        <button
-                          type="button"
-                          onClick={() => {
-                            if (confirm(`Delete landing page "${p.title}"?`)) {
-                              deletePage(p.id)
-                              showToast("✓ Page deleted.")
-                            }
-                          }}
-                          className="p-1.5 border border-border hover:bg-destructive/10 text-destructive rounded-lg transition"
-                          title="Delete Page"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                      <td className="py-3 px-3 text-center">
+                        {p.adSlot?.enabled ? (
+                          <span className="bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 font-bold px-2 py-0.5 rounded text-[10px]">
+                            ✓ ADS Active
+                          </span>
+                        ) : (
+                          <span className="text-muted-foreground text-[10px]">Disabled</span>
+                        )}
+                      </td>
+
+                      <td className="py-3 px-3 text-muted-foreground text-[11px]">
+                        {p.createdAt}
+                      </td>
+
+                      <td className="py-3 px-3 text-right">
+                        <div className="flex items-center justify-end gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => handleCopyLink(p.slug)}
+                            className="p-1.5 border border-border hover:bg-muted text-foreground rounded-lg transition"
+                            title="Copy Public Link"
+                          >
+                            {copiedSlug === p.slug ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5 text-muted-foreground" />}
+                          </button>
+
+                          <a
+                            href={`/p/${p.slug}`}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="p-1.5 border border-border hover:bg-muted text-foreground rounded-lg transition"
+                            title="Open Live Landing Page"
+                          >
+                            <ExternalLink className="w-3.5 h-3.5 text-muted-foreground" />
+                          </a>
+
+                          <button
+                            type="button"
+                            onClick={() => handleSaveToLibrary(p)}
+                            className="p-1.5 border border-border hover:bg-blue-500/10 text-blue-600 dark:text-blue-400 rounded-lg transition"
+                            title="Save Link Card to Asset Library"
+                          >
+                            <FolderPlus className="w-3.5 h-3.5" />
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (confirm(`Delete landing page "${p.title}"?`)) {
+                                deletePage(p.id)
+                                showToast("✓ Page deleted.")
+                              }
+                            }}
+                            className="p-1.5 border border-border hover:bg-destructive/10 text-destructive rounded-lg transition"
+                            title="Delete Page"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
         )}
       </div>
 
