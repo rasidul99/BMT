@@ -5,6 +5,7 @@ import {
   MessageSquare,
   Bot,
   User,
+  UserCheck,
   Sparkles,
   Send,
   CheckCircle2,
@@ -105,14 +106,14 @@ export function InboxAssistantCenter({ currentMode }: InboxAssistantCenterProps)
 
     sendReply(selectedConversation.id, replyInput.trim(), "PAGE")
     setReplyInput("")
-    showToast("✓ Reply delivered via Graph API POST /{page-id}/messages!")
+    showToast("Reply delivered via Graph API POST /{page-id}/messages!")
   }
 
   // Handle Approve AI Suggestion
   const handleApproveSuggestion = (text: string) => {
     if (!selectedConversation) return
     sendReply(selectedConversation.id, text, "AI_ASSISTANT")
-    showToast("✓ AI Suggested reply approved and sent!")
+    showToast("AI Suggested reply approved and sent!")
   }
 
   // Handle Insert Template
@@ -246,7 +247,7 @@ export function InboxAssistantCenter({ currentMode }: InboxAssistantCenterProps)
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pb-20">
       {/* Toast Notification */}
       {toastMessage && (
         <div className="fixed bottom-5 right-5 z-50 bg-slate-900 text-white dark:bg-white dark:text-slate-900 px-4 py-3 rounded-xl shadow-2xl flex items-center space-x-2 text-xs font-bold border border-slate-700 animate-in fade-in slide-in-from-bottom-2">
@@ -259,17 +260,17 @@ export function InboxAssistantCenter({ currentMode }: InboxAssistantCenterProps)
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-border pb-5">
         <div>
           <div className="flex items-center space-x-2">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white shadow-sm">
+            <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center text-white shadow-xs">
               <Bot className="w-5 h-5" />
             </div>
             <h1 className="text-2xl font-black tracking-tight text-foreground">
               AI Inbox Reply Assistant
             </h1>
             <span
-              className={`text-[10px] uppercase font-black px-2 py-0.5 rounded-full border ${
+              className={`text-[10px] uppercase font-bold px-2.5 py-0.5 rounded-full border ${
                 currentMode === "SAFE"
-                  ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20"
-                  : "bg-orange-500/10 text-orange-600 dark:text-orange-400 border-orange-500/20"
+                  ? "bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300 border-blue-200 dark:border-blue-800"
+                  : "bg-amber-50 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300 border-amber-200 dark:border-amber-800"
               }`}
             >
               {currentMode} ENGINE
@@ -285,7 +286,7 @@ export function InboxAssistantCenter({ currentMode }: InboxAssistantCenterProps)
         <div className="flex items-center flex-wrap gap-2">
           <button
             onClick={() => setIsSimModalOpen(true)}
-            className="flex items-center space-x-1.5 px-3 py-2 rounded-lg text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white transition shadow-sm"
+            className="flex items-center space-x-1.5 px-3.5 py-2 rounded-lg text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white transition shadow-xs min-h-[36px]"
           >
             <Sparkles className="w-3.5 h-3.5" />
             <span>Simulate Customer Query</span>
@@ -293,41 +294,41 @@ export function InboxAssistantCenter({ currentMode }: InboxAssistantCenterProps)
 
           <button
             onClick={handleExportCSV}
-            className="flex items-center space-x-1.5 px-3 py-2 rounded-lg text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white transition shadow-sm"
+            className="flex items-center space-x-1.5 px-3.5 py-2 rounded-lg text-xs font-semibold bg-background hover:bg-muted border border-border text-foreground transition shadow-xs min-h-[36px]"
           >
-            <Download className="w-3.5 h-3.5" />
+            <Download className="w-3.5 h-3.5 text-muted-foreground" />
             <span>Export CSV</span>
           </button>
 
           <button
             onClick={handleExportExcel}
-            className="flex items-center space-x-1.5 px-3 py-2 rounded-lg text-xs font-bold bg-sky-600 hover:bg-sky-700 text-white transition shadow-sm"
+            className="flex items-center space-x-1.5 px-3.5 py-2 rounded-lg text-xs font-semibold bg-background hover:bg-muted border border-border text-foreground transition shadow-xs min-h-[36px]"
           >
-            <FileSpreadsheet className="w-3.5 h-3.5" />
+            <FileSpreadsheet className="w-3.5 h-3.5 text-muted-foreground" />
             <span>Export Excel</span>
           </button>
         </div>
       </div>
 
       {/* Control Banner: Operating Mode & Category Selector */}
-      <div className="border border-border bg-card p-4 rounded-xl shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4 text-xs">
-        <div className="flex items-center space-x-4">
+      <div className="border border-border bg-card p-4 rounded-xl shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4 text-xs">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3">
           {/* Continuous Status Toggle */}
           <div className="flex items-center space-x-2">
             <span
               className={`w-2.5 h-2.5 rounded-full ${
-                settings.isRunning ? "bg-emerald-500 animate-pulse" : "bg-muted-foreground"
+                settings.isRunning ? "bg-blue-600 animate-pulse" : "bg-muted-foreground"
               }`}
             />
-            <span className="font-bold text-foreground">
+            <span className="font-semibold text-foreground">
               {settings.isRunning ? "Status: Continuous Running" : "Status: Paused"}
             </span>
             <button
               onClick={toggleRunning}
-              className={`px-2 py-0.5 rounded text-[10px] font-bold transition ${
+              className={`px-2.5 py-1 rounded text-[11px] font-semibold transition ${
                 settings.isRunning
-                  ? "bg-red-500/10 text-red-600 hover:bg-red-500/20"
-                  : "bg-emerald-600 text-white hover:bg-emerald-700"
+                  ? "bg-muted hover:bg-muted/80 text-muted-foreground border border-border"
+                  : "bg-blue-600 text-white hover:bg-blue-700 shadow-xs"
               }`}
             >
               {settings.isRunning ? "Pause" : "Start"}
@@ -337,47 +338,49 @@ export function InboxAssistantCenter({ currentMode }: InboxAssistantCenterProps)
           <div className="h-4 w-px bg-border hidden sm:block" />
 
           {/* Operating Mode Buttons */}
-          <div className="flex items-center space-x-1 bg-muted p-1 rounded-lg">
+          <div className="flex items-center space-x-1 bg-muted/60 p-1 rounded-lg border border-border">
             <button
               onClick={() => setOperatingMode("MANUAL")}
-              className={`px-3 py-1 rounded text-xs font-bold transition ${
+              className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition ${
                 settings.mode === "MANUAL"
-                  ? "bg-blue-600 text-white shadow-sm"
+                  ? "bg-blue-600 text-white shadow-xs"
                   : "text-muted-foreground hover:text-foreground"
               }`}
             >
-              🖐️ AI Manual Reply (Review & Approve)
+              <UserCheck className="w-3.5 h-3.5" />
+              <span>Manual Reply (Review & Approve)</span>
             </button>
             <button
               onClick={() => setOperatingMode("AUTO")}
-              className={`px-3 py-1 rounded text-xs font-bold transition ${
+              className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition ${
                 settings.mode === "AUTO"
-                  ? "bg-purple-600 text-white shadow-sm"
+                  ? "bg-blue-600 text-white shadow-xs"
                   : "text-muted-foreground hover:text-foreground"
               }`}
             >
-              🤖 AI Auto Reply (Delayed)
+              <Bot className="w-3.5 h-3.5" />
+              <span>Auto Reply (Delayed)</span>
             </button>
           </div>
         </div>
 
         {/* Category Style Selector */}
-        <div className="flex items-center space-x-2">
-          <span className="font-bold text-muted-foreground">Category Style:</span>
+        <div className="flex items-center space-x-2 overflow-x-auto no-scrollbar">
+          <span className="font-semibold text-muted-foreground shrink-0">Category Style:</span>
           {(
             [
-              { id: "Sales Conversion", label: "Sales (সেলস)", color: "text-emerald-600 border-emerald-500/30" },
-              { id: "Lead Conversion", label: "Lead (লিড)", color: "text-blue-600 border-blue-500/30" },
-              { id: "Visit Conversion", label: "Visit (ভিজিট)", color: "text-purple-600 border-purple-500/30" },
+              { id: "Sales Conversion", label: "Sales" },
+              { id: "Lead Conversion", label: "Lead" },
+              { id: "Visit Conversion", label: "Visit" },
             ] as const
           ).map((cat) => (
             <button
               key={cat.id}
               onClick={() => setCategoryStyle(cat.id)}
-              className={`px-2.5 py-1 rounded-lg border text-[11px] font-extrabold transition ${
+              className={`px-3 py-1 rounded-lg text-xs font-semibold transition border ${
                 settings.activeCategory === cat.id
-                  ? "bg-foreground text-background shadow-xs"
-                  : `hover:bg-muted ${cat.color}`
+                  ? "bg-blue-600 text-white border-blue-600 shadow-xs"
+                  : "bg-background hover:bg-muted text-muted-foreground border-border"
               }`}
             >
               {cat.label}
@@ -388,61 +391,61 @@ export function InboxAssistantCenter({ currentMode }: InboxAssistantCenterProps)
 
       {/* Executive Metric Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <div className="border border-border bg-card p-4 rounded-xl shadow-sm flex flex-col justify-between">
+        <div className="border border-border bg-card p-4 rounded-xl shadow-xs flex flex-col justify-between">
           <div className="flex items-center justify-between text-muted-foreground text-xs font-semibold">
             <span>Active Conversations</span>
-            <MessageSquare className="w-4 h-4 text-blue-500" />
+            <MessageSquare className="w-4 h-4 text-blue-600 dark:text-blue-400" />
           </div>
           <div className="mt-2 flex items-baseline justify-between">
-            <span className="text-2xl font-black text-foreground">
+            <span className="text-2xl font-bold text-blue-600 dark:text-blue-400">
               {metrics.totalConvs}
             </span>
-            <span className="text-[10px] font-bold text-muted-foreground">
+            <span className="text-[10px] font-medium text-muted-foreground">
               Marketplace & Pages
             </span>
           </div>
         </div>
 
-        <div className="border border-border bg-card p-4 rounded-xl shadow-sm flex flex-col justify-between">
+        <div className="border border-border bg-card p-4 rounded-xl shadow-xs flex flex-col justify-between">
           <div className="flex items-center justify-between text-muted-foreground text-xs font-semibold">
             <span>Pending Replies</span>
-            <Clock className="w-4 h-4 text-amber-500" />
+            <Clock className="w-4 h-4 text-blue-600 dark:text-blue-400" />
           </div>
           <div className="mt-2 flex items-baseline justify-between">
-            <span className="text-2xl font-black text-amber-600 dark:text-amber-400">
+            <span className="text-2xl font-bold text-blue-600 dark:text-blue-400">
               {metrics.waitingReply}
             </span>
-            <span className="text-[10px] font-bold text-amber-500">
+            <span className="text-[10px] font-medium text-muted-foreground">
               Awaiting Action
             </span>
           </div>
         </div>
 
-        <div className="border border-border bg-card p-4 rounded-xl shadow-sm flex flex-col justify-between">
+        <div className="border border-border bg-card p-4 rounded-xl shadow-xs flex flex-col justify-between">
           <div className="flex items-center justify-between text-muted-foreground text-xs font-semibold">
             <span>AI Automated Replies</span>
-            <Bot className="w-4 h-4 text-purple-500" />
+            <Bot className="w-4 h-4 text-blue-600 dark:text-blue-400" />
           </div>
           <div className="mt-2 flex items-baseline justify-between">
-            <span className="text-2xl font-black text-purple-600 dark:text-purple-400">
+            <span className="text-2xl font-bold text-blue-600 dark:text-blue-400">
               {metrics.autoRepliedCount}
             </span>
-            <span className="text-[10px] font-bold text-emerald-500">
-              100% Graph API Sent
+            <span className="text-[10px] font-medium text-muted-foreground">
+              Graph API Sent
             </span>
           </div>
         </div>
 
-        <div className="border border-border bg-card p-4 rounded-xl shadow-sm flex flex-col justify-between">
+        <div className="border border-border bg-card p-4 rounded-xl shadow-xs flex flex-col justify-between">
           <div className="flex items-center justify-between text-muted-foreground text-xs font-semibold">
             <span>Average Reply Speed</span>
-            <Zap className="w-4 h-4 text-emerald-500" />
+            <Zap className="w-4 h-4 text-blue-600 dark:text-blue-400" />
           </div>
           <div className="mt-2 flex items-baseline justify-between">
-            <span className="text-2xl font-black text-emerald-600 dark:text-emerald-400">
+            <span className="text-2xl font-bold text-blue-600 dark:text-blue-400">
               {metrics.avgResponseTime}
             </span>
-            <span className="text-[10px] font-bold text-emerald-500">
+            <span className="text-[10px] font-medium text-muted-foreground">
               Human-like Delay
             </span>
           </div>
@@ -450,12 +453,12 @@ export function InboxAssistantCenter({ currentMode }: InboxAssistantCenterProps)
       </div>
 
       {/* Tabs Selector */}
-      <div className="flex items-center space-x-2 border-b border-border pb-2">
+      <div className="flex items-center space-x-2 border-b border-border pb-2 overflow-x-auto no-scrollbar flex-nowrap">
         <button
           onClick={() => setActiveTab("INBOX")}
-          className={`flex items-center space-x-2 px-4 py-2 rounded-lg text-xs font-bold transition ${
+          className={`flex items-center space-x-2 px-4 py-2 rounded-lg text-xs font-semibold transition shrink-0 ${
             activeTab === "INBOX"
-              ? "bg-blue-600 text-white shadow-sm"
+              ? "bg-blue-600 text-white shadow-xs"
               : "bg-muted text-muted-foreground hover:bg-muted/80"
           }`}
         >
@@ -465,9 +468,9 @@ export function InboxAssistantCenter({ currentMode }: InboxAssistantCenterProps)
 
         <button
           onClick={() => setActiveTab("TEMPLATES")}
-          className={`flex items-center space-x-2 px-4 py-2 rounded-lg text-xs font-bold transition ${
+          className={`flex items-center space-x-2 px-4 py-2 rounded-lg text-xs font-semibold transition shrink-0 ${
             activeTab === "TEMPLATES"
-              ? "bg-indigo-600 text-white shadow-sm"
+              ? "bg-blue-600 text-white shadow-xs"
               : "bg-muted text-muted-foreground hover:bg-muted/80"
           }`}
         >
@@ -477,9 +480,9 @@ export function InboxAssistantCenter({ currentMode }: InboxAssistantCenterProps)
 
         <button
           onClick={() => setActiveTab("RULES")}
-          className={`flex items-center space-x-2 px-4 py-2 rounded-lg text-xs font-bold transition ${
+          className={`flex items-center space-x-2 px-4 py-2 rounded-lg text-xs font-semibold transition shrink-0 ${
             activeTab === "RULES"
-              ? "bg-purple-600 text-white shadow-sm"
+              ? "bg-blue-600 text-white shadow-xs"
               : "bg-muted text-muted-foreground hover:bg-muted/80"
           }`}
         >
@@ -489,9 +492,9 @@ export function InboxAssistantCenter({ currentMode }: InboxAssistantCenterProps)
 
         <button
           onClick={() => setActiveTab("LEDGER")}
-          className={`flex items-center space-x-2 px-4 py-2 rounded-lg text-xs font-bold transition ${
+          className={`flex items-center space-x-2 px-4 py-2 rounded-lg text-xs font-semibold transition shrink-0 ${
             activeTab === "LEDGER"
-              ? "bg-emerald-600 text-white shadow-sm"
+              ? "bg-blue-600 text-white shadow-xs"
               : "bg-muted text-muted-foreground hover:bg-muted/80"
           }`}
         >
@@ -504,9 +507,9 @@ export function InboxAssistantCenter({ currentMode }: InboxAssistantCenterProps)
       {/* TAB 1: LIVE MESSENGER INBOX (SPLIT-PANE VIEW)            */}
       {/* ======================================================== */}
       {activeTab === "INBOX" && (
-        <div className="grid grid-cols-1 md:grid-cols-12 gap-4 h-[650px] border border-border bg-card rounded-2xl shadow-sm overflow-hidden text-xs">
+        <div className="grid grid-cols-1 lg:grid-cols-12 border border-border bg-card rounded-2xl shadow-xs overflow-hidden text-xs min-h-[620px]">
           {/* Left Pane: Conversations List (5 cols) */}
-          <div className="md:col-span-5 border-r border-border flex flex-col h-full overflow-hidden bg-muted/10">
+          <div className="lg:col-span-5 border-b lg:border-b-0 lg:border-r border-border flex flex-col h-[320px] lg:h-[650px] overflow-hidden bg-muted/10">
             {/* Search Box */}
             <div className="p-3 border-b border-border bg-card">
               <div className="relative">
@@ -516,7 +519,7 @@ export function InboxAssistantCenter({ currentMode }: InboxAssistantCenterProps)
                   placeholder="Search customer, page or query..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-9 pr-3 py-1.5 border rounded-lg bg-background text-xs"
+                  className="w-full pl-9 pr-3 py-1.5 border border-border rounded-lg bg-background text-xs focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition"
                 />
               </div>
             </div>
@@ -536,17 +539,17 @@ export function InboxAssistantCenter({ currentMode }: InboxAssistantCenterProps)
                       onClick={() => setSelectedConvId(conv.id)}
                       className={`w-full p-3.5 text-left flex items-start space-x-3 transition ${
                         isSelected
-                          ? "bg-blue-600/10 border-l-4 border-blue-600"
+                          ? "bg-blue-50/70 dark:bg-blue-950/30 border-l-4 border-blue-600"
                           : "hover:bg-muted/30"
                       }`}
                     >
-                      <div className="w-9 h-9 rounded-full bg-gradient-to-tr from-blue-500 to-indigo-600 flex items-center justify-center text-white font-black text-xs shrink-0 shadow-xs">
+                      <div className="w-9 h-9 rounded-full bg-blue-600 flex items-center justify-center text-white font-bold text-xs shrink-0 shadow-xs">
                         {conv.customerName.charAt(0)}
                       </div>
 
                       <div className="flex-1 min-w-0 space-y-1">
                         <div className="flex items-center justify-between">
-                          <span className="font-extrabold text-foreground truncate block">
+                          <span className="font-bold text-foreground truncate block">
                             {conv.customerName}
                           </span>
                           <span className="text-[10px] text-muted-foreground shrink-0">
@@ -559,15 +562,7 @@ export function InboxAssistantCenter({ currentMode }: InboxAssistantCenterProps)
                             {conv.pageName}
                           </span>
                           <span>•</span>
-                          <span
-                            className={`px-1.5 py-0.2 rounded font-bold ${
-                              conv.category === "Sales Conversion"
-                                ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
-                                : conv.category === "Lead Conversion"
-                                ? "bg-blue-500/10 text-blue-600 dark:text-blue-400"
-                                : "bg-purple-500/10 text-purple-600 dark:text-purple-400"
-                            }`}
-                          >
+                          <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300 border border-blue-200/50">
                             {conv.category}
                           </span>
                         </div>
@@ -588,18 +583,18 @@ export function InboxAssistantCenter({ currentMode }: InboxAssistantCenterProps)
           </div>
 
           {/* Right Pane: Active Thread & Reply Composer (7 cols) */}
-          <div className="md:col-span-7 flex flex-col h-full overflow-hidden bg-background">
+          <div className="lg:col-span-7 flex flex-col min-h-[420px] lg:h-[650px] overflow-hidden bg-background">
             {selectedConversation ? (
               <>
                 {/* Thread Header */}
                 <div className="p-3.5 border-b border-border bg-card flex items-center justify-between">
                   <div className="flex items-center space-x-3">
-                    <div className="w-8 h-8 rounded-full bg-blue-600 text-white font-bold flex items-center justify-center text-xs">
+                    <div className="w-8 h-8 rounded-full bg-blue-600 text-white font-bold flex items-center justify-center text-xs shadow-xs">
                       {selectedConversation.customerName.charAt(0)}
                     </div>
                     <div>
                       <div className="flex items-center space-x-2">
-                        <span className="font-black text-sm text-foreground">
+                        <span className="font-bold text-sm text-foreground">
                           {selectedConversation.customerName}
                         </span>
                         <span className="text-[10px] bg-muted px-2 py-0.5 rounded text-muted-foreground font-semibold">
@@ -616,13 +611,20 @@ export function InboxAssistantCenter({ currentMode }: InboxAssistantCenterProps)
                   </div>
 
                   <span
-                    className={`px-2 py-0.5 rounded-full text-[10px] font-black border ${
+                    className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border flex items-center space-x-1 ${
                       selectedConversation.status === "WAITING_REPLY"
-                        ? "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20"
-                        : "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20"
+                        ? "bg-amber-50 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300 border-amber-200/60"
+                        : "bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300 border-blue-200/60"
                     }`}
                   >
-                    {selectedConversation.status === "WAITING_REPLY" ? "Awaiting Reply" : "Replied ✓"}
+                    {selectedConversation.status === "WAITING_REPLY" ? (
+                      <span>Awaiting Reply</span>
+                    ) : (
+                      <>
+                        <Check className="w-3 h-3 mr-1 inline" />
+                        <span>Replied</span>
+                      </>
+                    )}
                   </span>
                 </div>
 
@@ -643,12 +645,12 @@ export function InboxAssistantCenter({ currentMode }: InboxAssistantCenterProps)
                             </>
                           ) : msg.sender === "AI_ASSISTANT" ? (
                             <>
-                              <Bot className="w-3 h-3 text-purple-500" />
-                              <span className="font-bold text-purple-600">AI Auto-Reply</span>
+                              <Bot className="w-3 h-3 text-blue-600 dark:text-blue-400" />
+                              <span className="font-bold text-blue-600 dark:text-blue-400">AI Auto-Reply</span>
                             </>
                           ) : (
                             <>
-                              <Store className="w-3 h-3 text-blue-500" />
+                              <Store className="w-3 h-3 text-blue-600 dark:text-blue-400" />
                               <span>{selectedConversation.pageName}</span>
                             </>
                           )}
@@ -660,8 +662,6 @@ export function InboxAssistantCenter({ currentMode }: InboxAssistantCenterProps)
                           className={`max-w-[80%] p-3 rounded-2xl text-xs leading-relaxed ${
                             isCustomer
                               ? "bg-card border border-border text-foreground rounded-tl-xs shadow-xs"
-                              : msg.sender === "AI_ASSISTANT"
-                              ? "bg-purple-600 text-white rounded-tr-xs shadow-xs"
                               : "bg-blue-600 text-white rounded-tr-xs shadow-xs"
                           }`}
                         >
@@ -669,8 +669,8 @@ export function InboxAssistantCenter({ currentMode }: InboxAssistantCenterProps)
                         </div>
 
                         {!isCustomer && (
-                          <span className="text-[9px] text-emerald-600 dark:text-emerald-400 font-bold mt-0.5 flex items-center space-x-1">
-                            <Check className="w-3 h-3" />
+                          <span className="text-[10px] text-muted-foreground font-medium mt-1 flex items-center space-x-1">
+                            <Check className="w-3 h-3 text-blue-600" />
                             <span>Delivered via Graph API 200</span>
                           </span>
                         )}
@@ -682,9 +682,9 @@ export function InboxAssistantCenter({ currentMode }: InboxAssistantCenterProps)
                 {/* AI Suggested Replies Box (When in Manual Mode & suggestions exist) */}
                 {selectedConversation.status === "WAITING_REPLY" &&
                   selectedConversation.aiSuggestions.length > 0 && (
-                    <div className="p-3 border-t border-border bg-blue-50/50 dark:bg-blue-950/20 space-y-2">
+                    <div className="p-3 border-t border-border bg-blue-50/40 dark:bg-blue-950/20 space-y-2">
                       <div className="flex items-center justify-between">
-                        <span className="text-[11px] font-black text-blue-600 dark:text-blue-400 flex items-center space-x-1">
+                        <span className="text-[11px] font-bold text-blue-600 dark:text-blue-400 flex items-center space-x-1.5">
                           <Sparkles className="w-3.5 h-3.5" />
                           <span>AI Suggested Responses ({selectedConversation.category} Style):</span>
                         </span>
@@ -695,7 +695,7 @@ export function InboxAssistantCenter({ currentMode }: InboxAssistantCenterProps)
                         {selectedConversation.aiSuggestions.map((sugg, idx) => (
                           <div
                             key={idx}
-                            className="p-2.5 bg-card border border-blue-200 dark:border-blue-900/50 rounded-xl flex items-center justify-between gap-3 shadow-xs"
+                            className="p-2.5 bg-card border border-border rounded-xl flex items-center justify-between gap-3 shadow-xs"
                           >
                             <p className="text-[11px] text-foreground font-medium flex-1">
                               "{sugg}"
@@ -703,15 +703,16 @@ export function InboxAssistantCenter({ currentMode }: InboxAssistantCenterProps)
                             <div className="flex items-center space-x-1.5 shrink-0">
                               <button
                                 onClick={() => setReplyInput(sugg)}
-                                className="px-2 py-1 rounded border text-[10px] font-bold hover:bg-muted"
+                                className="px-2.5 py-1 rounded-lg border border-border text-[11px] font-semibold hover:bg-muted text-foreground transition"
                               >
                                 Edit
                               </button>
                               <button
                                 onClick={() => handleApproveSuggestion(sugg)}
-                                className="px-2.5 py-1 rounded bg-blue-600 hover:bg-blue-700 text-white text-[10px] font-black shadow-xs transition"
+                                className="px-3 py-1 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-[11px] font-semibold shadow-xs transition flex items-center space-x-1"
                               >
-                                ✓ Approve & Send
+                                <Check className="w-3.5 h-3.5 mr-0.5" />
+                                <span>Approve & Send</span>
                               </button>
                             </div>
                           </div>
@@ -722,22 +723,22 @@ export function InboxAssistantCenter({ currentMode }: InboxAssistantCenterProps)
 
                 {/* Ready Templates Quick Bar */}
                 <div className="p-2 border-t border-border bg-muted/20 flex items-center space-x-2 overflow-x-auto no-scrollbar">
-                  <span className="text-[10px] font-bold text-muted-foreground shrink-0 flex items-center space-x-1">
-                    <Bookmark className="w-3 h-3" />
+                  <span className="text-[10px] font-semibold text-muted-foreground shrink-0 flex items-center space-x-1">
+                    <Bookmark className="w-3 h-3 text-blue-600" />
                     <span>Templates:</span>
                   </span>
                   {templates.slice(0, 3).map((tpl) => (
                     <button
                       key={tpl.id}
                       onClick={() => handleInsertTemplate(tpl.content)}
-                      className="px-2 py-1 rounded bg-background border text-[10px] font-semibold hover:bg-muted truncate max-w-[160px] shrink-0"
+                      className="px-2.5 py-1 rounded-lg bg-background border border-border text-[11px] font-medium hover:bg-muted truncate max-w-[160px] shrink-0 transition"
                     >
                       {tpl.title}
                     </button>
                   ))}
                   <button
                     onClick={() => setActiveTab("TEMPLATES")}
-                    className="text-[10px] text-blue-600 dark:text-blue-400 font-bold hover:underline shrink-0"
+                    className="text-[10px] text-blue-600 dark:text-blue-400 font-semibold hover:underline shrink-0"
                   >
                     View All →
                   </button>
@@ -750,11 +751,11 @@ export function InboxAssistantCenter({ currentMode }: InboxAssistantCenterProps)
                     placeholder="Type customized reply or select from AI suggestions..."
                     value={replyInput}
                     onChange={(e) => setReplyInput(e.target.value)}
-                    className="flex-1 px-3 py-2 border rounded-xl bg-background text-xs"
+                    className="flex-1 px-3 py-2 border border-border rounded-xl bg-background text-xs min-h-[40px] focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition"
                   />
                   <button
                     type="submit"
-                    className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-xs transition flex items-center space-x-1"
+                    className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl shadow-xs transition flex items-center space-x-1.5 min-h-[40px]"
                   >
                     <span>Send</span>
                     <Send className="w-3.5 h-3.5" />
@@ -763,8 +764,8 @@ export function InboxAssistantCenter({ currentMode }: InboxAssistantCenterProps)
               </>
             ) : (
               <div className="flex-1 flex flex-col items-center justify-center p-8 text-center text-muted-foreground space-y-2">
-                <MessageSquare className="w-10 h-10 opacity-40" />
-                <p className="font-bold text-foreground">Select a conversation to view chat history</p>
+                <MessageSquare className="w-10 h-10 opacity-40 text-blue-600" />
+                <p className="font-semibold text-foreground">Select a conversation to view chat history</p>
               </div>
             )}
           </div>
@@ -778,14 +779,14 @@ export function InboxAssistantCenter({ currentMode }: InboxAssistantCenterProps)
         <div className="space-y-4 text-xs">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-border pb-3">
             <div>
-              <h3 className="font-black text-sm text-foreground">Predefined Message Library</h3>
+              <h3 className="font-bold text-sm text-foreground">Predefined Message Library</h3>
               <p className="text-[11px] text-muted-foreground">
                 Ready-to-send response templates categorized by Sales Conversion, Lead Conversion, and Visit Conversion.
               </p>
             </div>
             <button
               onClick={() => setIsTemplateModalOpen(true)}
-              className="flex items-center space-x-1.5 px-3 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-lg transition shadow-xs"
+              className="flex items-center space-x-1.5 px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition shadow-xs min-h-[36px]"
             >
               <Plus className="w-3.5 h-3.5" />
               <span>Create Template</span>
@@ -796,22 +797,12 @@ export function InboxAssistantCenter({ currentMode }: InboxAssistantCenterProps)
             {templates.map((tpl) => (
               <div
                 key={tpl.id}
-                className="border border-border bg-card p-4 rounded-xl space-y-2.5 shadow-xs hover:border-indigo-500/50 transition"
+                className="border border-border bg-card p-4 rounded-xl space-y-2.5 shadow-xs hover:border-blue-500/50 transition"
               >
                 <div className="flex items-center justify-between">
-                  <span className="font-black text-sm text-foreground">{tpl.title}</span>
+                  <span className="font-bold text-sm text-foreground">{tpl.title}</span>
                   <div className="flex items-center space-x-2">
-                    <span
-                      className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                        tpl.category === "Sales Conversion"
-                          ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20"
-                          : tpl.category === "Lead Conversion"
-                          ? "bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20"
-                          : tpl.category === "Visit Conversion"
-                          ? "bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20"
-                          : "bg-muted text-muted-foreground border"
-                      }`}
-                    >
+                    <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300 border border-blue-200/50">
                       {tpl.category}
                     </span>
                     <button
@@ -831,7 +822,7 @@ export function InboxAssistantCenter({ currentMode }: InboxAssistantCenterProps)
                 <div className="flex items-center justify-between pt-1">
                   <div className="flex flex-wrap gap-1">
                     {tpl.tags.map((tag) => (
-                      <span key={tag} className="text-[9px] px-1.5 py-0.5 bg-muted rounded font-semibold text-muted-foreground">
+                      <span key={tag} className="text-[10px] px-2 py-0.5 bg-muted rounded font-medium text-muted-foreground">
                         #{tag}
                       </span>
                     ))}
@@ -842,7 +833,7 @@ export function InboxAssistantCenter({ currentMode }: InboxAssistantCenterProps)
                       handleInsertTemplate(tpl.content)
                       setActiveTab("INBOX")
                     }}
-                    className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 hover:underline"
+                    className="text-[11px] font-semibold text-blue-600 dark:text-blue-400 hover:underline"
                   >
                     Use in Active Inbox →
                   </button>
@@ -857,9 +848,9 @@ export function InboxAssistantCenter({ currentMode }: InboxAssistantCenterProps)
       {/* TAB 3: AUTOMATION & DELAY RULES                          */}
       {/* ======================================================== */}
       {activeTab === "RULES" && (
-        <div className="border border-border bg-card p-5 rounded-2xl space-y-5 shadow-sm text-xs max-w-3xl">
+        <div className="border border-border bg-card p-5 rounded-2xl space-y-5 shadow-xs text-xs max-w-3xl">
           <div className="border-b border-border pb-3">
-            <h3 className="font-black text-sm text-foreground">AI Automation & Anti-Detection Rules</h3>
+            <h3 className="font-bold text-sm text-foreground">AI Automation & Anti-Detection Rules</h3>
             <p className="text-[11px] text-muted-foreground">
               Configure human-like response behavior to keep your Facebook accounts 100% safe from Meta rate limits.
             </p>
@@ -870,7 +861,7 @@ export function InboxAssistantCenter({ currentMode }: InboxAssistantCenterProps)
             <div className="space-y-2">
               <div className="flex justify-between items-center">
                 <label className="font-bold text-foreground">Human-like Response Delay</label>
-                <span className="font-black text-blue-600 dark:text-blue-400">
+                <span className="font-bold text-blue-600 dark:text-blue-400">
                   {settings.humanDelaySeconds} seconds
                 </span>
               </div>
@@ -881,7 +872,7 @@ export function InboxAssistantCenter({ currentMode }: InboxAssistantCenterProps)
                 step="5"
                 value={settings.humanDelaySeconds}
                 onChange={() => {}}
-                className="w-full"
+                className="w-full accent-blue-600 cursor-pointer"
               />
               <p className="text-[11px] text-muted-foreground">
                 Simulates real typing delay (30s - 180s) before sending auto-replies to appear as natural human interaction.
@@ -890,14 +881,14 @@ export function InboxAssistantCenter({ currentMode }: InboxAssistantCenterProps)
 
             {/* Unknown Intent Fallback Policy */}
             <div className="border border-border p-4 rounded-xl bg-muted/20 space-y-2">
-              <span className="font-extrabold text-foreground block">
+              <span className="font-bold text-foreground block">
                 Unknown Query Fallback & Motivation Sequence:
               </span>
               <p className="text-muted-foreground text-[11px]">
                 If a customer asks a question outside your product knowledge base, the AI automatically dispatches a motivational
                 follow-up message along with your predefined Fallback Template (<code>tpl-4</code>) and alerts human operators.
               </p>
-              <div className="p-2.5 bg-background border rounded-lg text-[11px] font-mono text-muted-foreground">
+              <div className="p-2.5 bg-background border border-border rounded-lg text-[11px] font-mono text-muted-foreground">
                 Fallback Action: Auto-send catalog link & escalate to human operator queue.
               </div>
             </div>
@@ -909,7 +900,7 @@ export function InboxAssistantCenter({ currentMode }: InboxAssistantCenterProps)
       {/* TAB 4: DELIVERY AUDIT LEDGER                             */}
       {/* ======================================================== */}
       {activeTab === "LEDGER" && (
-        <div className="border border-border bg-card rounded-2xl shadow-sm overflow-hidden text-xs">
+        <div className="border border-border bg-card rounded-2xl shadow-xs overflow-hidden text-xs">
           <div className="p-3.5 bg-muted/40 border-b border-border flex items-center justify-between font-bold text-foreground">
             <span>Graph API Message Delivery Logs ({conversations.length})</span>
             <span className="text-[11px] text-muted-foreground font-normal">
@@ -925,11 +916,11 @@ export function InboxAssistantCenter({ currentMode }: InboxAssistantCenterProps)
               >
                 <div className="space-y-1">
                   <div className="flex items-center space-x-2">
-                    <span className="font-black text-sm text-foreground">{conv.customerName}</span>
-                    <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-muted text-muted-foreground">
+                    <span className="font-bold text-sm text-foreground">{conv.customerName}</span>
+                    <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-muted text-muted-foreground">
                       {conv.pageName}
                     </span>
-                    <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-500/10 text-blue-600 dark:text-blue-400">
+                    <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300 border border-blue-200/50">
                       {conv.category}
                     </span>
                   </div>
@@ -940,7 +931,7 @@ export function InboxAssistantCenter({ currentMode }: InboxAssistantCenterProps)
 
                 <div className="flex items-center space-x-3 shrink-0">
                   <div className="text-right">
-                    <span className="text-xs font-black text-emerald-600 dark:text-emerald-400 block">
+                    <span className="text-xs font-bold text-blue-600 dark:text-blue-400 block">
                       SUCCESS_200
                     </span>
                     <span className="text-[10px] text-muted-foreground">{conv.lastMessageTime}</span>
@@ -960,36 +951,36 @@ export function InboxAssistantCenter({ currentMode }: InboxAssistantCenterProps)
           <div className="bg-card border border-border rounded-2xl w-full max-w-md shadow-2xl p-6 space-y-4 animate-in fade-in zoom-in-95">
             <div className="flex items-center justify-between border-b border-border pb-3">
               <div className="flex items-center space-x-2">
-                <Bookmark className="w-5 h-5 text-indigo-500" />
-                <h3 className="font-black text-base text-foreground">Create Message Template</h3>
+                <Bookmark className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                <h3 className="font-bold text-base text-foreground">Create Message Template</h3>
               </div>
               <button
                 onClick={() => setIsTemplateModalOpen(false)}
-                className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground"
+                className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground transition"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
-            <form onSubmit={handleCreateTemplate} className="space-y-3 text-xs">
+            <form onSubmit={handleCreateTemplate} className="space-y-3.5 text-xs">
               <div className="space-y-1">
-                <label className="font-bold text-foreground">Template Title</label>
+                <label className="font-semibold text-foreground">Template Title</label>
                 <input
                   type="text"
                   required
                   placeholder="e.g. Return & Exchange Policy"
                   value={newTplTitle}
                   onChange={(e) => setNewTplTitle(e.target.value)}
-                  className="w-full px-3 py-1.5 border rounded-lg bg-background text-xs"
+                  className="w-full px-3 py-2 border border-border rounded-lg bg-background text-xs focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition min-h-[38px]"
                 />
               </div>
 
               <div className="space-y-1">
-                <label className="font-bold text-foreground">Category Style</label>
+                <label className="font-semibold text-foreground">Category Style</label>
                 <select
                   value={newTplCategory}
                   onChange={(e) => setNewTplCategory(e.target.value as any)}
-                  className="w-full px-3 py-1.5 border rounded-lg bg-background text-xs"
+                  className="w-full px-3 py-2 border border-border rounded-lg bg-background text-xs focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition min-h-[38px]"
                 >
                   <option value="Sales Conversion">Sales Conversion</option>
                   <option value="Lead Conversion">Lead Conversion</option>
@@ -999,14 +990,14 @@ export function InboxAssistantCenter({ currentMode }: InboxAssistantCenterProps)
               </div>
 
               <div className="space-y-1">
-                <label className="font-bold text-foreground">Message Content</label>
+                <label className="font-semibold text-foreground">Message Content</label>
                 <textarea
                   rows={4}
                   required
                   placeholder="Type ready response template..."
                   value={newTplContent}
                   onChange={(e) => setNewTplContent(e.target.value)}
-                  className="w-full px-3 py-2 border rounded-lg bg-background text-xs"
+                  className="w-full px-3 py-2 border border-border rounded-lg bg-background text-xs focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition"
                 />
               </div>
 
@@ -1014,13 +1005,13 @@ export function InboxAssistantCenter({ currentMode }: InboxAssistantCenterProps)
                 <button
                   type="button"
                   onClick={() => setIsTemplateModalOpen(false)}
-                  className="px-4 py-2 rounded-lg border hover:bg-muted font-bold text-xs"
+                  className="px-4 py-2 rounded-lg border border-border hover:bg-muted font-semibold text-xs transition min-h-[36px]"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-xs transition"
+                  className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs shadow-xs transition min-h-[36px]"
                 >
                   Save to Library
                 </button>
@@ -1038,38 +1029,38 @@ export function InboxAssistantCenter({ currentMode }: InboxAssistantCenterProps)
           <div className="bg-card border border-border rounded-2xl w-full max-w-lg shadow-2xl p-6 space-y-4 animate-in fade-in zoom-in-95">
             <div className="flex items-center justify-between border-b border-border pb-3">
               <div className="flex items-center space-x-2">
-                <Sparkles className="w-5 h-5 text-blue-500" />
-                <h3 className="font-black text-base text-foreground">
+                <Sparkles className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                <h3 className="font-bold text-base text-foreground">
                   Simulate Incoming Customer Query
                 </h3>
               </div>
               <button
                 onClick={() => setIsSimModalOpen(false)}
-                className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground"
+                className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground transition"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
             <form onSubmit={handleSimulateSubmit} className="space-y-3.5 text-xs">
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="space-y-1">
-                  <label className="font-bold text-foreground">Customer Name</label>
+                  <label className="font-semibold text-foreground">Customer Name</label>
                   <input
                     type="text"
                     required
                     value={simName}
                     onChange={(e) => setSimName(e.target.value)}
-                    className="w-full px-3 py-1.5 border rounded-lg bg-background text-xs"
+                    className="w-full px-3 py-2 border border-border rounded-lg bg-background text-xs focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition min-h-[38px]"
                   />
                 </div>
 
                 <div className="space-y-1">
-                  <label className="font-bold text-foreground">Target Facebook Page</label>
+                  <label className="font-semibold text-foreground">Target Facebook Page</label>
                   <select
                     value={simPage}
                     onChange={(e) => setSimPage(e.target.value)}
-                    className="w-full px-3 py-1.5 border rounded-lg bg-background text-xs"
+                    className="w-full px-3 py-2 border border-border rounded-lg bg-background text-xs focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition min-h-[38px]"
                   >
                     <option value="Fashion Hub Official">Fashion Hub Official</option>
                     <option value="Tech Gadgets BD">Tech Gadgets BD</option>
@@ -1079,11 +1070,11 @@ export function InboxAssistantCenter({ currentMode }: InboxAssistantCenterProps)
               </div>
 
               <div className="space-y-1">
-                <label className="font-bold text-foreground">Conversion Intent</label>
+                <label className="font-semibold text-foreground">Conversion Intent</label>
                 <select
                   value={simCategory}
                   onChange={(e) => setSimCategory(e.target.value as any)}
-                  className="w-full px-3 py-1.5 border rounded-lg bg-background text-xs"
+                  className="w-full px-3 py-2 border border-border rounded-lg bg-background text-xs focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition min-h-[38px]"
                 >
                   <option value="Sales Conversion">Sales Conversion (Purchase & Discount)</option>
                   <option value="Lead Conversion">Lead Conversion (Specs & Warranty)</option>
@@ -1092,13 +1083,13 @@ export function InboxAssistantCenter({ currentMode }: InboxAssistantCenterProps)
               </div>
 
               <div className="space-y-1">
-                <label className="font-bold text-foreground">Customer Message Body</label>
+                <label className="font-semibold text-foreground">Customer Message Body</label>
                 <textarea
                   rows={3}
                   required
                   value={simMessage}
                   onChange={(e) => setSimMessage(e.target.value)}
-                  className="w-full px-3 py-2 border rounded-lg bg-background text-xs"
+                  className="w-full px-3 py-2 border border-border rounded-lg bg-background text-xs focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition"
                 />
               </div>
 
@@ -1106,13 +1097,13 @@ export function InboxAssistantCenter({ currentMode }: InboxAssistantCenterProps)
                 <button
                   type="button"
                   onClick={() => setIsSimModalOpen(false)}
-                  className="px-4 py-2 rounded-lg border hover:bg-muted font-bold text-xs"
+                  className="px-4 py-2 rounded-lg border border-border hover:bg-muted font-semibold text-xs transition min-h-[36px]"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-xs transition"
+                  className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs shadow-xs transition min-h-[36px]"
                 >
                   Trigger Webhook Message
                 </button>

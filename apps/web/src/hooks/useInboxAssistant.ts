@@ -51,6 +51,13 @@ const STORAGE_KEY_CONVERSATIONS = "bmt_inbox_conversations"
 const STORAGE_KEY_SETTINGS = "bmt_inbox_settings"
 const STORAGE_KEY_TEMPLATES = "bmt_inbox_templates"
 
+const sanitizeText = (text: string): string => {
+  return text
+    .replace(/[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{1F600}-\u{1F64F}\u{1F680}-\u{1F6FF}\u{1F1E0}-\u{1F1FF}\u{25A0}-\u{25FF}\u{2B50}\u{2713}\u{2714}\u{2705}]/gu, "")
+    .replace(/\s+/g, " ")
+    .trim()
+}
+
 const DEFAULT_TEMPLATES: MessageTemplate[] = [
   {
     id: "tpl-1",
@@ -215,7 +222,19 @@ export function useInboxAssistant() {
 
     try {
       const savedConvs = localStorage.getItem(STORAGE_KEY_CONVERSATIONS)
-      setConversations(savedConvs ? JSON.parse(savedConvs) : INITIAL_CONVERSATIONS)
+      if (savedConvs) {
+        const parsed = JSON.parse(savedConvs)
+        const sanitized = parsed.map((c: InboxConversation) => ({
+          ...c,
+          customerName: sanitizeText(c.customerName || ""),
+          lastMessageText: sanitizeText(c.lastMessageText || ""),
+          aiSuggestions: (c.aiSuggestions || []).map((s: string) => sanitizeText(s)),
+          messages: (c.messages || []).map((m: ChatMessage) => ({ ...m, text: sanitizeText(m.text || "") })),
+        }))
+        setConversations(sanitized)
+      } else {
+        setConversations(INITIAL_CONVERSATIONS)
+      }
 
       const savedSettings = localStorage.getItem(STORAGE_KEY_SETTINGS)
       if (savedSettings) {
@@ -223,7 +242,17 @@ export function useInboxAssistant() {
       }
 
       const savedTemplates = localStorage.getItem(STORAGE_KEY_TEMPLATES)
-      setTemplates(savedTemplates ? JSON.parse(savedTemplates) : DEFAULT_TEMPLATES)
+      if (savedTemplates) {
+        const parsed = JSON.parse(savedTemplates)
+        const sanitized = parsed.map((t: MessageTemplate) => ({
+          ...t,
+          title: sanitizeText(t.title || ""),
+          content: sanitizeText(t.content || ""),
+        }))
+        setTemplates(sanitized)
+      } else {
+        setTemplates(DEFAULT_TEMPLATES)
+      }
     } catch {
       setConversations(INITIAL_CONVERSATIONS)
       setSettings(DEFAULT_SETTINGS)
@@ -328,6 +357,8 @@ export function useInboxAssistant() {
     (template: Omit<MessageTemplate, "id">) => {
       const newTpl: MessageTemplate = {
         ...template,
+        title: sanitizeText(template.title),
+        content: sanitizeText(template.content),
         id: `tpl-${Date.now()}`,
       }
       saveTemplates([...templates, newTpl])
@@ -346,21 +377,23 @@ export function useInboxAssistant() {
   // Simulate Incoming Message Live
   const simulateIncomingMessage = useCallback(
     (customerName: string, messageText: string, pageName: string, category: ConversationCategory) => {
+      const cleanCustomerName = sanitizeText(customerName)
+      const cleanMessageText = sanitizeText(messageText)
       // Determine AI Suggestions based on Category
       let suggestions: string[] = []
       if (category === "Sales Conversion") {
         suggestions = [
-          `আসসালামু আলাইকুম ${customerName}! পণ্যটির বর্তমান অফার মূল্য ২,৪৯০ টাকা (সীমিত স্টক)। ফ্রি ডেলিভারি পেতে নাম ও নম্বর দিন।`,
+          `আসসালামু আলাইকুম ${cleanCustomerName}! পণ্যটির বর্তমান অফার মূল্য ২,৪৯০ টাকা (সীমিত স্টক)। ফ্রি ডেলিভারি পেতে নাম ও নম্বর দিন।`,
           `ধন্যবাদ! আজই অর্ডার কনফার্ম করলে পাচ্ছেন বিশেষ ছাড় ও ক্যাশ অন ডেলিভারি। অর্ডার লিঙ্ক: https://bmt.link/shop`,
         ]
       } else if (category === "Visit Conversion") {
         suggestions = [
-          `ধন্যবাদ ${customerName}! আমাদের শোরুম: লেভেল ৪, যমুনা ফিউচার পার্ক, ঢাকা। ভিজিট ম্যাপ: https://bmt.link/location`,
+          `ধন্যবাদ ${cleanCustomerName}! আমাদের শোরুম: লেভেল ৪, যমুনা ফিউচার পার্ক, ঢাকা। ভিজিট ম্যাপ: https://bmt.link/location`,
           `জি আমাদের শোরুমে এসে দেখে কিনতে পারবেন। সকাল ১০টা থেকে রাত ৮টা পর্যন্ত খোলা।`,
         ]
       } else {
         suggestions = [
-          `জি ${customerName}, আমাদের প্রতিটি পণ্যের সাথে ১ বছরের অফিসিয়াল ব্র্যান্ড ওয়ারেন্টি কার্ড দেওয়া হয়।`,
+          `জি ${cleanCustomerName}, আমাদের প্রতিটি পণ্যের সাথে ১ বছরের অফিসিয়াল ব্র্যান্ড ওয়ারেন্টি কার্ড দেওয়া হয়।`,
           `ধন্যবাদ আপনার কোয়েরির জন্য। আমাদের সাপোর্ট হেল্পলাইন: 01700000000।`,
         ]
       }
@@ -368,12 +401,12 @@ export function useInboxAssistant() {
       const newId = `conv-${Date.now()}`
       const newConv: InboxConversation = {
         id: newId,
-        customerName,
+        customerName: cleanCustomerName,
         pageName,
         platform: "Facebook Marketplace",
         category,
         unreadCount: 1,
-        lastMessageText: messageText,
+        lastMessageText: cleanMessageText,
         lastMessageTime: "Just now",
         status: settings.mode === "AUTO" && settings.isRunning ? "REPLIED" : "WAITING_REPLY",
         aiSuggestions: suggestions,
@@ -381,7 +414,7 @@ export function useInboxAssistant() {
           {
             id: `m-${Date.now()}`,
             sender: "CUSTOMER",
-            text: messageText,
+            text: cleanMessageText,
             timestamp: "Just now",
             status: "DELIVERED",
           },
