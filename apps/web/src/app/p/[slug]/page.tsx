@@ -157,7 +157,7 @@ export default function PublicLandingPageView() {
             {((page.visibleSections?.headline ?? true) || (page.visibleSections?.subheadline ?? true) || (page.visibleSections?.pricingBadge ?? true)) && (
               <div className="px-3 sm:px-6 text-center space-y-3">
                 {(page.visibleSections?.headline ?? true) && (
-                  <h1 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white leading-tight">
+                  <h1 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white leading-snug">
                     {page.headline}
                   </h1>
                 )}

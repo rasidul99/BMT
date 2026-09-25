@@ -2,6 +2,78 @@
 @tailwind components;
 @tailwind utilities;
 
+/* -------------------------------------------------------------
+   Typography Architecture:
+   - English / Latin / Numbers: Inter
+   - Bengali / Bangla: Li Ador Noirrit
+   ------------------------------------------------------------- */
+
+/* Inter (English Font Family) */
+@font-face {
+  font-family: 'Inter';
+  src: url('/fonts/Inter-Regular.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Inter';
+  src: url('/fonts/Inter-Medium.ttf') format('truetype');
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Inter';
+  src: url('/fonts/Inter-SemiBold.ttf') format('truetype');
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Inter';
+  src: url('/fonts/Inter-Bold.ttf') format('truetype');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* Li Ador Noirrit (Bangla Font Family) */
+@font-face {
+  font-family: 'Li Ador Noirrit';
+  src: url('/fonts/Li-Ador-Noirrit-Light.ttf') format('truetype');
+  font-weight: 300;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Li Ador Noirrit';
+  src: url('/fonts/Li-Ador-Noirrit-Regular.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Li Ador Noirrit';
+  src: url('/fonts/Li-Ador-Noirrit-SemiBold.ttf') format('truetype');
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Li Ador Noirrit';
+  src: url('/fonts/Li-Ador-Noirrit-Bold.ttf') format('truetype');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
 @layer base {
   :root {
     --background: 0 0% 100%;
@@ -55,7 +127,21 @@
   }
   body {
     @apply bg-background text-foreground;
+    font-family: 'Inter', 'Li Ador Noirrit', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
+}
+
+/* Explicit Typography Helper Classes */
+.font-bangla,
+.font-ador {
+  font-family: 'Li Ador Noirrit', 'Inter', -apple-system, sans-serif !important;
+}
+
+.font-inter {
+  font-family: 'Inter', -apple-system, sans-serif !important;
 }
 
 /* Custom Clean Scrollbar for both Light and Dark Themes */
