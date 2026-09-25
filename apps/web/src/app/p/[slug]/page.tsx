@@ -103,8 +103,8 @@ export default function PublicLandingPageView() {
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 font-sans selection:bg-blue-500 selection:text-white">
       {/* Top Announcement Bar */}
       {(page?.visibleSections?.announcementBar ?? true) && (
-        <div className="bg-gradient-to-r from-blue-700 via-indigo-700 to-blue-700 text-white py-2 px-4 text-center text-xs font-bold tracking-wide shadow-md flex items-center justify-center gap-2">
-          <Truck className="w-4 h-4 animate-bounce" />
+        <div className="bg-blue-600 text-white py-2 px-4 text-center text-xs font-bold tracking-wide shadow-xs flex items-center justify-center gap-2">
+          <Truck className="w-4 h-4" />
           <span>{page?.announcementBar || "সারা বাংলাদেশে ক্যাশ অন হোম ডেলিভারি ফ্রি • ১০০% পণ্য দেখে মূল্য পরিশোধ করুন"}</span>
         </div>
       )}
@@ -145,7 +145,7 @@ export default function PublicLandingPageView() {
                     alt={page.title}
                     className="w-full h-full object-cover group-hover:scale-102 transition duration-300"
                   />
-                  <span className="absolute top-3 left-3 bg-red-600 text-white font-extrabold text-xs px-3 py-1 rounded-full shadow-lg flex items-center gap-1">
+                  <span className="absolute top-3 left-3 bg-blue-600 text-white font-bold text-xs px-3 py-1 rounded-full shadow-xs flex items-center gap-1.5">
                     <Sparkles className="w-3.5 h-3.5" />
                     <span>সীমিত সময়ের স্পেশাল অফার</span>
                   </span>
@@ -199,7 +199,7 @@ export default function PublicLandingPageView() {
             {/* CLIENT SPECIFICATION: Interactive Offer Dropdown */}
             {(page.visibleSections?.variantsDropdown ?? true) && page.dropdownOptions && page.dropdownOptions.length > 0 && (
               <div className="px-3 sm:px-6">
-                <div className="bg-blue-50 dark:bg-blue-950/40 border-2 border-blue-500/30 rounded-2xl p-4 sm:p-5 space-y-3 shadow-sm">
+                <div className="bg-blue-500/5 dark:bg-blue-950/20 border border-blue-500/20 rounded-2xl p-4 sm:p-5 space-y-3 shadow-xs">
                   <div className="flex items-center justify-between">
                     <label className="font-extrabold text-xs sm:text-sm text-blue-950 dark:text-blue-200 flex items-center gap-2">
                       <ShoppingBag className="w-4 h-4 text-blue-600 dark:text-blue-400" />
@@ -297,7 +297,7 @@ export default function PublicLandingPageView() {
             {/* Order Confirmation / Lead Form */}
             {(page.visibleSections?.checkoutForm ?? true) && (
               <div className="px-3 sm:px-6 pb-6 sm:pb-8">
-                <div className="border-2 border-emerald-500/30 bg-emerald-500/5 rounded-2xl p-5 sm:p-6 space-y-4 shadow-md">
+                <div className="border border-blue-500/30 bg-blue-500/5 rounded-2xl p-5 sm:p-6 space-y-4 shadow-xs">
                   <div className="text-center space-y-1">
                     <h3 className="font-black text-base sm:text-lg text-slate-900 dark:text-white">
                       অর্ডার করতে নিচের তথ্যগুলো পূরণ করুন
@@ -319,7 +319,7 @@ export default function PublicLandingPageView() {
                           placeholder="যেমন: মোঃ রফিকুল ইসলাম"
                           value={customerName}
                           onChange={(e) => setCustomerName(e.target.value)}
-                          className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white font-medium focus:ring-2 focus:ring-emerald-500"
+                          className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white font-medium focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                         />
                         <User className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
                       </div>
@@ -336,7 +336,7 @@ export default function PublicLandingPageView() {
                           placeholder="যেমন: 01712345678"
                           value={customerPhone}
                           onChange={(e) => setCustomerPhone(e.target.value)}
-                          className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white font-medium focus:ring-2 focus:ring-emerald-500"
+                          className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white font-medium focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                         />
                         <Phone className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
                       </div>
@@ -353,7 +353,7 @@ export default function PublicLandingPageView() {
                           placeholder="যেমন: বাড়ি নং ১২, রোড ৪, সেক্টর ৭, উত্তরা, ঢাকা"
                           value={customerAddress}
                           onChange={(e) => setCustomerAddress(e.target.value)}
-                          className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white font-medium focus:ring-2 focus:ring-emerald-500 resize-none"
+                          className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white font-medium focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
                         />
                         <MapPin className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
                       </div>
@@ -362,9 +362,9 @@ export default function PublicLandingPageView() {
                     <button
                       type="submit"
                       disabled={isSubmitting}
-                      className="w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-black py-3.5 px-4 rounded-xl shadow-lg transition duration-200 text-sm flex items-center justify-center gap-2 cursor-pointer"
+                      className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 px-4 rounded-xl shadow-xs transition duration-200 text-sm flex items-center justify-center gap-2 cursor-pointer"
                     >
-                      <CheckCircle2 className="w-4 h-4 text-emerald-200" />
+                      <ShoppingBag className="w-4 h-4" />
                       <span>{isSubmitting ? "অর্ডার সাবমিট হচ্ছে..." : page.ctaText || "অর্ডার কনফার্ম করুন (ক্যাশ অন ডেলিভারি)"}</span>
                     </button>
                   </form>

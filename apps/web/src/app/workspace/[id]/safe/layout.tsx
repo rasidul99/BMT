@@ -106,8 +106,11 @@ export default function SafeLayout({ children }: { children: React.ReactNode }) 
               </div>
               {!isCollapsed && (
                 <div className="overflow-hidden">
-                  <span className="font-extrabold text-xs tracking-tight block truncate">FACEBOOK MARKETING</span>
-                  <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold block">🟢 SAFE Mode (Official API)</span>
+                  <span className="font-extrabold text-xs tracking-tight block truncate text-foreground">FACEBOOK MARKETING</span>
+                  <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold flex items-center gap-1.5 mt-0.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+                    <span>SAFE Mode (Official API)</span>
+                  </span>
                 </div>
               )}
             </div>
@@ -117,7 +120,7 @@ export default function SafeLayout({ children }: { children: React.ReactNode }) 
               {navItems.map((group, idx) => (
                 <div key={idx} className="space-y-0.5">
                   {!isCollapsed && (
-                    <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground px-2 py-1">
+                    <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/80 px-2.5 py-1">
                       {group.category}
                     </div>
                   )}
@@ -129,15 +132,15 @@ export default function SafeLayout({ children }: { children: React.ReactNode }) 
                         key={item.path}
                         onClick={() => router.push(item.path)}
                         title={isCollapsed ? item.label : undefined}
-                        className={`w-full rounded-lg transition font-medium text-xs flex items-center gap-2.5 ${
+                        className={`w-full rounded-lg transition-colors text-xs flex items-center gap-2.5 ${
                           isCollapsed ? "justify-center p-2.5" : "px-2.5 py-2 text-left"
                         } ${
                           active
-                            ? "bg-blue-600 text-white font-semibold shadow-xs"
-                            : "hover:bg-muted text-muted-foreground hover:text-foreground"
+                            ? "bg-blue-500/10 text-blue-600 dark:text-blue-400 font-semibold"
+                            : "hover:bg-muted/70 text-muted-foreground hover:text-foreground font-medium"
                         }`}
                       >
-                        <Icon className={`w-4 h-4 shrink-0 ${active ? "text-white" : "text-muted-foreground"}`} />
+                        <Icon className={`w-4 h-4 shrink-0 transition-colors ${active ? "text-blue-600 dark:text-blue-400" : "text-muted-foreground"}`} />
                         {!isCollapsed && <span className="truncate">{item.label}</span>}
                       </button>
                     )
@@ -158,18 +161,18 @@ export default function SafeLayout({ children }: { children: React.ReactNode }) 
             <button
               onClick={() => router.push(`/workspace/${workspaceId}/advanced/connect-accounts`)}
               title="Switch to ADVANCED High-Power Mode"
-              className={`w-full rounded-lg bg-orange-500/10 hover:bg-orange-500/20 text-orange-600 dark:text-orange-400 border border-orange-200 dark:border-orange-900 py-2 text-xs font-bold transition flex items-center justify-center gap-1.5 ${
+              className={`w-full rounded-lg bg-muted/40 hover:bg-muted text-muted-foreground hover:text-foreground border border-border py-2 text-xs font-semibold transition flex items-center justify-center gap-1.5 ${
                 isCollapsed ? "p-2" : "px-2"
               }`}
             >
-              <Zap className="w-3.5 h-3.5 text-orange-500 shrink-0" />
+              <Zap className="w-3.5 h-3.5 text-amber-500 shrink-0" />
               {!isCollapsed && <span>Switch to ADVANCED</span>}
             </button>
           </div>
         </aside>
 
         {/* Main content area */}
-        <main className="flex-1 overflow-auto p-6 bg-muted/10">
+        <main className="flex-1 overflow-auto p-4 sm:p-6 bg-background">
           {children}
         </main>
       </div>

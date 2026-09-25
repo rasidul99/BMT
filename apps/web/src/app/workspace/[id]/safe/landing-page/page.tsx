@@ -318,7 +318,7 @@ export default function SafeLandingPageBuilderPage() {
               <button
                 type="button"
                 onClick={() => router.push(`/workspace/${workspaceId}/safe/clickable-image`)}
-                className="bg-purple-600 hover:bg-purple-700 text-white font-bold px-3 py-1.5 rounded-lg transition flex items-center gap-1.5 shadow-xs"
+                className="bg-blue-500/10 hover:bg-blue-500/20 text-blue-600 dark:text-blue-400 border border-blue-500/20 font-bold px-3 py-1.5 rounded-lg transition flex items-center gap-1.5"
               >
                 <Link2 className="w-3.5 h-3.5" />
                 <span>Create Clickable Card →</span>
@@ -342,14 +342,14 @@ export default function SafeLandingPageBuilderPage() {
                 onClick={() => handleCopyLink(activePublishedPage.slug)}
                 className="bg-blue-600 hover:bg-blue-700 text-white font-bold px-3 py-1.5 rounded-lg transition flex items-center gap-1.5 shadow-xs text-xs"
               >
-                {copiedSlug === activePublishedPage.slug ? <Check className="w-3.5 h-3.5 text-emerald-300" /> : <Copy className="w-3.5 h-3.5" />}
+                {copiedSlug === activePublishedPage.slug ? <Check className="w-3.5 h-3.5 text-blue-200" /> : <Copy className="w-3.5 h-3.5" />}
                 <span>{copiedSlug === activePublishedPage.slug ? "Copied!" : "Copy URL"}</span>
               </button>
               <a
                 href={`/p/${activePublishedPage.slug}`}
                 target="_blank"
                 rel="noreferrer"
-                className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-3 py-1.5 rounded-lg transition flex items-center gap-1.5 text-xs shadow-xs"
+                className="bg-muted hover:bg-muted/80 text-foreground font-bold px-3 py-1.5 rounded-lg border border-border transition flex items-center gap-1.5 text-xs shadow-xs"
               >
                 <span>Open Live Page</span>
                 <ExternalLink className="w-3.5 h-3.5" />
@@ -1221,7 +1221,7 @@ export default function SafeLandingPageBuilderPage() {
 
                   <button
                     type="button"
-                    className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold py-2.5 rounded-xl shadow-md text-xs transition flex items-center justify-center gap-1.5 mt-2"
+                    className="w-full bg-blue-600 hover:bg-blue-700 text-white font-extrabold py-2.5 rounded-xl shadow-xs text-xs transition flex items-center justify-center gap-1.5 mt-2"
                   >
                     <ShoppingBag className="w-3.5 h-3.5" />
                     <span>{ctaText}</span>

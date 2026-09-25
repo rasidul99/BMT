@@ -79,56 +79,56 @@ export function TopPlatformHeader({ currentMode = "SAFE" }: TopPlatformHeaderPro
       id: "facebook",
       name: "Facebook Marketing",
       iconComponent: Facebook,
-      bgColor: "bg-blue-600 hover:bg-blue-700 text-white shadow-md shadow-blue-500/20",
-      activeBg: "bg-blue-600 text-white ring-2 ring-blue-400 shadow-lg shadow-blue-500/30",
+      bgColor: "bg-muted/60 hover:bg-muted text-muted-foreground hover:text-foreground border border-border/60",
+      activeBg: "bg-blue-600 text-white shadow-xs font-semibold ring-1 ring-blue-500",
       isActive: true,
     },
     {
       id: "instagram",
       name: "Instagram Marketing",
       iconComponent: Instagram,
-      bgColor: "bg-gradient-to-tr from-amber-500 via-rose-500 to-purple-600 text-white shadow-md shadow-rose-500/20 hover:opacity-90",
-      activeBg: "bg-gradient-to-tr from-amber-500 via-rose-500 to-purple-600 text-white ring-2 ring-rose-400",
+      bgColor: "bg-muted/60 hover:bg-muted text-muted-foreground hover:text-foreground border border-border/60",
+      activeBg: "bg-blue-600 text-white shadow-xs font-semibold ring-1 ring-blue-500",
       isActive: false,
     },
     {
       id: "youtube",
       name: "YouTube Marketing",
       iconComponent: Youtube,
-      bgColor: "bg-red-600 hover:bg-red-700 text-white shadow-md shadow-red-500/20",
-      activeBg: "bg-red-600 text-white ring-2 ring-red-400",
+      bgColor: "bg-muted/60 hover:bg-muted text-muted-foreground hover:text-foreground border border-border/60",
+      activeBg: "bg-blue-600 text-white shadow-xs font-semibold ring-1 ring-blue-500",
       isActive: false,
     },
     {
       id: "tiktok",
       name: "TikTok Marketing",
       iconComponent: TikTokIcon,
-      bgColor: "bg-slate-900 hover:bg-black text-cyan-400 dark:bg-slate-800 dark:text-cyan-300 border border-slate-700 shadow-md",
-      activeBg: "bg-black text-cyan-400 ring-2 ring-cyan-400",
+      bgColor: "bg-muted/60 hover:bg-muted text-muted-foreground hover:text-foreground border border-border/60",
+      activeBg: "bg-blue-600 text-white shadow-xs font-semibold ring-1 ring-blue-500",
       isActive: false,
     },
     {
       id: "telegram",
       name: "Telegram Marketing",
       iconComponent: TelegramSvgIcon,
-      bgColor: "bg-sky-500 hover:bg-sky-600 text-white shadow-md shadow-sky-500/20",
-      activeBg: "bg-sky-500 text-white ring-2 ring-sky-400",
+      bgColor: "bg-muted/60 hover:bg-muted text-muted-foreground hover:text-foreground border border-border/60",
+      activeBg: "bg-blue-600 text-white shadow-xs font-semibold ring-1 ring-blue-500",
       isActive: false,
     },
     {
       id: "shope",
       name: "Shope (E-Commerce)",
       iconComponent: ShoppingBag,
-      bgColor: "bg-amber-500 hover:bg-amber-600 text-white shadow-md shadow-amber-500/20",
-      activeBg: "bg-amber-500 text-white ring-2 ring-amber-400",
+      bgColor: "bg-muted/60 hover:bg-muted text-muted-foreground hover:text-foreground border border-border/60",
+      activeBg: "bg-blue-600 text-white shadow-xs font-semibold ring-1 ring-blue-500",
       isActive: false,
     },
     {
       id: "blog",
       name: "Blog & Content",
       iconComponent: BookOpen,
-      bgColor: "bg-emerald-600 hover:bg-emerald-700 text-white shadow-md shadow-emerald-500/20",
-      activeBg: "bg-emerald-600 text-white ring-2 ring-emerald-400",
+      bgColor: "bg-muted/60 hover:bg-muted text-muted-foreground hover:text-foreground border border-border/60",
+      activeBg: "bg-blue-600 text-white shadow-xs font-semibold ring-1 ring-blue-500",
       isActive: false,
     },
   ]
@@ -182,7 +182,7 @@ export function TopPlatformHeader({ currentMode = "SAFE" }: TopPlatformHeaderPro
             onClick={() => router.push(`/workspace/${workspaceId}/safe/dashboard`)}
             className="flex items-center gap-2.5 cursor-pointer group"
           >
-            <div className="h-8 w-8 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-700 flex items-center justify-center text-white font-black text-xs shadow-md group-hover:scale-105 transition-transform">
+            <div className="h-8 w-8 rounded-xl bg-blue-600 flex items-center justify-center text-white font-black text-xs shadow-xs group-hover:bg-blue-700 transition-colors">
               BMT
             </div>
             {!isCollapsed && (
@@ -250,7 +250,7 @@ export function TopPlatformHeader({ currentMode = "SAFE" }: TopPlatformHeaderPro
             className="relative flex items-center space-x-2 p-1 rounded-full hover:bg-muted transition group"
             title="User Profile & Settings"
           >
-            <div className="h-8 w-8 rounded-full bg-gradient-to-tr from-blue-600 to-indigo-600 text-white flex items-center justify-center font-black text-xs shadow-md ring-2 ring-border group-hover:ring-blue-500 transition-all">
+            <div className="h-8 w-8 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-xs shadow-xs ring-2 ring-border group-hover:ring-blue-500 transition-all">
               {displayName.charAt(0).toUpperCase()}
             </div>
             {/* Active Indicator Dot */}
@@ -262,7 +262,7 @@ export function TopPlatformHeader({ currentMode = "SAFE" }: TopPlatformHeaderPro
             <div className="absolute top-14 right-4 w-72 bg-card border border-border rounded-2xl shadow-2xl p-4 space-y-4 animate-in fade-in slide-in-from-top-2 z-50 text-xs">
               {/* User Header */}
               <div className="flex items-center space-x-3 border-b border-border pb-3">
-                <div className="h-10 w-10 rounded-full bg-gradient-to-tr from-blue-600 to-indigo-600 text-white flex items-center justify-center font-black text-sm shadow-md">
+                <div className="h-10 w-10 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-sm shadow-xs">
                   {displayName.charAt(0).toUpperCase()}
                 </div>
                 <div className="flex-1 min-w-0">
@@ -290,12 +290,12 @@ export function TopPlatformHeader({ currentMode = "SAFE" }: TopPlatformHeaderPro
                     }}
                     className={`p-2 rounded-xl border flex flex-col items-center justify-center text-center transition ${
                       currentMode === "SAFE"
-                        ? "bg-emerald-500/10 border-emerald-500 text-emerald-600 dark:text-emerald-400 font-black shadow-xs"
+                        ? "bg-emerald-500/10 border-emerald-500 text-emerald-600 dark:text-emerald-400 font-bold shadow-xs"
                         : "border-border hover:bg-muted text-muted-foreground font-semibold"
                     }`}
                   >
                     <Shield className="w-4 h-4 mb-1 text-emerald-500" />
-                    <span className="text-xs">🟢 SAFE</span>
+                    <span className="text-xs">SAFE Mode</span>
                     <span className="text-[9px] opacity-75">Graph API</span>
                   </button>
 
@@ -305,12 +305,12 @@ export function TopPlatformHeader({ currentMode = "SAFE" }: TopPlatformHeaderPro
                     }}
                     className={`p-2 rounded-xl border flex flex-col items-center justify-center text-center transition ${
                       currentMode === "ADVANCED"
-                        ? "bg-orange-500/10 border-orange-500 text-orange-600 dark:text-orange-400 font-black shadow-xs"
+                        ? "bg-amber-500/10 border-amber-500 text-amber-600 dark:text-amber-400 font-bold shadow-xs"
                         : "border-border hover:bg-muted text-muted-foreground font-semibold"
                     }`}
                   >
-                    <Zap className="w-4 h-4 mb-1 text-orange-500" />
-                    <span className="text-xs">⚡ ADVANCED</span>
+                    <Zap className="w-4 h-4 mb-1 text-amber-500" />
+                    <span className="text-xs">ADVANCED Mode</span>
                     <span className="text-[9px] opacity-75">High-Power</span>
                   </button>
                 </div>
