@@ -171,42 +171,41 @@ export function TopPlatformHeader({ currentMode = "SAFE" }: TopPlatformHeaderPro
       )}
 
       <div className="flex h-14 items-center justify-between">
-        {/* 1. Left Area: Strictly aligns with Sidebar width (w-64 or w-16 when collapsed) */}
-        {/* ONLY Logo & Branding here — NO collapse button in this column */}
+        {/* 1. Left Area: Logo & Branding */}
         <div
-          className={`flex items-center border-r border-border h-full transition-all duration-300 shrink-0 ${
-            isCollapsed ? "w-16 px-2 justify-center" : "w-64 px-4 justify-start"
+          className={`flex items-center border-r-0 md:border-r border-border h-full transition-all duration-300 shrink-0 ${
+            isCollapsed ? "w-auto md:w-16 px-2 justify-center" : "w-auto md:w-64 px-3 sm:px-4 justify-start"
           }`}
         >
           <div
             onClick={() => router.push(`/workspace/${workspaceId}/safe/dashboard`)}
-            className="flex items-center gap-2.5 cursor-pointer group"
+            className="flex items-center gap-2 cursor-pointer group"
           >
             <div className="h-8 w-8 rounded-xl bg-blue-600 flex items-center justify-center text-white font-black text-xs shadow-xs group-hover:bg-blue-700 transition-colors">
               BMT
             </div>
-            {!isCollapsed && (
-              <div className="leading-tight">
-                <span className="font-extrabold text-sm tracking-tight block">BMT OS</span>
-                <span className="text-[10px] text-muted-foreground font-medium">Marketing Suite</span>
-              </div>
-            )}
+            <div className="leading-tight hidden sm:block">
+              <span className="font-extrabold text-sm tracking-tight block">BMT OS</span>
+              <span className="text-[10px] text-muted-foreground font-medium">Marketing Suite</span>
+            </div>
           </div>
         </div>
 
-        {/* 2. Middle: Collapse Button (immediately left of Facebook icon) + Platform Icons */}
-        <div className="flex-1 flex items-center space-x-3 px-4 overflow-x-auto no-scrollbar">
-          {/* Sidebar Collapse Toggle Button (Positioned directly to the left of Facebook icon) */}
+        {/* 2. Middle: Collapse Button + Platform Icons */}
+        <div className="flex-1 flex items-center space-x-2 sm:space-x-3 px-2 sm:px-4 overflow-x-auto no-scrollbar">
+          {/* Sidebar Collapse Toggle Button */}
           <button
-            onClick={toggleSidebar}
-            title={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+            onClick={() => {
+              if (typeof window !== "undefined" && window.innerWidth < 768) {
+                useSidebarStore.getState().toggleMobileSidebar()
+              } else {
+                toggleSidebar()
+              }
+            }}
+            title="Toggle Menu / Sidebar"
             className="h-8 w-8 rounded-xl border border-border bg-muted/40 hover:bg-muted text-muted-foreground hover:text-foreground transition flex items-center justify-center shrink-0 shadow-xs group"
           >
-            {isCollapsed ? (
-              <PanelLeftOpen className="w-4 h-4 group-hover:text-blue-500 transition-colors" />
-            ) : (
-              <PanelLeftClose className="w-4 h-4 group-hover:text-blue-500 transition-colors" />
-            )}
+            <PanelLeftOpen className="w-4 h-4 group-hover:text-blue-500 transition-colors" />
           </button>
 
           <div className="h-5 w-px bg-border shrink-0" />
