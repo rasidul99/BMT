@@ -103,7 +103,7 @@ export default function AdvancedConnectAccountsPage() {
       {/* Toast Notification */}
       {toastMessage && (
         <div className="fixed bottom-5 right-5 z-50 bg-slate-900 text-white dark:bg-white dark:text-slate-900 px-4 py-3 rounded-xl shadow-2xl flex items-center space-x-2 text-xs font-semibold border border-slate-700 animate-in fade-in slide-in-from-bottom-2">
-          <CheckCircle2 className="w-4 h-4 text-orange-400" />
+          <CheckCircle2 className="w-4 h-4 text-blue-400" />
           <span>{toastMessage}</span>
         </div>
       )}
@@ -112,13 +112,13 @@ export default function AdvancedConnectAccountsPage() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-border pb-5">
         <div>
           <div className="flex items-center space-x-2">
-            <div className="w-8 h-8 rounded-lg bg-orange-600 flex items-center justify-center text-white shadow-xs">
+            <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center text-white shadow-xs">
               <Link2 className="w-5 h-5" />
             </div>
             <h1 className="text-xl sm:text-2xl font-black tracking-tight text-foreground">
               Connect Facebook Accounts & Pages
             </h1>
-            <span className="text-[10px] uppercase font-bold px-2.5 py-0.5 rounded-full border bg-orange-50 text-orange-700 dark:bg-orange-950/60 dark:text-orange-300 border-orange-200 dark:border-orange-800">
+            <span className="text-[10px] uppercase font-bold px-2.5 py-0.5 rounded-full border bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300 border-blue-200 dark:border-blue-800">
               ADVANCED ENGINE
             </span>
           </div>
@@ -128,12 +128,12 @@ export default function AdvancedConnectAccountsPage() {
         </div>
 
         <div className="flex items-center flex-wrap gap-2.5">
-          <span className="text-xs bg-orange-50 dark:bg-orange-950/40 text-orange-700 dark:text-orange-300 font-bold px-3 py-2 rounded-lg border border-orange-200 dark:border-orange-800">
+          <span className="text-xs bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 font-bold px-3 py-2 rounded-lg border border-blue-200 dark:border-blue-800">
             {connectedCount} / 100 Connected
           </span>
           <button
             onClick={() => setShowConnectModal(true)}
-            className="bg-orange-600 hover:bg-orange-700 text-white text-xs font-semibold px-4 py-2 rounded-lg shadow-xs transition flex items-center space-x-1.5 min-h-[38px]"
+            className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold px-4 py-2 rounded-lg shadow-xs transition flex items-center space-x-1.5 min-h-[38px]"
           >
             <Plus className="w-4 h-4" />
             <span>Connect Facebook Page / ID</span>
@@ -146,13 +146,13 @@ export default function AdvancedConnectAccountsPage() {
         <div className="border border-border bg-card p-4 rounded-xl shadow-xs flex flex-col justify-between">
           <div className="flex items-center justify-between text-muted-foreground text-xs font-semibold">
             <span>Connected Cluster</span>
-            <Users className="w-4 h-4 text-orange-600 dark:text-orange-400" />
+            <Users className="w-4 h-4 text-blue-600 dark:text-blue-400" />
           </div>
           <div className="mt-2 flex items-baseline justify-between">
             <span className="text-2xl font-black text-foreground">
               {connectedCount}
             </span>
-            <span className="text-[10px] font-semibold text-orange-600 dark:text-orange-400">
+            <span className="text-[10px] font-semibold text-blue-600 dark:text-blue-400">
               Capacity: 100
             </span>
           </div>
@@ -161,13 +161,13 @@ export default function AdvancedConnectAccountsPage() {
         <div className="border border-border bg-card p-4 rounded-xl shadow-xs flex flex-col justify-between">
           <div className="flex items-center justify-between text-muted-foreground text-xs font-semibold">
             <span>Business Pages</span>
-            <Globe className="w-4 h-4 text-orange-600 dark:text-orange-400" />
+            <Globe className="w-4 h-4 text-blue-600 dark:text-blue-400" />
           </div>
           <div className="mt-2 flex items-baseline justify-between">
             <span className="text-2xl font-black text-foreground">
               {pagesCount}
             </span>
-            <span className="text-[10px] font-semibold text-orange-600 dark:text-orange-400">
+            <span className="text-[10px] font-semibold text-blue-600 dark:text-blue-400">
               Active Sync
             </span>
           </div>
@@ -176,7 +176,7 @@ export default function AdvancedConnectAccountsPage() {
         <div className="border border-border bg-card p-4 rounded-xl shadow-xs flex flex-col justify-between">
           <div className="flex items-center justify-between text-muted-foreground text-xs font-semibold">
             <span>Personal IDs</span>
-            <User className="w-4 h-4 text-orange-600 dark:text-orange-400" />
+            <User className="w-4 h-4 text-blue-600 dark:text-blue-400" />
           </div>
           <div className="mt-2 flex items-baseline justify-between">
             <span className="text-2xl font-black text-foreground">
@@ -191,13 +191,13 @@ export default function AdvancedConnectAccountsPage() {
         <div className="border border-border bg-card p-4 rounded-xl shadow-xs flex flex-col justify-between">
           <div className="flex items-center justify-between text-muted-foreground text-xs font-semibold">
             <span>OAuth Token Health</span>
-            <ShieldCheck className="w-4 h-4 text-orange-600 dark:text-orange-400" />
+            <ShieldCheck className="w-4 h-4 text-blue-600 dark:text-blue-400" />
           </div>
           <div className="mt-2 flex items-baseline justify-between">
             <span className="text-2xl font-black text-foreground">
               100%
             </span>
-            <span className="text-[10px] font-semibold text-orange-600 dark:text-orange-400">
+            <span className="text-[10px] font-semibold text-blue-600 dark:text-blue-400">
               Long-Lived Tokens
             </span>
           </div>
@@ -223,11 +223,11 @@ export default function AdvancedConnectAccountsPage() {
                 <tr key={acc.id} className="hover:bg-muted/40 transition">
                   <td className="p-3.5 font-bold text-sm text-foreground">
                     <div className="flex items-center space-x-2">
-                      <div className="w-7 h-7 rounded-lg bg-orange-50 dark:bg-orange-950/60 border border-orange-200 dark:border-orange-800 flex items-center justify-center shrink-0">
+                      <div className="w-7 h-7 rounded-lg bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-800 flex items-center justify-center shrink-0">
                         {acc.type === "Facebook Page" ? (
-                          <Globe className="w-4 h-4 text-orange-600 dark:text-orange-400" />
+                          <Globe className="w-4 h-4 text-blue-600 dark:text-blue-400" />
                         ) : (
-                          <User className="w-4 h-4 text-orange-600 dark:text-orange-400" />
+                          <User className="w-4 h-4 text-blue-600 dark:text-blue-400" />
                         )}
                       </div>
                       <span className="font-semibold text-xs text-foreground">{acc.name}</span>
@@ -240,7 +240,7 @@ export default function AdvancedConnectAccountsPage() {
                     </span>
                   </td>
                   <td className="p-3.5">
-                    <span className="bg-orange-50 dark:bg-orange-950/50 text-orange-700 dark:text-orange-300 text-[10px] font-bold px-2.5 py-0.5 rounded-full border border-orange-200 dark:border-orange-800">
+                    <span className="bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300 text-[10px] font-bold px-2.5 py-0.5 rounded-full border border-blue-200 dark:border-blue-800">
                       {acc.status}
                     </span>
                   </td>
@@ -271,7 +271,7 @@ export default function AdvancedConnectAccountsPage() {
           <div className="bg-card border border-border rounded-2xl p-6 max-w-lg w-full space-y-5 shadow-2xl animate-in zoom-in-95 duration-200">
             <div className="flex items-center justify-between border-b border-border pb-3">
               <div className="flex items-center space-x-2">
-                <Plus className="w-5 h-5 text-orange-600 dark:text-orange-400" />
+                <Plus className="w-5 h-5 text-blue-600 dark:text-blue-400" />
                 <h3 className="font-bold text-base text-foreground">Connect Facebook Account or Page</h3>
               </div>
               <button
@@ -288,7 +288,7 @@ export default function AdvancedConnectAccountsPage() {
                 onClick={() => setActiveTab("OAuth")}
                 className={`py-2 px-3 rounded-lg transition flex items-center justify-center space-x-1.5 ${
                   activeTab === "OAuth"
-                    ? "bg-orange-600 text-white shadow-xs"
+                    ? "bg-blue-600 text-white shadow-xs"
                     : "text-muted-foreground hover:text-foreground"
                 }`}
               >
@@ -299,7 +299,7 @@ export default function AdvancedConnectAccountsPage() {
                 onClick={() => setActiveTab("Manual")}
                 className={`py-2 px-3 rounded-lg transition flex items-center justify-center space-x-1.5 ${
                   activeTab === "Manual"
-                    ? "bg-orange-600 text-white shadow-xs"
+                    ? "bg-blue-600 text-white shadow-xs"
                     : "text-muted-foreground hover:text-foreground"
                 }`}
               >
@@ -311,11 +311,11 @@ export default function AdvancedConnectAccountsPage() {
             {/* TAB 1: 1-CLICK OAUTH */}
             {activeTab === "OAuth" && (
               <div className="space-y-4 text-xs">
-                <div className="bg-orange-50 dark:bg-orange-950/40 border border-orange-200 dark:border-orange-800 p-4 rounded-xl space-y-2">
-                  <h4 className="font-bold text-orange-900 dark:text-orange-200 text-sm">
+                <div className="bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 p-4 rounded-xl space-y-2">
+                  <h4 className="font-bold text-blue-900 dark:text-blue-200 text-sm">
                     Zero-Technical Client Onboarding
                   </h4>
-                  <p className="text-orange-800 dark:text-orange-300 leading-relaxed text-[11px]">
+                  <p className="text-blue-800 dark:text-blue-300 leading-relaxed text-[11px]">
                     Clients do NOT need developer accounts or tokens. Clicking below opens the official Facebook popup where the client selects their Page and grants 1-click permission.
                   </p>
                 </div>
@@ -344,14 +344,14 @@ export default function AdvancedConnectAccountsPage() {
                     rows={3}
                     value={manualToken}
                     onChange={(e) => setManualToken(e.target.value)}
-                    className="w-full border border-border rounded-xl p-2.5 font-mono text-[11px] bg-background text-foreground focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 outline-none transition"
+                    className="w-full border border-border rounded-xl p-2.5 font-mono text-[11px] bg-background text-foreground focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition"
                     placeholder="EAAG..."
                   />
                 </div>
                 <button
                   onClick={handleSaveManualToken}
                   disabled={!manualToken.trim()}
-                  className="w-full py-2.5 bg-orange-600 hover:bg-orange-700 disabled:opacity-50 text-white font-semibold rounded-xl text-xs shadow-xs transition min-h-[38px]"
+                  className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-semibold rounded-xl text-xs shadow-xs transition min-h-[38px]"
                 >
                   Save Custom Token
                 </button>

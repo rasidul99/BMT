@@ -31,7 +31,7 @@ const initialNodes: Node[] = [
     style: {
       background: "#0f172a",
       color: "#f8fafc",
-      border: "1.5px solid #f97316",
+      border: "1.5px solid #2563eb",
       borderRadius: "8px",
       fontSize: "12px",
       fontWeight: "600",
@@ -46,7 +46,7 @@ const initialNodes: Node[] = [
     style: {
       background: "#0f172a",
       color: "#f8fafc",
-      border: "1.5px solid #fb923c",
+      border: "1.5px solid #3b82f6",
       borderRadius: "8px",
       fontSize: "12px",
       fontWeight: "600",
@@ -61,7 +61,7 @@ const initialEdges: Edge[] = [
     source: "node-1",
     target: "node-2",
     animated: true,
-    style: { stroke: "#f97316", strokeWidth: 2 },
+    style: { stroke: "#3b82f6", strokeWidth: 2 },
   },
 ]
 
@@ -98,7 +98,7 @@ export default function Canvas() {
   const onConnect = useCallback(
     (params: Connection) => {
       pushState({ nodes, edges })
-      setEdges((eds) => addEdge({ ...params, animated: true, style: { stroke: "#f97316", strokeWidth: 2 } }, eds))
+      setEdges((eds) => addEdge({ ...params, animated: true, style: { stroke: "#3b82f6", strokeWidth: 2 } }, eds))
       addLog(`[Canvas] Connection established between ${params.source} and ${params.target}`)
     },
     [nodes, edges, setEdges, addLog, pushState]
@@ -141,7 +141,7 @@ export default function Canvas() {
         style: {
           background: "#0f172a",
           color: "#f8fafc",
-          border: type === "TRIGGER" ? "1.5px solid #f97316" : "1.5px solid #fb923c",
+          border: type === "TRIGGER" ? "1.5px solid #2563eb" : "1.5px solid #3b82f6",
           borderRadius: "8px",
           fontSize: "12px",
           fontWeight: "600",
@@ -170,8 +170,8 @@ export default function Canvas() {
         <Controls />
         <Background bgColor="#020617" />
         <Panel position="top-right" className="bg-card/90 backdrop-blur p-2 border border-border rounded-lg text-xs space-x-1 shadow-xs">
-          <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded border bg-orange-50 text-orange-700 dark:bg-orange-950/60 dark:text-orange-300 border-orange-200 dark:border-orange-800 flex items-center space-x-1">
-            <Activity className="w-3 h-3 text-orange-600 dark:text-orange-400" />
+          <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded border bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300 border-blue-200 dark:border-blue-800 flex items-center space-x-1">
+            <Activity className="w-3 h-3 text-blue-600 dark:text-blue-400" />
             <span>ADVANCED Editor Panel</span>
           </span>
         </Panel>

@@ -49,7 +49,7 @@ export default function AdvancedCommentAssistantPage() {
       {/* Toast Notification */}
       {toastMessage && (
         <div className="fixed bottom-5 right-5 z-50 bg-slate-900 text-white dark:bg-white dark:text-slate-900 px-4 py-3 rounded-xl shadow-2xl flex items-center space-x-2 text-xs font-semibold border border-slate-700 animate-in fade-in slide-in-from-bottom-2">
-          <CheckCircle2 className="w-4 h-4 text-orange-400" />
+          <CheckCircle2 className="w-4 h-4 text-blue-400" />
           <span>{toastMessage}</span>
         </div>
       )}
@@ -58,13 +58,13 @@ export default function AdvancedCommentAssistantPage() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-border pb-5">
         <div>
           <div className="flex items-center space-x-2">
-            <div className="w-8 h-8 rounded-lg bg-orange-600 flex items-center justify-center text-white shadow-xs">
+            <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center text-white shadow-xs">
               <MessageSquare className="w-5 h-5" />
             </div>
             <h1 className="text-xl sm:text-2xl font-black tracking-tight text-foreground">
               FB Smart Comment Assistant
             </h1>
-            <span className="text-[10px] uppercase font-bold px-2.5 py-0.5 rounded-full border bg-orange-50 text-orange-700 dark:bg-orange-950/60 dark:text-orange-300 border-orange-200 dark:border-orange-800">
+            <span className="text-[10px] uppercase font-bold px-2.5 py-0.5 rounded-full border bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300 border-blue-200 dark:border-blue-800">
               ADVANCED ENGINE
             </span>
           </div>
@@ -79,7 +79,7 @@ export default function AdvancedCommentAssistantPage() {
             onClick={() => setActiveTab("PUBLIC")}
             className={`px-3 py-2 rounded-lg transition flex items-center space-x-1.5 min-h-[36px] ${
               activeTab === "PUBLIC"
-                ? "bg-orange-600 text-white shadow-xs"
+                ? "bg-blue-600 text-white shadow-xs"
                 : "text-muted-foreground hover:text-foreground"
             }`}
           >
@@ -90,7 +90,7 @@ export default function AdvancedCommentAssistantPage() {
             onClick={() => setActiveTab("REPLY")}
             className={`px-3 py-2 rounded-lg transition flex items-center space-x-1.5 min-h-[36px] ${
               activeTab === "REPLY"
-                ? "bg-orange-600 text-white shadow-xs"
+                ? "bg-blue-600 text-white shadow-xs"
                 : "text-muted-foreground hover:text-foreground"
             }`}
           >
@@ -105,13 +105,13 @@ export default function AdvancedCommentAssistantPage() {
         <div className="border border-border bg-card p-4 rounded-xl shadow-xs flex flex-col justify-between">
           <div className="flex items-center justify-between text-muted-foreground text-xs font-semibold">
             <span>Daily Comment Cap</span>
-            <MessageSquare className="w-4 h-4 text-orange-600 dark:text-orange-400" />
+            <MessageSquare className="w-4 h-4 text-blue-600 dark:text-blue-400" />
           </div>
           <div className="mt-2 flex items-baseline justify-between">
             <span className="text-2xl font-black text-foreground">
               {dailyLimit}
             </span>
-            <span className="text-[10px] font-semibold text-orange-600 dark:text-orange-400">
+            <span className="text-[10px] font-semibold text-blue-600 dark:text-blue-400">
               Per Account
             </span>
           </div>
@@ -120,13 +120,13 @@ export default function AdvancedCommentAssistantPage() {
         <div className="border border-border bg-card p-4 rounded-xl shadow-xs flex flex-col justify-between">
           <div className="flex items-center justify-between text-muted-foreground text-xs font-semibold">
             <span>Viral Filter</span>
-            <Flame className="w-4 h-4 text-orange-600 dark:text-orange-400" />
+            <Flame className="w-4 h-4 text-blue-600 dark:text-blue-400" />
           </div>
           <div className="mt-2 flex items-baseline justify-between">
             <span className="text-2xl font-black text-foreground">
               200+
             </span>
-            <span className="text-[10px] font-semibold text-orange-600 dark:text-orange-400">
+            <span className="text-[10px] font-semibold text-blue-600 dark:text-blue-400">
               Min Likes
             </span>
           </div>
@@ -135,7 +135,7 @@ export default function AdvancedCommentAssistantPage() {
         <div className="border border-border bg-card p-4 rounded-xl shadow-xs flex flex-col justify-between">
           <div className="flex items-center justify-between text-muted-foreground text-xs font-semibold">
             <span>Action Delays</span>
-            <Clock className="w-4 h-4 text-orange-600 dark:text-orange-400" />
+            <Clock className="w-4 h-4 text-blue-600 dark:text-blue-400" />
           </div>
           <div className="mt-2 flex items-baseline justify-between">
             <span className="text-2xl font-black text-foreground">
@@ -150,13 +150,13 @@ export default function AdvancedCommentAssistantPage() {
         <div className="border border-border bg-card p-4 rounded-xl shadow-xs flex flex-col justify-between">
           <div className="flex items-center justify-between text-muted-foreground text-xs font-semibold">
             <span>Connected Cluster</span>
-            <Users className="w-4 h-4 text-orange-600 dark:text-orange-400" />
+            <Users className="w-4 h-4 text-blue-600 dark:text-blue-400" />
           </div>
           <div className="mt-2 flex items-baseline justify-between">
             <span className="text-2xl font-black text-foreground">
               100
             </span>
-            <span className="text-[10px] font-semibold text-orange-600 dark:text-orange-400">
+            <span className="text-[10px] font-semibold text-blue-600 dark:text-blue-400">
               Active IDs
             </span>
           </div>
@@ -168,7 +168,7 @@ export default function AdvancedCommentAssistantPage() {
         <div className="border border-border bg-card p-5 sm:p-6 rounded-xl space-y-6 shadow-xs">
           <div className="flex items-center justify-between border-b border-border pb-3">
             <div className="flex items-center space-x-2">
-              <Globe className="w-4 h-4 text-orange-600 dark:text-orange-400" />
+              <Globe className="w-4 h-4 text-blue-600 dark:text-blue-400" />
               <h3 className="font-bold text-sm text-foreground">Public Comment Assistant Controls</h3>
             </div>
             <span className="text-[10px] bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 px-2.5 py-0.5 rounded-full font-bold">
@@ -179,7 +179,7 @@ export default function AdvancedCommentAssistantPage() {
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-1.5">
               <label className="text-xs font-bold text-foreground uppercase tracking-wider flex items-center space-x-1.5">
-                <MessageSquare className="w-3.5 h-3.5 text-orange-600 dark:text-orange-400" />
+                <MessageSquare className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
                 <span>Daily Comment Limit / Account</span>
               </label>
               <input
@@ -188,13 +188,13 @@ export default function AdvancedCommentAssistantPage() {
                 max="100"
                 value={dailyLimit}
                 onChange={(e) => setDailyLimit(Number(e.target.value))}
-                className="w-full border border-border rounded-lg p-2.5 text-xs bg-background text-foreground focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 outline-none transition min-h-[38px]"
+                className="w-full border border-border rounded-lg p-2.5 text-xs bg-background text-foreground focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition min-h-[38px]"
               />
             </div>
 
             <div className="space-y-1.5">
               <label className="text-xs font-bold text-foreground uppercase tracking-wider flex items-center space-x-1.5">
-                <Filter className="w-3.5 h-3.5 text-orange-600 dark:text-orange-400" />
+                <Filter className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
                 <span>Viral Post Finder Filters</span>
               </label>
               <div className="text-xs text-muted-foreground p-2.5 border border-border rounded-lg bg-muted/30 font-medium min-h-[38px] flex items-center">
@@ -204,9 +204,9 @@ export default function AdvancedCommentAssistantPage() {
           </div>
 
           {/* Visual Human-Like Action Flow Simulation */}
-          <div className="border border-orange-500/20 bg-orange-50/20 dark:bg-orange-950/10 p-4 rounded-xl space-y-3">
-            <div className="text-xs font-bold uppercase tracking-wider text-orange-700 dark:text-orange-400 flex items-center space-x-2">
-              <Bot className="w-4 h-4 text-orange-600 dark:text-orange-400" />
+          <div className="border border-blue-500/20 bg-blue-50/20 dark:bg-blue-950/10 p-4 rounded-xl space-y-3">
+            <div className="text-xs font-bold uppercase tracking-wider text-blue-700 dark:text-blue-400 flex items-center space-x-2">
+              <Bot className="w-4 h-4 text-blue-600 dark:text-blue-400" />
               <span>Human-Like Action Flow Simulation</span>
             </div>
 
@@ -230,7 +230,7 @@ export default function AdvancedCommentAssistantPage() {
 
           <button
             onClick={handleRunPublicComment}
-            className="w-full bg-orange-600 hover:bg-orange-700 text-white font-semibold py-3 rounded-lg text-xs shadow-xs transition flex items-center justify-center space-x-2 min-h-[42px]"
+            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-lg text-xs shadow-xs transition flex items-center justify-center space-x-2 min-h-[42px]"
           >
             <Play className="w-3.5 h-3.5 fill-current" />
             <span>Run Public Comment Assistant</span>
@@ -240,23 +240,23 @@ export default function AdvancedCommentAssistantPage() {
         <div className="border border-border bg-card p-5 sm:p-6 rounded-xl space-y-6 shadow-xs">
           <div className="flex items-center justify-between border-b border-border pb-3">
             <div className="flex items-center space-x-2">
-              <Bot className="w-4 h-4 text-orange-600 dark:text-orange-400" />
+              <Bot className="w-4 h-4 text-blue-600 dark:text-blue-400" />
               <h3 className="font-bold text-sm text-foreground">AI Reply Comment Assistant Controls</h3>
             </div>
-            <span className="text-[10px] bg-orange-50 text-orange-700 dark:bg-orange-950/60 dark:text-orange-300 border border-orange-200 dark:border-orange-800 px-2.5 py-0.5 rounded-full font-bold">
+            <span className="text-[10px] bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300 border border-blue-200 dark:border-blue-800 px-2.5 py-0.5 rounded-full font-bold">
               Listening for New Comments
             </span>
           </div>
 
           <div className="space-y-1.5">
             <label className="text-xs font-bold text-foreground uppercase tracking-wider flex items-center space-x-1.5">
-              <Sparkles className="w-3.5 h-3.5 text-orange-600 dark:text-orange-400" />
+              <Sparkles className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
               <span>Reply Operating Mode</span>
             </label>
             <select
               value={replyMode}
               onChange={(e) => setReplyMode(e.target.value)}
-              className="w-full border border-border rounded-lg p-2.5 text-xs bg-background text-foreground focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 outline-none transition min-h-[38px]"
+              className="w-full border border-border rounded-lg p-2.5 text-xs bg-background text-foreground focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition min-h-[38px]"
             >
               <option value="AUTO_SMART">AI Auto Mode (Option B: AI Smart Context Reply)</option>
               <option value="AUTO_SAVED">AI Auto Mode (Option A: 10 Saved Replies Sequence)</option>
@@ -266,7 +266,7 @@ export default function AdvancedCommentAssistantPage() {
 
           <div className="border border-border bg-muted/30 p-4 rounded-xl space-y-2">
             <div className="text-xs font-bold uppercase tracking-wider text-foreground flex items-center space-x-2">
-              <Clock className="w-4 h-4 text-orange-600 dark:text-orange-400" />
+              <Clock className="w-4 h-4 text-blue-600 dark:text-blue-400" />
               <span>Delay & Variation Engine</span>
             </div>
             <p className="text-xs text-muted-foreground leading-relaxed">
@@ -276,7 +276,7 @@ export default function AdvancedCommentAssistantPage() {
 
           <button
             onClick={handleActivateReplyComment}
-            className="w-full bg-orange-600 hover:bg-orange-700 text-white font-semibold py-3 rounded-lg text-xs shadow-xs transition flex items-center justify-center space-x-2 min-h-[42px]"
+            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-lg text-xs shadow-xs transition flex items-center justify-center space-x-2 min-h-[42px]"
           >
             <Play className="w-3.5 h-3.5 fill-current" />
             <span>Activate AI Reply Comment Assistant</span>
@@ -286,3 +286,4 @@ export default function AdvancedCommentAssistantPage() {
     </div>
   )
 }
+

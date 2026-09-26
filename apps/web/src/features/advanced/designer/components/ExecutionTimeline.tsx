@@ -52,7 +52,7 @@ export default function ExecutionTimeline({ workflowId }: ExecutionTimelineProps
               onClick={() => handleSelectRun(r.id)}
               className={`p-3 rounded-lg border cursor-pointer transition-all ${
                 selectedRun === r.id
-                  ? "border-orange-500 bg-orange-950/20 text-orange-400"
+                  ? "border-blue-500 bg-blue-950/20 text-blue-400"
                   : "border-slate-800 bg-slate-900/50 hover:bg-slate-900 text-slate-300"
               }`}
             >
@@ -80,7 +80,7 @@ export default function ExecutionTimeline({ workflowId }: ExecutionTimelineProps
                 <span className="text-slate-400 font-bold">Steps Timeline ({selectedRun})</span>
                 <button
                   onClick={() => handleReplay(selectedRun)}
-                  className="px-2 py-1 bg-orange-600 hover:bg-orange-700 text-white rounded text-[10px] font-sans font-semibold shadow-xs transition"
+                  className="px-2 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded text-[10px] font-sans font-semibold shadow-xs transition"
                 >
                   Replay Run
                 </button>

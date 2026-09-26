@@ -97,7 +97,7 @@ export default function AdvancedPostSchedulerPage() {
       {/* Toast Notification */}
       {toastMessage && (
         <div className="fixed bottom-5 right-5 z-50 bg-slate-900 text-white dark:bg-white dark:text-slate-900 px-4 py-3 rounded-xl shadow-2xl flex items-center space-x-2 text-xs font-semibold border border-slate-700 animate-in fade-in slide-in-from-bottom-2">
-          <CheckCircle2 className="w-4 h-4 text-orange-400" />
+          <CheckCircle2 className="w-4 h-4 text-blue-400" />
           <span>{toastMessage}</span>
         </div>
       )}
@@ -106,13 +106,13 @@ export default function AdvancedPostSchedulerPage() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-border pb-5">
         <div>
           <div className="flex items-center space-x-2">
-            <div className="w-8 h-8 rounded-lg bg-orange-600 flex items-center justify-center text-white shadow-xs">
+            <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center text-white shadow-xs">
               <CalendarIcon className="w-5 h-5" />
             </div>
             <h1 className="text-xl sm:text-2xl font-black tracking-tight text-foreground">
               Upload Post Scheduler & AI Engine
             </h1>
-            <span className="text-[10px] uppercase font-bold px-2.5 py-0.5 rounded-full border bg-orange-50 text-orange-700 dark:bg-orange-950/60 dark:text-orange-300 border-orange-200 dark:border-orange-800">
+            <span className="text-[10px] uppercase font-bold px-2.5 py-0.5 rounded-full border bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300 border-blue-200 dark:border-blue-800">
               ADVANCED ENGINE
             </span>
           </div>
@@ -127,13 +127,13 @@ export default function AdvancedPostSchedulerPage() {
         <div className="border border-border bg-card p-4 rounded-xl shadow-xs flex flex-col justify-between">
           <div className="flex items-center justify-between text-muted-foreground text-xs font-semibold">
             <span>Target Destination</span>
-            <Users className="w-4 h-4 text-orange-600 dark:text-orange-400" />
+            <Users className="w-4 h-4 text-blue-600 dark:text-blue-400" />
           </div>
           <div className="mt-2 flex items-baseline justify-between">
             <span className="text-base font-bold text-foreground truncate">
               {targetType === "BOTH" ? "IDs & Pages" : targetType === "ID_ONLY" ? "IDs Only" : "Pages Only"}
             </span>
-            <span className="text-[10px] font-semibold text-orange-600 dark:text-orange-400">
+            <span className="text-[10px] font-semibold text-blue-600 dark:text-blue-400">
               Active Sync
             </span>
           </div>
@@ -142,13 +142,13 @@ export default function AdvancedPostSchedulerPage() {
         <div className="border border-border bg-card p-4 rounded-xl shadow-xs flex flex-col justify-between">
           <div className="flex items-center justify-between text-muted-foreground text-xs font-semibold">
             <span>Post Format</span>
-            <FileText className="w-4 h-4 text-orange-600 dark:text-orange-400" />
+            <FileText className="w-4 h-4 text-blue-600 dark:text-blue-400" />
           </div>
           <div className="mt-2 flex items-baseline justify-between">
             <span className="text-base font-bold text-foreground truncate">
               {postType.replace("Post ", "")}
             </span>
-            <span className="text-[10px] font-semibold text-orange-600 dark:text-orange-400">
+            <span className="text-[10px] font-semibold text-blue-600 dark:text-blue-400">
               Media Ready
             </span>
           </div>
@@ -157,7 +157,7 @@ export default function AdvancedPostSchedulerPage() {
         <div className="border border-border bg-card p-4 rounded-xl shadow-xs flex flex-col justify-between">
           <div className="flex items-center justify-between text-muted-foreground text-xs font-semibold">
             <span>AI Variation</span>
-            <Bot className="w-4 h-4 text-orange-600 dark:text-orange-400" />
+            <Bot className="w-4 h-4 text-blue-600 dark:text-blue-400" />
           </div>
           <div className="mt-2 flex items-baseline justify-between">
             <span className="text-base font-bold text-foreground">
@@ -172,13 +172,13 @@ export default function AdvancedPostSchedulerPage() {
         <div className="border border-border bg-card p-4 rounded-xl shadow-xs flex flex-col justify-between">
           <div className="flex items-center justify-between text-muted-foreground text-xs font-semibold">
             <span>Queue Mode</span>
-            <Clock className="w-4 h-4 text-orange-600 dark:text-orange-400" />
+            <Clock className="w-4 h-4 text-blue-600 dark:text-blue-400" />
           </div>
           <div className="mt-2 flex items-baseline justify-between">
             <span className="text-base font-bold text-foreground">
               10-50s Delays
             </span>
-            <span className="text-[10px] font-semibold text-orange-600 dark:text-orange-400">
+            <span className="text-[10px] font-semibold text-blue-600 dark:text-blue-400">
               Anti-Ban
             </span>
           </div>
@@ -190,13 +190,13 @@ export default function AdvancedPostSchedulerPage() {
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-1.5">
             <label className="text-xs font-bold text-foreground uppercase tracking-wider flex items-center space-x-1.5">
-              <Users className="w-3.5 h-3.5 text-orange-600 dark:text-orange-400" />
+              <Users className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
               <span>Target Destination</span>
             </label>
             <select
               value={targetType}
               onChange={(e) => setTargetType(e.target.value)}
-              className="w-full border border-border rounded-lg p-2.5 text-xs bg-background text-foreground focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 outline-none transition min-h-[38px]"
+              className="w-full border border-border rounded-lg p-2.5 text-xs bg-background text-foreground focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition min-h-[38px]"
             >
               <option value="BOTH">All Connected FB IDs & Pages (Both)</option>
               <option value="ID_ONLY">Facebook IDs Only</option>
@@ -206,13 +206,13 @@ export default function AdvancedPostSchedulerPage() {
 
           <div className="space-y-1.5">
             <label className="text-xs font-bold text-foreground uppercase tracking-wider flex items-center space-x-1.5">
-              <FileText className="w-3.5 h-3.5 text-orange-600 dark:text-orange-400" />
+              <FileText className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
               <span>Post Format</span>
             </label>
             <select
               value={postType}
               onChange={(e) => setPostType(e.target.value)}
-              className="w-full border border-border rounded-lg p-2.5 text-xs bg-background text-foreground focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 outline-none transition min-h-[38px]"
+              className="w-full border border-border rounded-lg p-2.5 text-xs bg-background text-foreground focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition min-h-[38px]"
             >
               <option value="Post Text/Media">Post Text / Video / Photo</option>
               <option value="Post Story">Post Story</option>
@@ -225,7 +225,7 @@ export default function AdvancedPostSchedulerPage() {
         {/* 2. Master Post Editor */}
         <div className="space-y-1.5">
           <label className="text-xs font-bold text-foreground uppercase tracking-wider flex items-center space-x-1.5">
-            <FileText className="w-3.5 h-3.5 text-orange-600 dark:text-orange-400" />
+            <FileText className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
             <span>Master Post Content (10+ Photos / Video / Text)</span>
           </label>
           <textarea
@@ -234,27 +234,27 @@ export default function AdvancedPostSchedulerPage() {
             placeholder="Title + Description + Hashtag (Master copy for AI variation engine)..."
             value={masterText}
             onChange={(e) => setMasterText(e.target.value)}
-            className="w-full border border-border rounded-lg p-3 text-xs bg-background text-foreground focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 outline-none transition leading-relaxed"
+            className="w-full border border-border rounded-lg p-3 text-xs bg-background text-foreground focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition leading-relaxed"
           />
         </div>
 
         {/* 3. AI Variation Engine Controls */}
-        <div className="border border-orange-500/20 bg-orange-50/20 dark:bg-orange-950/10 p-4 rounded-xl space-y-4">
-          <div className="text-xs font-bold uppercase tracking-wider text-orange-700 dark:text-orange-400 flex items-center space-x-2">
-            <Bot className="w-4 h-4 text-orange-600 dark:text-orange-400" />
+        <div className="border border-blue-500/20 bg-blue-50/20 dark:bg-blue-950/10 p-4 rounded-xl space-y-4">
+          <div className="text-xs font-bold uppercase tracking-wider text-blue-700 dark:text-blue-400 flex items-center space-x-2">
+            <Bot className="w-4 h-4 text-blue-600 dark:text-blue-400" />
             <span>AI Variation & Human Behavior Engine</span>
           </div>
 
           <div className="grid gap-3 sm:grid-cols-3">
             <div className="space-y-1">
               <label className="text-[11px] font-semibold text-muted-foreground uppercase flex items-center space-x-1">
-                <Globe className="w-3 h-3 text-orange-500" />
+                <Globe className="w-3 h-3 text-blue-500" />
                 <span>Target Country</span>
               </label>
               <select
                 value={targetCountry}
                 onChange={(e) => setTargetCountry(e.target.value)}
-                className="w-full border border-border rounded-lg p-2 text-xs bg-background text-foreground focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 outline-none transition min-h-[36px]"
+                className="w-full border border-border rounded-lg p-2 text-xs bg-background text-foreground focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition min-h-[36px]"
               >
                 <option value="USA">United States (USA)</option>
                 <option value="BD">Bangladesh (BD)</option>
@@ -264,13 +264,13 @@ export default function AdvancedPostSchedulerPage() {
 
             <div className="space-y-1">
               <label className="text-[11px] font-semibold text-muted-foreground uppercase flex items-center space-x-1">
-                <Sliders className="w-3 h-3 text-orange-500" />
+                <Sliders className="w-3 h-3 text-blue-500" />
                 <span>Category</span>
               </label>
               <select
                 value={category}
                 onChange={(e) => setCategory(e.target.value)}
-                className="w-full border border-border rounded-lg p-2 text-xs bg-background text-foreground focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 outline-none transition min-h-[36px]"
+                className="w-full border border-border rounded-lg p-2 text-xs bg-background text-foreground focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition min-h-[36px]"
               >
                 <option value="E-Commerce">E-Commerce</option>
                 <option value="Entertainment">Entertainment</option>
@@ -280,13 +280,13 @@ export default function AdvancedPostSchedulerPage() {
 
             <div className="space-y-1">
               <label className="text-[11px] font-semibold text-muted-foreground uppercase flex items-center space-x-1">
-                <Sparkles className="w-3 h-3 text-orange-500" />
+                <Sparkles className="w-3 h-3 text-blue-500" />
                 <span>AI Hook Tone</span>
               </label>
               <select
                 value={hookTone}
                 onChange={(e) => setHookTone(e.target.value)}
-                className="w-full border border-border rounded-lg p-2 text-xs bg-background text-foreground focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 outline-none transition min-h-[36px]"
+                className="w-full border border-border rounded-lg p-2 text-xs bg-background text-foreground focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition min-h-[36px]"
               >
                 <option value="Curiosity">Curiosity (কৌতূহল)</option>
                 <option value="Emotional">Emotional (আবেগীয়)</option>
@@ -303,7 +303,7 @@ export default function AdvancedPostSchedulerPage() {
         {/* 4. CTA Pin Commenting */}
         <div className="space-y-1.5">
           <label className="text-xs font-bold text-foreground uppercase tracking-wider flex items-center space-x-1.5">
-            <Pin className="w-3.5 h-3.5 text-orange-600 dark:text-orange-400" />
+            <Pin className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
             <span>CTA Pin Comment (Auto-pinned post publishing)</span>
           </label>
           <input
@@ -311,7 +311,7 @@ export default function AdvancedPostSchedulerPage() {
             placeholder="প্রয়োজনীয় তথ্যের ভিডিও বিস্তারিত জানতে লিংকে ক্লিক করুন: https://yourlink.com"
             value={ctaCommentLink}
             onChange={(e) => setCtaCommentLink(e.target.value)}
-            className="w-full border border-border rounded-lg p-2.5 text-xs bg-background text-foreground focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 outline-none transition min-h-[38px]"
+            className="w-full border border-border rounded-lg p-2.5 text-xs bg-background text-foreground focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition min-h-[38px]"
           />
         </div>
 
@@ -319,7 +319,7 @@ export default function AdvancedPostSchedulerPage() {
         <div className="border border-border bg-card p-4 rounded-xl space-y-4 shadow-xs">
           <div className="flex items-center justify-between border-b border-border pb-2.5">
             <h2 className="font-bold text-xs flex items-center space-x-2 uppercase tracking-wider text-foreground">
-              <CalendarIcon className="w-4 h-4 text-orange-600 dark:text-orange-400" />
+              <CalendarIcon className="w-4 h-4 text-blue-600 dark:text-blue-400" />
               <span>Schedule Target Time & Delay Engine</span>
             </h2>
             <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-0.5 rounded-full">
@@ -336,7 +336,7 @@ export default function AdvancedPostSchedulerPage() {
                   onClick={() => setScheduleMode("SpecificTime")}
                   className={`py-2 px-3 rounded-lg border font-semibold text-xs transition flex items-center justify-center space-x-1.5 min-h-[38px] ${
                     scheduleMode === "SpecificTime"
-                      ? "bg-orange-600 text-white border-orange-600 shadow-xs"
+                      ? "bg-blue-600 text-white border-blue-600 shadow-xs"
                       : "bg-card border-border hover:bg-muted text-muted-foreground hover:text-foreground"
                   }`}
                 >
@@ -348,7 +348,7 @@ export default function AdvancedPostSchedulerPage() {
                   onClick={() => setScheduleMode("Immediate")}
                   className={`py-2 px-3 rounded-lg border font-semibold text-xs transition flex items-center justify-center space-x-1.5 min-h-[38px] ${
                     scheduleMode === "Immediate"
-                      ? "bg-orange-600 text-white border-orange-600 shadow-xs"
+                      ? "bg-blue-600 text-white border-blue-600 shadow-xs"
                       : "bg-card border-border hover:bg-muted text-muted-foreground hover:text-foreground"
                   }`}
                 >
@@ -359,12 +359,12 @@ export default function AdvancedPostSchedulerPage() {
             </div>
 
             {scheduleMode === "SpecificTime" && (
-              <div className="p-3.5 border border-orange-500/30 bg-orange-50/20 dark:bg-orange-950/20 rounded-xl space-y-2.5">
+              <div className="p-3.5 border border-blue-500/30 bg-blue-50/20 dark:bg-blue-950/20 rounded-xl space-y-2.5">
                 <div className="flex items-center justify-between">
-                  <label className="font-bold text-xs text-orange-700 dark:text-orange-400 block">
+                  <label className="font-bold text-xs text-blue-700 dark:text-blue-400 block">
                     Select Target Date & Time
                   </label>
-                  <span className="text-[10px] font-bold bg-orange-100 dark:bg-orange-950/60 text-orange-700 dark:text-orange-300 border border-orange-200 dark:border-orange-800 px-2.5 py-0.5 rounded-full">
+                  <span className="text-[10px] font-bold bg-blue-100 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 px-2.5 py-0.5 rounded-full">
                     {getFormattedSelectedTime()} Selected
                   </span>
                 </div>
@@ -373,7 +373,7 @@ export default function AdvancedPostSchedulerPage() {
                   type="datetime-local"
                   value={scheduledDateTime}
                   onChange={(e) => setScheduledDateTime(e.target.value)}
-                  className="w-full px-3 py-2 border border-border rounded-lg bg-background text-xs font-semibold text-foreground focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 outline-none cursor-pointer min-h-[38px]"
+                  className="w-full px-3 py-2 border border-border rounded-lg bg-background text-xs font-semibold text-foreground focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none cursor-pointer min-h-[38px]"
                 />
 
                 <div className="flex flex-wrap items-center gap-1.5 pt-1">
@@ -383,7 +383,7 @@ export default function AdvancedPostSchedulerPage() {
                     onClick={() => setQuickPreset("1h")}
                     className="text-[10px] bg-card hover:bg-muted px-2.5 py-1 rounded-md border border-border font-semibold text-foreground flex items-center space-x-1 transition min-h-[28px]"
                   >
-                    <Zap className="w-3 h-3 text-orange-500" />
+                    <Zap className="w-3 h-3 text-blue-500" />
                     <span>In 1 Hr</span>
                   </button>
                   <button
@@ -391,7 +391,7 @@ export default function AdvancedPostSchedulerPage() {
                     onClick={() => setQuickPreset("tomorrow_morning")}
                     className="text-[10px] bg-card hover:bg-muted px-2.5 py-1 rounded-md border border-border font-semibold text-foreground flex items-center space-x-1 transition min-h-[28px]"
                   >
-                    <Sun className="w-3 h-3 text-orange-500" />
+                    <Sun className="w-3 h-3 text-blue-500" />
                     <span>Tomorrow 10 AM</span>
                   </button>
                   <button
@@ -399,7 +399,7 @@ export default function AdvancedPostSchedulerPage() {
                     onClick={() => setQuickPreset("tomorrow_evening")}
                     className="text-[10px] bg-card hover:bg-muted px-2.5 py-1 rounded-md border border-border font-semibold text-foreground flex items-center space-x-1 transition min-h-[28px]"
                   >
-                    <Moon className="w-3 h-3 text-orange-500" />
+                    <Moon className="w-3 h-3 text-blue-500" />
                     <span>Tomorrow 7:30 PM</span>
                   </button>
                 </div>
@@ -415,13 +415,13 @@ export default function AdvancedPostSchedulerPage() {
             onClick={handleAnalyzeViralScore}
             className="w-full sm:w-auto bg-card hover:bg-muted border border-border text-foreground text-xs font-semibold px-4 py-2.5 rounded-lg shadow-xs transition flex items-center justify-center space-x-1.5 min-h-[40px]"
           >
-            <Sparkles className="w-3.5 h-3.5 text-orange-600 dark:text-orange-400" />
+            <Sparkles className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
             <span>Check AI Viral Score</span>
           </button>
 
           <button
             type="submit"
-            className="w-full sm:w-auto bg-orange-600 hover:bg-orange-700 text-white font-semibold px-6 py-2.5 rounded-lg text-xs shadow-xs transition flex items-center justify-center space-x-1.5 min-h-[40px]"
+            className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white font-semibold px-6 py-2.5 rounded-lg text-xs shadow-xs transition flex items-center justify-center space-x-1.5 min-h-[40px]"
           >
             <Send className="w-3.5 h-3.5" />
             <span>Schedule Master Post (Auto-Delays 10-50s)</span>
@@ -433,7 +433,7 @@ export default function AdvancedPostSchedulerPage() {
       {aiScore !== null && (
         <div className="border border-border bg-card p-5 sm:p-6 rounded-xl space-y-3 shadow-xs">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold uppercase tracking-wider text-orange-600 dark:text-orange-400 flex items-center space-x-1.5">
+            <span className="text-xs font-bold uppercase tracking-wider text-blue-600 dark:text-blue-400 flex items-center space-x-1.5">
               <TrendingUp className="w-4 h-4" />
               <span>AI Viral Score Result</span>
             </span>
