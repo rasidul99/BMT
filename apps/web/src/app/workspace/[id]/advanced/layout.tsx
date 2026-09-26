@@ -14,6 +14,7 @@ import {
   Ban,
   Target,
   ShieldCheck,
+  Zap,
 } from "lucide-react"
 import { useWorkspace } from "../../../../hooks/useWorkspace"
 import { TopPlatformHeader } from "../../../../components/layout/TopPlatformHeader"
@@ -21,7 +22,7 @@ import { useSidebarStore } from "../../../../stores/sidebar.store"
 
 export default function AdvancedLayout({ children }: { children: React.ReactNode }) {
   const { activeWorkspace, selectMode } = useWorkspace()
-  const { isCollapsed } = useSidebarStore()
+  const { isCollapsed, isMobileOpen, closeMobileSidebar } = useSidebarStore()
   const router = useRouter()
   const pathname = usePathname()
 
@@ -31,6 +32,12 @@ export default function AdvancedLayout({ children }: { children: React.ReactNode
   const handleModeSwitch = () => {
     selectMode("SAFE")
     router.push(`/workspace/${workspaceId}/safe/dashboard`)
+    closeMobileSidebar()
+  }
+
+  const handleNavClick = (path: string) => {
+    router.push(path)
+    closeMobileSidebar()
   }
 
   const advancedNav = [
@@ -46,86 +53,110 @@ export default function AdvancedLayout({ children }: { children: React.ReactNode
     { label: "Active Group & Link Hunter", icon: Target, path: `/workspace/${workspaceId}/advanced/group-hunter` },
   ]
 
+  const renderNavContent = (collapsed: boolean, isMobileDrawer = false) => (
+    <>
+      <div className="space-y-3 overflow-hidden flex flex-col flex-1">
+        {/* Sidebar Sub-Header */}
+        <div className={`flex items-center gap-2 px-1 py-1 ${collapsed && !isMobileDrawer ? "justify-center" : ""}`}>
+          <div className="h-7 w-7 rounded-lg bg-blue-600 flex items-center justify-center text-white font-black text-xs shadow-xs shrink-0">
+            FB
+          </div>
+          {(!collapsed || isMobileDrawer) && (
+            <div className="overflow-hidden">
+              <span className="font-extrabold text-xs tracking-tight block truncate text-foreground">FACEBOOK MARKETING</span>
+              <span className="text-[10px] text-blue-600 dark:text-blue-400 font-semibold flex items-center gap-1.5 mt-0.5">
+                <Zap className="w-3 h-3 text-amber-500 shrink-0" />
+                <span>ADVANCED (High Power)</span>
+              </span>
+            </div>
+          )}
+        </div>
+
+        {/* Nav list */}
+        <nav className="space-y-1 overflow-y-auto flex-1 pr-0.5 text-xs no-scrollbar">
+          {(!collapsed || isMobileDrawer) && (
+            <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/80 px-2.5 py-1">
+              Active Automations
+            </div>
+          )}
+          {advancedNav.map((item) => {
+            const active = isActive(item.path)
+            const Icon = item.icon
+            return (
+              <button
+                key={item.path}
+                onClick={() => handleNavClick(item.path)}
+                title={collapsed && !isMobileDrawer ? item.label : undefined}
+                className={`w-full rounded-lg transition-colors text-xs flex items-center gap-2.5 ${
+                  collapsed && !isMobileDrawer ? "justify-center p-2.5" : "px-2.5 py-2 text-left"
+                } ${
+                  active
+                    ? "bg-blue-500/10 text-blue-600 dark:text-blue-400 font-semibold"
+                    : "hover:bg-muted/70 text-muted-foreground hover:text-foreground font-medium"
+                }`}
+              >
+                <Icon className={`w-4 h-4 shrink-0 transition-colors ${active ? "text-blue-600 dark:text-blue-400" : "text-muted-foreground"}`} />
+                {(!collapsed || isMobileDrawer) && <span className="truncate">{item.label}</span>}
+              </button>
+            )
+          })}
+        </nav>
+      </div>
+
+      {/* Footer mode switch */}
+      <div className="pt-2 border-t border-border mt-2">
+        {(!collapsed || isMobileDrawer) && (
+          <div className="text-[11px] text-muted-foreground px-1 mb-2 truncate">
+            Workspace: {activeWorkspace?.name || "Corporate"}
+          </div>
+        )}
+        <button
+          onClick={handleModeSwitch}
+          title="Switch to SAFE Mode"
+          className={`w-full rounded-lg bg-muted/40 hover:bg-muted text-muted-foreground hover:text-foreground border border-border py-2 text-xs font-semibold transition flex items-center justify-center gap-1.5 ${
+            collapsed && !isMobileDrawer ? "p-2" : "px-2"
+          }`}
+        >
+          <ShieldCheck className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+          {(!collapsed || isMobileDrawer) && <span>Switch to SAFE Mode</span>}
+        </button>
+      </div>
+    </>
+  )
+
   return (
     <div className="flex flex-col h-screen bg-background text-foreground overflow-hidden">
       {/* 1. Global Top Platform Navigation Header */}
       <TopPlatformHeader currentMode="ADVANCED" />
 
       {/* 2. Workspace Content with Sidebar */}
-      <div className="flex flex-1 overflow-hidden">
-        {/* Sidebar */}
+      <div className="flex flex-1 overflow-hidden relative">
+        {/* Desktop Persistent Sidebar */}
         <aside
-          className={`border-r border-border bg-card flex flex-col justify-between transition-all duration-300 shadow-sm shrink-0 overflow-hidden ${
+          className={`hidden md:flex border-r border-border bg-card flex-col justify-between transition-all duration-300 shadow-sm shrink-0 overflow-hidden ${
             isCollapsed ? "w-16 p-2" : "w-64 p-3"
           }`}
         >
-          <div className="space-y-3 overflow-hidden flex flex-col flex-1">
-            {/* Sidebar Sub-Header */}
-            <div className={`flex items-center gap-2 px-1 py-1 ${isCollapsed ? "justify-center" : ""}`}>
-              <div className="h-7 w-7 rounded-lg bg-orange-600 flex items-center justify-center text-white font-black text-xs shadow-xs shrink-0">
-                FB
-              </div>
-              {!isCollapsed && (
-                <div className="overflow-hidden">
-                  <span className="font-extrabold text-xs tracking-tight block truncate">FACEBOOK MARKETING</span>
-                  <span className="text-[10px] text-orange-600 dark:text-orange-400 font-bold block">⚡ ADVANCED (High Power)</span>
-                </div>
-              )}
-            </div>
-
-            {/* Nav list */}
-            <nav className="space-y-1 overflow-y-auto flex-1 pr-0.5 text-xs no-scrollbar">
-              {!isCollapsed && (
-                <div className="text-[10px] font-bold uppercase tracking-wider text-orange-600 dark:text-orange-400 px-2 py-1">
-                  Active Automations
-                </div>
-              )}
-              {advancedNav.map((item) => {
-                const active = isActive(item.path)
-                const Icon = item.icon
-                return (
-                  <button
-                    key={item.path}
-                    onClick={() => router.push(item.path)}
-                    title={isCollapsed ? item.label : undefined}
-                    className={`w-full rounded-lg transition font-medium text-xs flex items-center gap-2.5 ${
-                      isCollapsed ? "justify-center p-2.5" : "px-2.5 py-2 text-left"
-                    } ${
-                      active
-                        ? "bg-orange-600 text-white font-semibold shadow-xs"
-                        : "hover:bg-muted text-muted-foreground hover:text-foreground"
-                    }`}
-                  >
-                    <Icon className={`w-4 h-4 shrink-0 ${active ? "text-white" : "text-muted-foreground"}`} />
-                    {!isCollapsed && <span className="truncate">{item.label}</span>}
-                  </button>
-                )
-              })}
-            </nav>
-          </div>
-
-          {/* Footer mode switch */}
-          <div className="pt-2 border-t border-border mt-2">
-            {!isCollapsed && (
-              <div className="text-[11px] text-muted-foreground px-1 mb-2 truncate">
-                Workspace: {activeWorkspace?.name || "Corporate"}
-              </div>
-            )}
-            <button
-              onClick={handleModeSwitch}
-              title="Switch to SAFE Mode"
-              className={`w-full rounded-lg bg-blue-600 hover:bg-blue-700 text-white py-2 text-xs font-semibold shadow-xs transition flex items-center justify-center gap-1.5 ${
-                isCollapsed ? "p-2" : "px-2"
-              }`}
-            >
-              <ShieldCheck className="w-3.5 h-3.5 text-white shrink-0" />
-              {!isCollapsed && <span>Switch to SAFE Mode</span>}
-            </button>
-          </div>
+          {renderNavContent(isCollapsed, false)}
         </aside>
 
+        {/* Mobile Slide-Over Drawer with Backdrop (< md screens) */}
+        {isMobileOpen && (
+          <div className="fixed inset-0 z-50 md:hidden flex">
+            {/* Backdrop */}
+            <div
+              className="fixed inset-0 bg-black/60 backdrop-blur-xs transition-opacity animate-in fade-in duration-200"
+              onClick={closeMobileSidebar}
+            />
+            {/* Drawer */}
+            <aside className="relative w-72 max-w-[85vw] h-full bg-card border-r border-border p-3.5 flex flex-col justify-between z-10 shadow-2xl animate-in slide-in-from-left duration-200">
+              {renderNavContent(false, true)}
+            </aside>
+          </div>
+        )}
+
         {/* Main content area */}
-        <main className="flex-1 overflow-auto p-6 bg-muted/10">
+        <main className="flex-1 overflow-auto p-3.5 sm:p-5 md:p-6 bg-muted/10">
           {children}
         </main>
       </div>
