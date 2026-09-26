@@ -18,6 +18,7 @@ import {
   Zap,
   User,
   ChevronDown,
+  X,
 } from "lucide-react"
 import { useWorkspace } from "../../hooks/useWorkspace"
 import { useAuth } from "../../hooks/useAuth"
@@ -62,12 +63,14 @@ export function TopPlatformHeader({ currentMode = "SAFE" }: TopPlatformHeaderPro
 
   const [toastMessage, setToastMessage] = useState<string | null>(null)
   const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false)
+  const [isPlatformDropdownOpen, setIsPlatformDropdownOpen] = useState(false)
   const profileDropdownRef = useRef<HTMLDivElement>(null)
+  const platformDropdownRef = useRef<HTMLDivElement>(null)
 
   const workspaceId = activeWorkspace?.id || "workspace-1"
   const displayName = user?.name || "Julkar Nayeem"
 
-  // Close dropdown on outside click
+  // Close dropdowns on outside click
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (
@@ -75,6 +78,12 @@ export function TopPlatformHeader({ currentMode = "SAFE" }: TopPlatformHeaderPro
         !profileDropdownRef.current.contains(event.target as Node)
       ) {
         setIsProfileDropdownOpen(false)
+      }
+      if (
+        platformDropdownRef.current &&
+        !platformDropdownRef.current.contains(event.target as Node)
+      ) {
+        setIsPlatformDropdownOpen(false)
       }
     }
     document.addEventListener("mousedown", handleClickOutside)
@@ -149,6 +158,11 @@ export function TopPlatformHeader({ currentMode = "SAFE" }: TopPlatformHeaderPro
     }
   }
 
+  const handleMobilePlatformSelect = (platform: (typeof platforms)[0]) => {
+    setIsPlatformDropdownOpen(false)
+    handlePlatformClick(platform)
+  }
+
   const handleToggleMode = () => {
     const nextMode = currentMode === "SAFE" ? "ADVANCED" : "SAFE"
     selectMode(nextMode)
@@ -171,8 +185,8 @@ export function TopPlatformHeader({ currentMode = "SAFE" }: TopPlatformHeaderPro
         <div className="fixed top-16 right-6 z-50 bg-blue-600 text-white text-xs font-semibold px-4 py-2.5 rounded-xl shadow-2xl flex items-center gap-2 border border-blue-400 animate-in fade-in slide-in-from-top-2">
           <Sparkles className="w-4 h-4 text-amber-300 shrink-0" />
           <span>{toastMessage}</span>
-          <button onClick={() => setToastMessage(null)} className="ml-2 hover:opacity-75 font-bold">
-            ✕
+          <button onClick={() => setToastMessage(null)} className="ml-2 hover:opacity-75 font-bold" aria-label="Close notification">
+            <X className="w-3.5 h-3.5" />
           </button>
         </div>
       )}
@@ -181,7 +195,7 @@ export function TopPlatformHeader({ currentMode = "SAFE" }: TopPlatformHeaderPro
         {/* 1. Left Area: Logo & Branding (Clean Icon Only - No Text) */}
         <div
           className={`flex items-center border-r-0 md:border-r border-border h-full transition-all duration-300 shrink-0 ${
-            isCollapsed ? "w-auto md:w-16 px-2 justify-center" : "w-auto md:w-64 px-4 justify-start"
+            isCollapsed ? "w-auto md:w-16 px-3 md:px-2 justify-center" : "w-auto md:w-64 px-3 md:px-4 justify-start"
           }`}
         >
           <div
@@ -195,17 +209,11 @@ export function TopPlatformHeader({ currentMode = "SAFE" }: TopPlatformHeaderPro
           </div>
         </div>
 
-        {/* 2. Middle: Collapse Button + Platform Icons */}
-        <div className="flex-1 flex items-center space-x-2 sm:space-x-3 px-2 sm:px-4 overflow-x-auto no-scrollbar h-full py-1">
+        {/* 2. Middle: Collapse Button + Platform Icons (Desktop Only) */}
+        <div className="hidden md:flex flex-1 items-center space-x-2 sm:space-x-3 px-4 overflow-x-auto no-scrollbar h-full py-1">
           {/* Sidebar Collapse Toggle Button */}
           <button
-            onClick={() => {
-              if (typeof window !== "undefined" && window.innerWidth < 768) {
-                useSidebarStore.getState().toggleMobileSidebar()
-              } else {
-                toggleSidebar()
-              }
-            }}
+            onClick={toggleSidebar}
             title="Toggle Menu / Sidebar"
             className="h-10 w-10 rounded-xl border border-border bg-muted/40 hover:bg-muted text-muted-foreground hover:text-foreground transition flex items-center justify-center shrink-0 shadow-xs group"
           >
@@ -214,7 +222,7 @@ export function TopPlatformHeader({ currentMode = "SAFE" }: TopPlatformHeaderPro
 
           <div className="h-6 w-px bg-border shrink-0" />
 
-          {/* Platform Icons (Icon only, hover shows name tooltip) */}
+          {/* Platform Icons (Desktop: Icon only, hover shows name tooltip) */}
           <nav className="flex items-center space-x-2 h-full py-1">
             {platforms.map((p) => {
               const isCurrentActive = p.id === "facebook"
@@ -245,24 +253,97 @@ export function TopPlatformHeader({ currentMode = "SAFE" }: TopPlatformHeaderPro
           </nav>
         </div>
 
-        {/* 3. Right: Single Profile Avatar Button & Dropdown Menu */}
-        <div className="px-3 sm:px-4 border-l border-border h-full flex items-center shrink-0 relative" ref={profileDropdownRef}>
-          {/* Profile Trigger Button */}
-          <button
-            onClick={() => setIsProfileDropdownOpen(!isProfileDropdownOpen)}
-            className="relative flex items-center justify-center p-1 rounded-full hover:bg-muted transition group"
-            title="User Profile & Settings"
-          >
-            <div className="h-9 w-9 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-xs shadow-xs ring-2 ring-border group-hover:ring-blue-500 transition-all">
-              {displayName.charAt(0).toUpperCase()}
-            </div>
-            {/* Active Indicator Dot */}
-            <span className="absolute bottom-0.5 right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-500 ring-2 ring-card" />
-          </button>
+        {/* 3. Right: Platform Dropdown (Mobile) + Profile Avatar */}
+        <div className="px-3 sm:px-4 border-l-0 md:border-l border-border h-full flex items-center space-x-2 shrink-0 relative">
+          {/* Mobile Platform Switcher Dropdown (Visible only on < md screens) */}
+          <div className="relative md:hidden" ref={platformDropdownRef}>
+            <button
+              onClick={() => setIsPlatformDropdownOpen(!isPlatformDropdownOpen)}
+              className="h-10 px-2 rounded-xl border border-border bg-muted/40 hover:bg-muted text-foreground flex items-center gap-1.5 shadow-xs transition active:scale-95 min-h-[40px]"
+              aria-label="Select platform"
+              aria-expanded={isPlatformDropdownOpen}
+              title="Platform Menu"
+            >
+              <div className="h-7 w-7 rounded-lg bg-blue-600 text-white flex items-center justify-center shadow-xs relative shrink-0">
+                <FacebookSvgIcon className="w-4 h-4" />
+                <span className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-emerald-400 ring-1 ring-blue-600 animate-pulse" />
+              </div>
+              <ChevronDown
+                className={`w-3.5 h-3.5 text-muted-foreground transition-transform duration-200 ${
+                  isPlatformDropdownOpen ? "rotate-180 text-foreground" : ""
+                }`}
+              />
+            </button>
 
-          {/* Profile Dropdown Popover */}
-          {isProfileDropdownOpen && (
-            <div className="absolute top-full mt-2 right-4 w-72 bg-card border border-border rounded-2xl shadow-2xl p-4 space-y-4 animate-in fade-in slide-in-from-top-2 z-50 text-xs">
+            {/* Mobile Platform Dropdown Popover */}
+            {isPlatformDropdownOpen && (
+              <div className="absolute top-full mt-2 right-0 w-64 bg-card border border-border rounded-2xl shadow-2xl p-2 z-50 animate-in fade-in slide-in-from-top-2 text-xs space-y-1">
+                <div className="px-2.5 py-1.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground flex items-center justify-between border-b border-border/80 mb-1">
+                  <span>Switch Platform</span>
+                  <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-blue-500/10 text-blue-600 dark:text-blue-400 font-bold border border-blue-500/20">
+                    Active: Facebook
+                  </span>
+                </div>
+
+                {platforms.map((p) => {
+                  const isCurrentActive = p.id === "facebook"
+                  const IconComponent = p.iconComponent
+                  return (
+                    <button
+                      key={p.id}
+                      onClick={() => handleMobilePlatformSelect(p)}
+                      className={`w-full px-2.5 py-2 rounded-xl flex items-center justify-between transition min-h-[40px] text-left ${
+                        isCurrentActive
+                          ? "bg-blue-500/10 text-blue-600 dark:text-blue-400 font-bold border border-blue-500/20 shadow-xs"
+                          : "hover:bg-muted/70 text-foreground font-medium"
+                      }`}
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <div
+                          className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${
+                            isCurrentActive
+                              ? "bg-blue-600 text-white shadow-xs"
+                              : "bg-muted text-muted-foreground"
+                          }`}
+                        >
+                          <IconComponent className="w-4 h-4" />
+                        </div>
+                        <span className="text-xs truncate">{p.name}</span>
+                      </div>
+                      {isCurrentActive ? (
+                        <span className="flex items-center gap-1 text-[10px] text-emerald-600 dark:text-emerald-400 font-bold">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                          <span>Active</span>
+                        </span>
+                      ) : (
+                        <span className="text-[10px] text-muted-foreground bg-muted/60 px-1.5 py-0.5 rounded font-medium">
+                          Soon
+                        </span>
+                      )}
+                    </button>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* Profile Trigger Button */}
+          <div className="relative" ref={profileDropdownRef}>
+            <button
+              onClick={() => setIsProfileDropdownOpen(!isProfileDropdownOpen)}
+              className="relative flex items-center justify-center p-1 rounded-full hover:bg-muted transition group"
+              title="User Profile & Settings"
+            >
+              <div className="h-9 w-9 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-xs shadow-xs ring-2 ring-border group-hover:ring-blue-500 transition-all">
+                {displayName.charAt(0).toUpperCase()}
+              </div>
+              {/* Active Indicator Dot */}
+              <span className="absolute bottom-0.5 right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-500 ring-2 ring-card" />
+            </button>
+
+            {/* Profile Dropdown Popover */}
+            {isProfileDropdownOpen && (
+              <div className="absolute top-full mt-2 right-0 w-72 bg-card border border-border rounded-2xl shadow-2xl p-4 space-y-4 animate-in fade-in slide-in-from-top-2 z-50 text-xs">
               {/* User Header */}
               <div className="flex items-center space-x-3 border-b border-border pb-3">
                 <div className="h-10 w-10 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-sm shadow-xs">
@@ -354,6 +435,7 @@ export function TopPlatformHeader({ currentMode = "SAFE" }: TopPlatformHeaderPro
               </div>
             </div>
           )}
+        </div>
         </div>
       </div>
     </header>
