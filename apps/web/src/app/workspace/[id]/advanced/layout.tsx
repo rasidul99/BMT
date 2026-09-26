@@ -58,14 +58,14 @@ export default function AdvancedLayout({ children }: { children: React.ReactNode
       <div className="space-y-3 overflow-hidden flex flex-col flex-1">
         {/* Sidebar Sub-Header */}
         <div className={`flex items-center gap-2 px-1 py-1 ${collapsed && !isMobileDrawer ? "justify-center" : ""}`}>
-          <div className="h-7 w-7 rounded-lg bg-blue-600 flex items-center justify-center text-white font-black text-xs shadow-xs shrink-0">
+          <div className="h-7 w-7 rounded-lg bg-orange-600 flex items-center justify-center text-white font-black text-xs shadow-xs shrink-0">
             FB
           </div>
           {(!collapsed || isMobileDrawer) && (
             <div className="overflow-hidden">
               <span className="font-extrabold text-xs tracking-tight block truncate text-foreground">FACEBOOK MARKETING</span>
-              <span className="text-[10px] text-blue-600 dark:text-blue-400 font-semibold flex items-center gap-1.5 mt-0.5">
-                <Zap className="w-3 h-3 text-amber-500 shrink-0" />
+              <span className="text-[10px] text-orange-600 dark:text-orange-400 font-semibold flex items-center gap-1.5 mt-0.5">
+                <Zap className="w-3 h-3 text-orange-500 shrink-0" />
                 <span>ADVANCED (High Power)</span>
               </span>
             </div>
@@ -91,11 +91,11 @@ export default function AdvancedLayout({ children }: { children: React.ReactNode
                   collapsed && !isMobileDrawer ? "justify-center p-2.5" : "px-2.5 py-2 text-left"
                 } ${
                   active
-                    ? "bg-blue-500/10 text-blue-600 dark:text-blue-400 font-semibold"
+                    ? "bg-orange-500/10 text-orange-600 dark:text-orange-400 font-semibold"
                     : "hover:bg-muted/70 text-muted-foreground hover:text-foreground font-medium"
                 }`}
               >
-                <Icon className={`w-4 h-4 shrink-0 transition-colors ${active ? "text-blue-600 dark:text-blue-400" : "text-muted-foreground"}`} />
+                <Icon className={`w-4 h-4 shrink-0 transition-colors ${active ? "text-orange-600 dark:text-orange-400" : "text-muted-foreground"}`} />
                 {(!collapsed || isMobileDrawer) && <span className="truncate">{item.label}</span>}
               </button>
             )
@@ -113,11 +113,11 @@ export default function AdvancedLayout({ children }: { children: React.ReactNode
         <button
           onClick={handleModeSwitch}
           title="Switch to SAFE Mode"
-          className={`w-full rounded-lg bg-muted/40 hover:bg-muted text-muted-foreground hover:text-foreground border border-border py-2 text-xs font-semibold transition flex items-center justify-center gap-1.5 ${
+          className={`w-full rounded-lg bg-blue-500/10 hover:bg-blue-500/20 text-blue-600 dark:text-blue-400 border border-blue-500/30 py-2 text-xs font-semibold transition flex items-center justify-center gap-1.5 ${
             collapsed && !isMobileDrawer ? "p-2" : "px-2"
           }`}
         >
-          <ShieldCheck className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+          <ShieldCheck className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 shrink-0" />
           {(!collapsed || isMobileDrawer) && <span>Switch to SAFE Mode</span>}
         </button>
       </div>
