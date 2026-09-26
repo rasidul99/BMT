@@ -19,6 +19,7 @@ import {
   User,
   ChevronDown,
   X,
+  Menu,
 } from "lucide-react"
 import { useWorkspace } from "../../hooks/useWorkspace"
 import { useAuth } from "../../hooks/useAuth"
@@ -59,7 +60,7 @@ export function TopPlatformHeader({ currentMode = "SAFE" }: TopPlatformHeaderPro
   const { activeWorkspace, selectMode } = useWorkspace()
   const { user, logout } = useAuth()
   const { theme, setTheme } = useTheme()
-  const { isCollapsed, toggleSidebar } = useSidebarStore()
+  const { isCollapsed, toggleSidebar, toggleMobileSidebar } = useSidebarStore()
 
   const [toastMessage, setToastMessage] = useState<string | null>(null)
   const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false)
@@ -192,9 +193,9 @@ export function TopPlatformHeader({ currentMode = "SAFE" }: TopPlatformHeaderPro
       )}
 
       <div className="flex h-14 items-center justify-between">
-        {/* 1. Left Area: Logo & Branding (Clean Icon Only - No Text) */}
+        {/* 1. Left Area: Logo & Mobile Menu Toggle */}
         <div
-          className={`flex items-center border-r-0 md:border-r border-border h-full transition-all duration-300 shrink-0 ${
+          className={`flex items-center gap-2 border-r-0 md:border-r border-border h-full transition-all duration-300 shrink-0 ${
             isCollapsed ? "w-auto md:w-16 px-3 md:px-2 justify-center" : "w-auto md:w-64 px-3 md:px-4 justify-start"
           }`}
         >
@@ -207,6 +208,16 @@ export function TopPlatformHeader({ currentMode = "SAFE" }: TopPlatformHeaderPro
               BMT
             </div>
           </div>
+
+          {/* Mobile Menu Toggle Button (Beside Logo on Mobile) */}
+          <button
+            onClick={toggleMobileSidebar}
+            aria-label="Toggle navigation menu"
+            title="Open Menu"
+            className="md:hidden h-9 w-9 rounded-xl border border-border bg-muted/40 hover:bg-muted text-muted-foreground hover:text-foreground transition flex items-center justify-center shrink-0 shadow-xs active:scale-95"
+          >
+            <Menu className="w-4 h-4" />
+          </button>
         </div>
 
         {/* 2. Middle: Collapse Button + Platform Icons (Desktop Only) */}
