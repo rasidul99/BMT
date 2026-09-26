@@ -192,6 +192,17 @@ export function TopPlatformHeader({ currentMode = "SAFE" }: TopPlatformHeaderPro
         </div>
       )}
 
+      {/* Mobile Backdrop Overlay (Dims background behind open dropdowns) */}
+      {(isPlatformDropdownOpen || isProfileDropdownOpen) && (
+        <div
+          className="fixed inset-0 bg-black/65 backdrop-blur-xs z-40 md:hidden animate-in fade-in duration-200"
+          onClick={() => {
+            setIsPlatformDropdownOpen(false)
+            setIsProfileDropdownOpen(false)
+          }}
+        />
+      )}
+
       <div className="flex h-14 items-center justify-between">
         {/* 1. Left Area: Logo & Mobile Menu Toggle */}
         <div
@@ -288,7 +299,7 @@ export function TopPlatformHeader({ currentMode = "SAFE" }: TopPlatformHeaderPro
 
             {/* Mobile Platform Dropdown Popover */}
             {isPlatformDropdownOpen && (
-              <div className="absolute top-full mt-2 right-0 w-64 bg-card border border-border rounded-2xl shadow-2xl p-2 z-50 animate-in fade-in slide-in-from-top-2 text-xs space-y-1">
+              <div className="absolute top-full mt-2 right-0 w-64 bg-card dark:bg-[#070B14] border border-border dark:border-slate-800 rounded-2xl shadow-2xl p-2 z-50 animate-in fade-in slide-in-from-top-2 text-xs space-y-1 ring-1 ring-black/10 dark:ring-white/5">
                 <div className="px-2.5 py-1.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground flex items-center justify-between border-b border-border/80 mb-1">
                   <span>Switch Platform</span>
                   <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-blue-500/10 text-blue-600 dark:text-blue-400 font-bold border border-blue-500/20">
@@ -354,7 +365,7 @@ export function TopPlatformHeader({ currentMode = "SAFE" }: TopPlatformHeaderPro
 
             {/* Profile Dropdown Popover */}
             {isProfileDropdownOpen && (
-              <div className="absolute top-full mt-2 right-0 w-72 bg-card border border-border rounded-2xl shadow-2xl p-4 space-y-4 animate-in fade-in slide-in-from-top-2 z-50 text-xs">
+              <div className="absolute top-full mt-2 right-0 w-72 bg-card dark:bg-[#070B14] border border-border dark:border-slate-800 rounded-2xl shadow-2xl p-4 space-y-4 animate-in fade-in slide-in-from-top-2 z-50 text-xs ring-1 ring-black/10 dark:ring-white/5">
               {/* User Header */}
               <div className="flex items-center space-x-3 border-b border-border pb-3">
                 <div className="h-10 w-10 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-sm shadow-xs">

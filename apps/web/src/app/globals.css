@@ -104,25 +104,25 @@
   }
 
   .dark {
-    /* 60% Neutral Foundation (Dark Mode) */
-    --background: 222 47% 6.5%;      /* #090D16 - Deep Google Cloud midnight slate */
+    /* 60% Neutral Foundation (Dark Mode) - Deeper Midnight Contrast */
+    --background: 224 71% 4%;        /* #030712 - Deep rich midnight black */
     --foreground: 210 40% 98%;       /* #F8FAFC - Crisp readable white text */
-    --card: 222 47% 9.5%;            /* #0E1424 - Elevated surface card */
+    --card: 222 47% 6.5%;            /* #070B14 - Elevated surface card */
     --card-foreground: 210 40% 98%;
-    --popover: 222 47% 9.5%;
+    --popover: 222 47% 5%;           /* #050810 - Deep popover surface */
     --popover-foreground: 210 40% 98%;
-    --muted: 217 32% 13%;            /* #151C2A - Subtle neutral dark fill */
+    --muted: 217 32% 9.5%;           /* #0E1422 - Subtle neutral dark fill */
     --muted-foreground: 215 20% 65%; /* #94A3B8 - Readable secondary text */
-    --secondary: 217 32% 14%;
+    --secondary: 217 32% 10.5%;
     --secondary-foreground: 210 40% 98%;
-    --border: 217 32% 16%;           /* #1A2333 - Hairline card divider */
-    --input: 217 32% 16%;
+    --border: 217 32% 12.5%;         /* #121A2A - Hairline card divider */
+    --input: 217 32% 12.5%;
 
     /* 30% Brand Color (Monochromatic Royal Blue Dark Mode) */
-    --primary: 217.2 91.2% 59.8%;    /* #3B82F6 / #2563EB - Clear high-contrast blue */
+    --primary: 217.2 91.2% 59.8%;    /* #2563EB - Clear high-contrast blue */
     --primary-foreground: 0 0% 100%;
     --ring: 217.2 91.2% 59.8%;
-    --accent: 217 32% 14%;
+    --accent: 217 32% 10.5%;
     --accent-foreground: 210 40% 98%;
 
     /* 10% Semantic / Destructive */
