@@ -158,11 +158,11 @@ export default function SafeLayout({ children }: { children: React.ReactNode }) 
             closeMobileSidebar()
           }}
           title="Switch to ADVANCED High-Power Mode"
-          className={`w-full rounded-lg bg-muted/40 hover:bg-muted text-muted-foreground hover:text-foreground border border-border py-2 text-xs font-semibold transition flex items-center justify-center gap-1.5 ${
+          className={`w-full rounded-lg bg-orange-500/10 hover:bg-orange-500/20 text-orange-600 dark:text-orange-400 border border-orange-500/30 py-2 text-xs font-semibold transition flex items-center justify-center gap-1.5 ${
             collapsed && !isMobileDrawer ? "p-2" : "px-2"
           }`}
         >
-          <Zap className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+          <Zap className="w-3.5 h-3.5 text-orange-500 shrink-0" />
           {(!collapsed || isMobileDrawer) && <span>Switch to ADVANCED</span>}
         </button>
       </div>
