@@ -381,17 +381,6 @@ export default function SafeCtaPinCommentPage() {
             Templates ({templates.length})
           </button>
           <button
-            onClick={() => setActiveTab("testConsole")}
-            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 shrink-0 ${
-              activeTab === "testConsole"
-                ? "bg-background shadow-xs text-foreground"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            <Terminal className="w-3.5 h-3.5 text-blue-500" />
-            Test Console
-          </button>
-          <button
             onClick={() => setActiveTab("auditLogs")}
             className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 shrink-0 ${
               activeTab === "auditLogs"
@@ -401,6 +390,17 @@ export default function SafeCtaPinCommentPage() {
           >
             <Clock className="w-3.5 h-3.5 text-amber-500" />
             Audit Logs ({logs.length})
+          </button>
+          <button
+            onClick={() => setActiveTab("testConsole")}
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 shrink-0 ${
+              activeTab === "testConsole"
+                ? "bg-background shadow-xs text-foreground"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <Terminal className="w-3.5 h-3.5 text-blue-500" />
+            Test Console
           </button>
         </div>
       </div>
