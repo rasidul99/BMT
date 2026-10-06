@@ -293,8 +293,8 @@ export default function SafeCommentAssistantPage() {
           </p>
         </div>
 
-        {/* Tab Controls - Responsive Horizontal Scroll on Mobile */}
-        <div className="flex items-center bg-muted/60 p-1 rounded-xl border overflow-x-auto no-scrollbar flex-nowrap max-w-full gap-1">
+        {/* Tab Controls - Fully Visible & Wrap Protected */}
+        <div className="flex items-center bg-muted/60 p-1 rounded-xl border flex-wrap gap-1 shrink-0">
           <button
             onClick={() => setActiveTab("incoming")}
             className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition flex items-center gap-1.5 shrink-0 ${
@@ -305,6 +305,17 @@ export default function SafeCommentAssistantPage() {
           >
             <MessageSquareText className="w-3.5 h-3.5 text-blue-600" />
             Approval Queue ({pendingComments.length})
+          </button>
+          <button
+            onClick={() => setActiveTab("logs")}
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition flex items-center gap-1.5 shrink-0 ${
+              activeTab === "logs"
+                ? "bg-background shadow-xs text-foreground font-bold"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <Clock className="w-3.5 h-3.5 text-amber-500" />
+            Audit Logs ({logs.length})
           </button>
           <button
             onClick={() => setActiveTab("library")}
@@ -328,40 +339,6 @@ export default function SafeCommentAssistantPage() {
             <Terminal className="w-3.5 h-3.5 text-blue-600" />
             Webhook Simulator
           </button>
-          <button
-            onClick={() => setActiveTab("logs")}
-            className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition flex items-center gap-1.5 shrink-0 ${
-              activeTab === "logs"
-                ? "bg-background shadow-xs text-foreground"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            <Clock className="w-3.5 h-3.5 text-blue-600" />
-            Audit Ledger ({logs.length})
-          </button>
-        </div>
-      </div>
-
-      {/* Strategic Dual-Action Notice Banner - Monochromatic Google Blue */}
-      <div className="bg-blue-50/60 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-900/50 p-4 rounded-xl shadow-xs">
-        <div className="flex items-start gap-3">
-          <div className="p-2 rounded-lg bg-blue-600 text-white shadow-xs mt-0.5 shrink-0">
-            <TrendingUp className="w-4 h-4" />
-          </div>
-          <div className="space-y-1.5 flex-1">
-            <div className="flex items-center justify-between flex-wrap gap-2">
-              <h2 className="text-xs font-bold uppercase tracking-wider text-blue-900 dark:text-blue-300">
-                The Dual-Action Marketing Funnel (Public Comment + Private Inbox Reply)
-              </h2>
-              <span className="text-[10px] bg-blue-600/10 text-blue-700 dark:text-blue-300 font-semibold px-2 py-0.5 rounded-full border border-blue-600/20 flex items-center gap-1">
-                <ShieldCheck className="w-3 h-3 text-blue-600" /> Official Meta Graph API Private Reply Spec
-              </span>
-            </div>
-            <p className="text-xs text-blue-950/80 dark:text-blue-200/80 leading-relaxed">
-              When a customer asks <em>&ldquo;দাম কত?&rdquo;</em> (Price query), BMT executes a dual-action trigger:
-              <strong> 1. Public Comment Reply</strong> keeps post engagement viral in feed ranking, while <strong>2. Private Messenger Reply</strong> automatically messages the customer directly with official pricing and product checkout links.
-            </p>
-          </div>
         </div>
       </div>
 
