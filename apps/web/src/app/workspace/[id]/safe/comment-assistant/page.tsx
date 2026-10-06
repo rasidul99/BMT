@@ -89,6 +89,7 @@ export default function SafeCommentAssistantPage() {
   const [simPageName, setSimPageName] = useState("CARE HUB BD")
   const [simResponseOutput, setSimResponseOutput] = useState<any | null>(null)
   const [isSimulating, setIsSimulating] = useState(false)
+  const [simPushedSuccess, setSimPushedSuccess] = useState(false)
 
   // Pending vs Replied counts
   const pendingComments = useMemo(() => comments.filter((c) => c.status === "Pending"), [comments])
@@ -274,6 +275,7 @@ export default function SafeCommentAssistantPage() {
     })
 
     setIsSimulating(false)
+    setSimPushedSuccess(true)
   }
 
   return (
@@ -854,10 +856,26 @@ export default function SafeCommentAssistantPage() {
                   </>
                 ) : (
                   <>
-                    <Terminal className="w-4 h-4" /> Simulate Webhook &amp; Add to Queue
+                    <Terminal className="w-4 h-4" /> Simulate Webhook &amp; Push to Live Incoming Queue
                   </>
                 )}
               </button>
+
+              {simPushedSuccess && (
+                <div className="p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-lg flex items-center justify-between gap-3 text-xs text-emerald-600 dark:text-emerald-400">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
+                    <span>Comment successfully pushed to <strong>Live Incoming Queue</strong>!</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab("incoming")}
+                    className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded text-[11px] font-semibold flex items-center gap-1 shrink-0 transition"
+                  >
+                    View in Queue <ArrowRight className="w-3 h-3" />
+                  </button>
+                </div>
+              )}
             </div>
           </div>
 
@@ -879,7 +897,7 @@ export default function SafeCommentAssistantPage() {
                 </pre>
               ) : (
                 <div className="p-8 text-center text-slate-500 text-xs">
-                  Click &ldquo;Simulate Webhook &amp; Add to Queue&rdquo; to test live event classification and dual-action Graph API payloads.
+                  Click &ldquo;Simulate Webhook &amp; Push to Live Incoming Queue&rdquo; to test live event classification and dual-action Graph API payloads.
                 </div>
               )}
             </div>
