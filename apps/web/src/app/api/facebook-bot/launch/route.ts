@@ -140,6 +140,7 @@ export async function POST(req: NextRequest) {
           success: isSuccess,
           jobId,
           engine: "bot",
+          commentStatus: finalStatus.results?.[0]?.commentStatus || null,
           message: isSuccess
             ? "Published successfully to Facebook!"
             : (finalStatus.results?.[0]?.error || "Facebook Bot posting failed"),

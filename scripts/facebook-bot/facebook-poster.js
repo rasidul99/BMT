@@ -506,95 +506,49 @@ async function runFacebookGroupBot(config) {
             console.log("🔍 Locating comment box for the newly published post...");
             let commentInputFound = false;
 
-            // Scroll down gradually to bring the top post and comment area into view
-            for (let scrollAttempt = 0; scrollAttempt < 4; scrollAttempt++) {
-              if (scrollAttempt > 0) {
-                await page.evaluate(() => window.scrollBy({ top: 350, behavior: "smooth" }));
-                await sleep(2000);
-              }
-
-              // Search for comment textbox or comment trigger button
-              const commentBox = await page.evaluate(() => {
-                const isVisible = (el) => {
-                  const rect = el.getBoundingClientRect();
-                  return rect.width > 20 && rect.height > 15 && rect.y >= 30 && rect.y <= window.innerHeight + 50;
-                };
-
-                // Priority 1: Direct editable comment textbox
+            for (let attempt = 1; attempt <= 3; attempt++) {
+              // 1. Locate and scroll the comment box into view
+              const foundBox = await page.evaluate(() => {
                 const textboxes = Array.from(document.querySelectorAll('div[role="textbox"][contenteditable="true"]'));
-                for (const tb of textboxes) {
-                  const label = (tb.getAttribute("aria-label") || tb.getAttribute("data-placeholder") || "").toLowerCase();
-                  if (
-                    label.includes("comment") ||
-                    label.includes("মন্তব্য") ||
-                    label.includes("write") ||
-                    label.includes("লিখুন")
-                  ) {
-                    if (isVisible(tb)) {
-                      const r = tb.getBoundingClientRect();
-                      return { x: r.x + r.width / 2, y: r.y + r.height / 2, type: "textbox" };
-                    }
-                  }
-                }
-
-                // Priority 2: "Write a comment..." placeholder or container
-                const allElements = Array.from(document.querySelectorAll('div[aria-label], div[role="button"], span, form'));
-                for (const el of allElements) {
-                  const text = (el.innerText || el.getAttribute("aria-label") || "").trim().toLowerCase();
-                  if (
-                    text === "write a comment..." ||
-                    text === "write a comment" ||
-                    text.includes("একটি মন্তব্য লিখুন") ||
-                    text.includes("মন্তব্য লিখুন")
-                  ) {
-                    if (isVisible(el)) {
-                      const r = el.getBoundingClientRect();
-                      return { x: r.x + r.width / 2, y: r.y + r.height / 2, type: "placeholder" };
-                    }
-                  }
-                }
-
-                // Priority 3: "Comment" action button under the post (which opens the comment field)
-                const buttons = Array.from(document.querySelectorAll('div[role="button"], button'));
-                for (const btn of buttons) {
-                  const text = (btn.innerText || btn.getAttribute("aria-label") || "").trim().toLowerCase();
-                  if (text === "comment" || text === "মন্তব্য" || text.startsWith("leave a comment")) {
-                    if (isVisible(btn)) {
-                      const r = btn.getBoundingClientRect();
-                      return { x: r.x + r.width / 2, y: r.y + r.height / 2, type: "button" };
-                    }
-                  }
-                }
-
-                return null;
-              });
-
-              if (commentBox) {
-                console.log(`🎯 Found comment trigger (${commentBox.type}) at (${Math.round(commentBox.x)}, ${Math.round(commentBox.y)}). Clicking...`);
-                await page.mouse.click(commentBox.x, commentBox.y);
-                await sleep(1500);
-
-                // Check if active element or textbox is now ready
-                const readyTextbox = await page.evaluate(() => {
-                  const active = document.activeElement;
-                  if (active && active.getAttribute("contenteditable") === "true") {
-                    const r = active.getBoundingClientRect();
-                    return { x: r.x + r.width / 2, y: r.y + r.height / 2 };
-                  }
-                  const textboxes = Array.from(document.querySelectorAll('div[role="textbox"][contenteditable="true"]'));
-                  for (const tb of textboxes) {
-                    const r = tb.getBoundingClientRect();
-                    if (r.width > 20 && r.height > 15 && r.y >= 30 && r.y <= window.innerHeight) {
-                      return { x: r.x + r.width / 2, y: r.y + r.height / 2 };
-                    }
-                  }
-                  return null;
+                const commentBox = textboxes.find((el) => {
+                  const label = (el.getAttribute("aria-label") || el.getAttribute("data-placeholder") || "").toLowerCase();
+                  return label.includes("comment") || label.includes("মন্তব্য") || label.includes("write");
                 });
 
-                if (readyTextbox) {
-                  await page.mouse.click(readyTextbox.x, readyTextbox.y);
-                  await sleep(500);
+                if (commentBox) {
+                  commentBox.scrollIntoView({ behavior: "smooth", block: "center" });
+                  return {
+                    found: true,
+                    ariaLabel: commentBox.getAttribute("aria-label"),
+                  };
                 }
+
+                // Fallback: look for "Comment" action button under post to trigger the box
+                const buttons = Array.from(document.querySelectorAll('div[role="button"], button'));
+                const cBtn = buttons.find((btn) => {
+                  const t = (btn.getAttribute("aria-label") || btn.innerText || "").toLowerCase();
+                  return t === "leave a comment" || t === "comment" || t === "মন্তব্য";
+                });
+                if (cBtn) {
+                  cBtn.scrollIntoView({ behavior: "smooth", block: "center" });
+                  cBtn.click();
+                  return { found: false, clickedActionBtn: true };
+                }
+
+                return { found: false };
+              });
+
+              if (foundBox.clickedActionBtn) {
+                await sleep(2000);
+                continue;
+              }
+
+              if (foundBox.found) {
+                await sleep(1500);
+                const selector = 'div[role="textbox"][contenteditable="true"][aria-label*="Comment"], div[role="textbox"][contenteditable="true"][aria-label*="মন্তব্য"], div[role="textbox"][contenteditable="true"]';
+                await page.waitForSelector(selector, { timeout: 8000 });
+                await page.click(selector);
+                await sleep(600);
 
                 // Type the CTA comment text line by line to preserve Shift+Enter formatting
                 const commentText = config.ctaPin.commentText;
@@ -612,13 +566,20 @@ async function runFacebookGroupBot(config) {
                   }
                 }
 
-                await sleep(1200);
+                await sleep(1000);
                 console.log("📨 Submitting comment (pressing Enter)...");
                 await page.keyboard.press("Enter");
-                await sleep(4000);
+                await sleep(6000);
+
+                // Verify comment in DOM
+                const isVerified = await page.evaluate((sample) => {
+                  const nodes = Array.from(document.querySelectorAll('div[dir="auto"], span[dir="auto"]'));
+                  return nodes.some((n) => n.innerText && n.innerText.includes(sample));
+                }, commentText.slice(0, 20));
+
                 commentInputFound = true;
-                commentLog = "Comment submitted successfully";
-                console.log("🎉 [CTA] First comment submitted successfully!");
+                commentLog = isVerified ? "Comment submitted & verified" : "Comment submitted";
+                console.log(`🎉 [CTA] First comment submitted successfully! (Verified: ${isVerified})`);
 
                 // Handle Auto-Pin if requested
                 if (config.ctaPin.autoPin) {
@@ -669,6 +630,10 @@ async function runFacebookGroupBot(config) {
                   }
                 }
                 break;
+              } else {
+                console.log(`Attempt ${attempt}: Scrolling timeline down to find comment box...`);
+                await page.evaluate(() => window.scrollBy({ top: 600, behavior: "smooth" }));
+                await sleep(2500);
               }
             }
 
