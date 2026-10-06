@@ -32,7 +32,7 @@ export const DEFAULT_TEMPLATES: CTAPinTemplate[] = [
     title: "Care Hub Order Now Direct Link",
     commentText: "হেলথ ও কেয়ার ডিসকাউন্ট অফারে অর্ডার করতে ভিসিট করুন: https://bmt.link/care-hub-order সীমিত সময়ের জন্য ফ্রি ডেলিভারি!",
     linkUrl: "https://bmt.link/care-hub-order",
-    assignedPage: "CARE HUB BD",
+    assignedPage: "All Destinations",
     autoPin: true,
     delaySeconds: 15,
     createdAt: new Date().toISOString(),
@@ -42,9 +42,9 @@ export const DEFAULT_TEMPLATES: CTAPinTemplate[] = [
     title: "Cooking Blog Customer Care & Recipe Book",
     commentText: "স্পেশাল রেসিপি বুক ও হোম শেফ কিট পেতে সরাসরি মেসেজ দিন: https://wa.me/8801700000000",
     linkUrl: "https://wa.me/8801700000000",
-    assignedPage: "সাধারণ রান্না বান্না ব্লগ",
+    assignedPage: "All Destinations",
     autoPin: true,
-    delaySeconds: 30,
+    delaySeconds: 15,
     createdAt: new Date().toISOString(),
   },
   {
@@ -52,33 +52,14 @@ export const DEFAULT_TEMPLATES: CTAPinTemplate[] = [
     title: "Official Creator VIP Update Link",
     commentText: "আমার অফিসিয়াল প্রফেশনাল কমিউনিটিতে জয়েন হতে ফলো করুন: https://bmt.link/nb-hridoy",
     linkUrl: "https://bmt.link/nb-hridoy",
-    assignedPage: "NB Hridoy Hossen (Profile)",
+    assignedPage: "All Destinations",
     autoPin: true,
-    delaySeconds: 0,
+    delaySeconds: 15,
     createdAt: new Date().toISOString(),
   },
 ]
 
-export const INITIAL_LOGS: CTAPinLog[] = [
-  {
-    id: "log-1",
-    postId: "892168940637389_1020304050",
-    pageName: "CARE HUB BD",
-    commentText: "হেলথ ও কেয়ার ডিসকাউন্ট অফারে অর্ডার করতে ভিসিট করুন: https://bmt.link/care-hub-order",
-    pinnedStatus: "Pinned",
-    apiResponse: "HTTP 200 OK - Comment ID: 1020304050_2030405",
-    timestamp: new Date(Date.now() - 45 * 60 * 1000).toISOString(),
-  },
-  {
-    id: "log-2",
-    postId: "page-102-id_987654321",
-    pageName: "সাধারণ রান্না বান্না ব্লগ",
-    commentText: "স্পেশাল রেসিপি বুক ও হোম শেফ কিট পেতে সরাসরি মেসেজ দিন: https://wa.me/8801700000000",
-    pinnedStatus: "Pinned",
-    apiResponse: "HTTP 200 OK - Comment ID: 987654321_11223344",
-    timestamp: new Date(Date.now() - 3 * 3600 * 1000).toISOString(),
-  },
-]
+export const INITIAL_LOGS: CTAPinLog[] = []
 
 export function useCtaPinTemplates() {
   const [templates, setTemplates] = useState<CTAPinTemplate[]>([])
@@ -107,14 +88,19 @@ export function useCtaPinTemplates() {
 
       const storedLogs = localStorage.getItem(STORAGE_KEY_LOGS)
       if (storedLogs) {
-        setLogs(JSON.parse(storedLogs))
+        const parsedLogs: CTAPinLog[] = JSON.parse(storedLogs)
+        // Keep ONLY real logs (remove legacy mock demo logs)
+        const realOnly = Array.isArray(parsedLogs)
+          ? parsedLogs.filter((l) => l.id !== "log-1" && l.id !== "log-2" && l.postId !== "892168940637389_1020304050")
+          : []
+        setLogs(realOnly)
       } else {
-        setLogs(INITIAL_LOGS)
-        localStorage.setItem(STORAGE_KEY_LOGS, JSON.stringify(INITIAL_LOGS))
+        setLogs([])
+        localStorage.setItem(STORAGE_KEY_LOGS, JSON.stringify([]))
       }
     } catch {
       setTemplates(DEFAULT_TEMPLATES)
-      setLogs(INITIAL_LOGS)
+      setLogs([])
     } finally {
       setIsLoaded(true)
     }

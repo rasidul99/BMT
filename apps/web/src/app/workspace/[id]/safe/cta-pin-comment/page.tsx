@@ -52,29 +52,16 @@ export default function SafeCtaPinCommentPage() {
   const [registeredPages, setRegisteredPages] = useState<FacebookPageEntry[]>([])
   
   useEffect(() => {
-    const defaults = [
-      {
+    const defaults: FacebookPageEntry[] = []
+    if (env.NEXT_PUBLIC_FB_PAGE_TOKEN_CARE_HUB_BD || env.NEXT_PUBLIC_FB_PAGE_ID_CARE_HUB_BD) {
+      defaults.push({
         pageId: env.NEXT_PUBLIC_FB_PAGE_ID_CARE_HUB_BD || "892168940637389",
         pageName: "CARE HUB BD",
         accessToken: env.NEXT_PUBLIC_FB_PAGE_TOKEN_CARE_HUB_BD || "",
         tokenExpiry: Date.now() + 60 * 24 * 60 * 60 * 1000,
         category: "Health & Care",
-      },
-      {
-        pageId: "page-102-id",
-        pageName: "সাধারণ রান্না বান্না ব্লগ",
-        accessToken: "",
-        tokenExpiry: Date.now() + 60 * 24 * 60 * 60 * 1000,
-        category: "Food & Cooking Blog",
-      },
-      {
-        pageId: "page-103-id",
-        pageName: "NB Hridoy Hossen (Profile)",
-        accessToken: "",
-        tokenExpiry: Date.now() + 60 * 24 * 60 * 60 * 1000,
-        category: "Digital Creator / Business",
-      },
-    ]
+      })
+    }
     let pages = initializeDefaultPages(defaults)
 
     // Sync connected client pages from localStorage ("bmt_connected_pages")
@@ -204,9 +191,9 @@ export default function SafeCtaPinCommentPage() {
         title,
         commentText,
         linkUrl,
-        assignedPage,
-        autoPin,
-        delaySeconds,
+        assignedPage: "All Destinations",
+        autoPin: true,
+        delaySeconds: 15,
       })
       setIsEditing(false)
       setEditingId(null)
@@ -215,9 +202,9 @@ export default function SafeCtaPinCommentPage() {
         title,
         commentText,
         linkUrl,
-        assignedPage,
-        autoPin,
-        delaySeconds,
+        assignedPage: "All Destinations",
+        autoPin: true,
+        delaySeconds: 15,
       })
     }
 
@@ -225,9 +212,6 @@ export default function SafeCtaPinCommentPage() {
     setTitle("")
     setCommentText("")
     setLinkUrl("")
-    setAssignedPage("CARE HUB BD")
-    setAutoPin(true)
-    setDelaySeconds(15)
   }
 
   const startEdit = (tmpl: CTAPinTemplate) => {
@@ -236,9 +220,6 @@ export default function SafeCtaPinCommentPage() {
     setTitle(tmpl.title)
     setCommentText(tmpl.commentText)
     setLinkUrl(tmpl.linkUrl)
-    setAssignedPage(tmpl.assignedPage)
-    setAutoPin(tmpl.autoPin)
-    setDelaySeconds(tmpl.delaySeconds)
     setActiveTab("templates")
   }
 
@@ -248,9 +229,6 @@ export default function SafeCtaPinCommentPage() {
     setTitle("")
     setCommentText("")
     setLinkUrl("")
-    setAssignedPage("CARE HUB BD")
-    setAutoPin(true)
-    setDelaySeconds(15)
   }
 
   const copyToClipboard = (text: string, id: string) => {
@@ -427,48 +405,7 @@ export default function SafeCtaPinCommentPage() {
         </div>
       </div>
 
-      {/* Strategic Algorithm Notice Banner */}
-      <div className="bg-blue-50/40 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-900/40 p-4 rounded-xl shadow-xs">
-        <div className="flex items-start gap-3">
-          <div className="p-2 rounded-lg bg-blue-600 text-white shadow-xs mt-0.5 shrink-0">
-            <TrendingUp className="w-4 h-4" />
-          </div>
-          <div className="space-y-1.5 flex-1">
-            <div className="flex items-center justify-between">
-              <h2 className="text-xs font-extrabold uppercase tracking-wider text-blue-900 dark:text-blue-300">
-                The &ldquo;Link in 1st Comment&rdquo; Algorithm Advantage
-              </h2>
-              <span className="text-[10px] bg-blue-600/10 text-blue-700 dark:text-blue-300 font-bold px-2 py-0.5 rounded-full border border-blue-600/20">
-                +240% Estimated Organic Reach
-              </span>
-            </div>
-            <p className="text-xs text-blue-950/80 dark:text-blue-200/80 leading-relaxed">
-              Facebook actively downgrades feed rankings for posts with external URLs in the primary caption to keep users on platform. By placing your order link or WhatsApp CTA in the <strong>first pinned comment</strong>, your post retains maximum viral distribution while keeping conversion click-throughs friction-free.
-            </p>
-            {/* Visual execution pipeline */}
-            <div className="pt-2 grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11px] font-semibold text-center">
-              <div className="p-2 rounded-lg bg-background/80 border text-foreground">
-                <span className="text-muted-foreground block text-[10px] font-medium">Step 1</span>
-                Post Published Clean
-              </div>
-              <div className="p-2 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-700 dark:text-amber-300">
-                <span className="text-amber-600 dark:text-amber-400 block text-[10px] font-medium">Step 2</span>
-                Anti-Ban Delay (15s–30s)
-              </div>
-              <div className="p-2 rounded-lg bg-blue-500/10 border border-blue-500/30 text-blue-700 dark:text-blue-300">
-                <span className="text-blue-600 dark:text-blue-400 block text-[10px] font-medium">Step 3</span>
-                Auto-Comment Posted
-              </div>
-              <div className="p-2 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-700 dark:text-emerald-300">
-                <span className="text-emerald-600 dark:text-emerald-400 block text-[10px] font-medium">Step 4</span>
-                Top Pinned (pinned: true)
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Metrics Row */}
+      {/* Metrics Row (100% Real Live Data) */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <div className="border bg-card p-4 rounded-xl shadow-xs space-y-1">
           <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider flex items-center justify-between">
@@ -476,7 +413,9 @@ export default function SafeCtaPinCommentPage() {
             <Sparkles className="w-3.5 h-3.5 text-blue-500" />
           </div>
           <div className="text-2xl font-black text-foreground">{templates.length}</div>
-          <div className="text-[10px] text-muted-foreground">Ready for 1st-comment auto dispatch</div>
+          <div className="text-[10px] text-muted-foreground">
+            {templates.length > 0 ? `${templates.length} saved comment templates` : "No templates saved"}
+          </div>
         </div>
 
         <div className="border bg-card p-4 rounded-xl shadow-xs space-y-1">
@@ -487,29 +426,58 @@ export default function SafeCtaPinCommentPage() {
           <div className="text-2xl font-black text-emerald-600 dark:text-emerald-400">
             {logs.filter((l) => l.pinnedStatus === "Pinned").length}
           </div>
-          <div className="text-[10px] text-muted-foreground">Successfully pinned to top</div>
+          <div className="text-[10px] text-muted-foreground">
+            {logs.length > 0 ? `${logs.length} total comments logged` : "No dispatches recorded yet"}
+          </div>
         </div>
 
         <div className="border bg-card p-4 rounded-xl shadow-xs space-y-1">
           <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider flex items-center justify-between">
-            Target Pages
+            Connected Destinations
             <Globe className="w-3.5 h-3.5 text-blue-500" />
           </div>
-          <div className="text-2xl font-black text-foreground">{registeredPages.length}</div>
-          <div className="text-[10px] text-muted-foreground">CARE HUB BD, Cooking &amp; Profiles</div>
+          <div className="text-2xl font-black text-foreground">{allSelectableTargets.length}</div>
+          <div className="text-[10px] text-muted-foreground truncate">
+            {allSelectableTargets.length > 0
+              ? allSelectableTargets.map((t) => t.name).slice(0, 2).join(", ") + (allSelectableTargets.length > 2 ? ` +${allSelectableTargets.length - 2} more` : "")
+              : "No destinations connected"}
+          </div>
         </div>
 
-        <div className="border bg-card p-4 rounded-xl shadow-xs space-y-1">
-          <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider flex items-center justify-between">
-            Meta Graph API
-            <ShieldCheck className="w-3.5 h-3.5 text-blue-500" />
-          </div>
-          <div className="text-base font-black text-blue-600 dark:text-blue-400 pt-1">v26.0 Connected</div>
-          <div className="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold flex items-center gap-1">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-            Endpoints Active &amp; Ready
-          </div>
-        </div>
+        {(() => {
+          const hasRealMetaToken = registeredPages.some((p) => p.accessToken && p.accessToken.length > 20) || Boolean(env.NEXT_PUBLIC_FB_PAGE_TOKEN_CARE_HUB_BD)
+          const hasCookieSession = typeof window !== "undefined" && Boolean(localStorage.getItem("bmt_fb_cookie") || localStorage.getItem("bmt_active_account") || localStorage.getItem("bmt_cookie_string"))
+
+          return (
+            <div className="border bg-card p-4 rounded-xl shadow-xs space-y-1">
+              <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider flex items-center justify-between">
+                Engine Status
+                <ShieldCheck className={`w-3.5 h-3.5 ${hasRealMetaToken ? "text-emerald-500" : hasCookieSession ? "text-blue-500" : "text-amber-500"}`} />
+              </div>
+              <div className="text-base font-black text-foreground pt-1 truncate">
+                {hasRealMetaToken ? "Meta API Connected" : hasCookieSession ? "Puppeteer Bot Active" : "Engine Standby"}
+              </div>
+              <div className="text-[10px] font-semibold flex items-center gap-1">
+                {hasRealMetaToken ? (
+                  <span className="text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                    Graph API v20.0 Ready
+                  </span>
+                ) : hasCookieSession ? (
+                  <span className="text-blue-600 dark:text-blue-400 flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
+                    Chrome Session Linked
+                  </span>
+                ) : (
+                  <span className="text-amber-600 dark:text-amber-400 flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
+                    Setup Token or Session
+                  </span>
+                )}
+              </div>
+            </div>
+          )
+        })()}
       </div>
 
       {/* TAB 1: TEMPLATE STUDIO */}
@@ -583,79 +551,6 @@ export default function SafeCtaPinCommentPage() {
                 />
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="font-bold block mb-1 text-foreground">Target Profile, Page, or Group</label>
-                  <select
-                    value={assignedPage}
-                    onChange={(e) => setAssignedPage(e.target.value)}
-                    className="w-full px-2.5 py-2 border rounded-lg bg-background font-semibold text-xs"
-                  >
-                    <optgroup label="Facebook Pages">
-                      {registeredPages.map((p) => (
-                        <option key={p.pageId} value={p.pageName}>
-                          📄 {p.pageName}
-                        </option>
-                      ))}
-                    </optgroup>
-                    {fbAccounts.length > 0 && (
-                      <optgroup label="Personal Profiles / Accounts">
-                        {fbAccounts.map((a) => (
-                          <option key={a.id} value={a.name}>
-                            👤 {a.name}
-                          </option>
-                        ))}
-                      </optgroup>
-                    )}
-                    {customGroups.length > 0 && (
-                      <optgroup label="Facebook Groups">
-                        {customGroups.map((g) => (
-                          <option key={g.id} value={g.name}>
-                            👥 {g.name}
-                          </option>
-                        ))}
-                      </optgroup>
-                    )}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="font-bold block mb-1 text-foreground">Anti-Ban Delay</label>
-                  <select
-                    value={delaySeconds}
-                    onChange={(e) => setDelaySeconds(Number(e.target.value))}
-                    className="w-full px-2.5 py-2 border rounded-lg bg-background font-semibold text-xs"
-                  >
-                    <option value={0}>0s (Immediate)</option>
-                    <option value={15}>15s (Natural)</option>
-                    <option value={30}>30s (Safe)</option>
-                    <option value={60}>60s (Conservative)</option>
-                  </select>
-                </div>
-              </div>
-
-              {/* Auto-Pin Toggle */}
-              <div className="flex items-center justify-between p-3 rounded-lg border bg-muted/20">
-                <div className="space-y-0.5">
-                  <div className="font-bold text-xs flex items-center gap-1.5">
-                    <Pin className="w-3.5 h-3.5 text-blue-600" />
-                    Auto-Pin to Top of Post
-                  </div>
-                  <div className="text-[10px] text-muted-foreground">
-                    Pins this comment so it stays #1 above all customer replies
-                  </div>
-                </div>
-                <label className="relative inline-flex items-center cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={autoPin}
-                    onChange={(e) => setAutoPin(e.target.checked)}
-                    className="sr-only peer"
-                  />
-                  <div className="w-9 h-5 bg-muted peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600"></div>
-                </label>
-              </div>
-
               <button
                 type="submit"
                 className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 rounded-lg shadow-xs transition flex items-center justify-center gap-2"
@@ -687,18 +582,6 @@ export default function SafeCtaPinCommentPage() {
                     <div className="space-y-1">
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="font-black text-sm text-foreground">{tmpl.title}</span>
-                        {tmpl.autoPin && (
-                          <span className="bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-900/40 text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
-                            <Pin className="w-2.5 h-2.5" /> Pinned: true
-                          </span>
-                        )}
-                        <span className="bg-muted text-muted-foreground border border-border text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
-                          <Clock className="w-2.5 h-2.5" /> {tmpl.delaySeconds}s Delay
-                        </span>
-                      </div>
-                      <div className="text-[11px] text-muted-foreground font-semibold flex items-center gap-1">
-                        <Globe className="w-3 h-3 text-blue-500" />
-                        Target: <span className="text-foreground">{tmpl.assignedPage}</span>
                       </div>
                     </div>
 
