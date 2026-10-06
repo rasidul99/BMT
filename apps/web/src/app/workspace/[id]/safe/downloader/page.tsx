@@ -20,7 +20,7 @@ import { useAssetLibrary } from "../../../../../hooks/useAssetLibrary"
 interface DownloadedMediaResult {
   id: string
   title: string
-  platform: "Facebook" | "YouTube" | "TikTok"
+  platform: string
   format: "1080p Video (MP4)" | "Audio (MP3)"
   fileSize: string
   videoUrl: string
@@ -41,6 +41,7 @@ export default function SafeDownloaderPage() {
   const [downloadProgress, setDownloadProgress] = useState(0)
   const [statusText, setStatusText] = useState("")
   const [downloadedResult, setDownloadedResult] = useState<DownloadedMediaResult | null>(null)
+  const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [isSavedToLibrary, setIsSavedToLibrary] = useState(false)
   const [isDownloadedToPC, setIsDownloadedToPC] = useState(false)
 
@@ -52,16 +53,13 @@ export default function SafeDownloaderPage() {
     }
   }, [searchParams])
 
-  // Local sample media for guaranteed 100% reliable playback & real download
-  const sampleVideoUrl = "/sample-video.mp4"
-  const sampleAudioUrl = "/sample-audio.mp3"
-
   const handleStartExtraction = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!videoUrl.trim()) return
 
     setIsProcessing(true)
     setDownloadedResult(null)
+    setErrorMessage(null)
     setDownloadProgress(15)
     setStatusText("Connecting to Media CDN & analyzing video URL...")
     setIsSavedToLibrary(false)
@@ -88,46 +86,32 @@ export default function SafeDownloaderPage() {
 
       clearInterval(progressTimer)
       setDownloadProgress(100)
-      setStatusText("Complete! Media ready for instant playback & download.")
 
-      if (res.ok) {
-        const data = await res.json()
+      const data = await res.json().catch(() => null)
+
+      if (res.ok && data && data.success && data.videoUrl) {
+        setStatusText("Complete! Media ready for instant playback & download.")
         setDownloadedResult({
           id: data.id || `dl-${Date.now()}`,
           title: data.title || "Social Media Video",
-          platform: data.platform || "Facebook",
+          platform: data.platform || "Web Video",
           format: data.format || downloadFormat,
           fileSize: data.fileSize || "18.5 MB",
-          videoUrl: data.videoUrl || "/sample-video.mp4",
-          thumbnailUrl: data.thumbnailUrl || "https://images.unsplash.com/photo-1611162617213-7d7a39e9b1d7?w=600&auto=format&fit=crop",
+          videoUrl: data.videoUrl,
+          thumbnailUrl: data.thumbnailUrl || "",
           duration: data.duration || "0:30 min",
         })
       } else {
-        throw new Error("Failed to extract media")
+        const errText = data?.error || "ভিডিওটি এক্সট্র্যাক্ট করা সম্ভব হয়নি। লিংকটি সঠিক ও ভিডিওটি পাবলিক কিনা নিশ্চিত করুন।"
+        setStatusText("Extraction failed.")
+        setErrorMessage(errText)
+        setDownloadedResult(null)
       }
-    } catch (err) {
-      console.warn("API extraction error, falling back to local media buffer:", err)
+    } catch (err: any) {
       clearInterval(progressTimer)
-      setDownloadProgress(100)
-      setStatusText("Media stream ready from local buffer.")
-
-      let platform: "Facebook" | "YouTube" | "TikTok" = "Facebook"
-      if (videoUrl.includes("youtube.com") || videoUrl.includes("youtu.be")) platform = "YouTube"
-      else if (videoUrl.includes("tiktok.com")) platform = "TikTok"
-
-      const reelMatch = videoUrl.match(/reel\/(\d+)/) || videoUrl.match(/v=(\d+)/)
-      const contentId = reelMatch ? reelMatch[1] : "1091676610395090"
-
-      setDownloadedResult({
-        id: `dl-${contentId}`,
-        title: `${platform} Reel #${contentId.slice(-6)} (1080p HD)`,
-        platform,
-        format: downloadFormat,
-        fileSize: downloadFormat.includes("Video") ? "1.2 MB" : "0.5 MB",
-        videoUrl: downloadFormat.includes("Video") ? "/sample-video.mp4" : "/sample-audio.mp3",
-        thumbnailUrl: "https://images.unsplash.com/photo-1611162617213-7d7a39e9b1d7?w=600&auto=format&fit=crop",
-        duration: "0:13 min",
-      })
+      setStatusText("Extraction failed.")
+      setErrorMessage(err?.message || "সার্ভার বা নেটওয়ার্ক সংযোগে সমস্যা হয়েছে। অনুগ্রহ করে আবার চেষ্টা করুন।")
+      setDownloadedResult(null)
     } finally {
       setIsProcessing(false)
     }
@@ -184,7 +168,7 @@ export default function SafeDownloaderPage() {
           </span>
         </div>
         <p className="text-xs text-muted-foreground mt-1">
-          Paste any public Facebook Reel, Post Video, YouTube Shorts, or TikTok link to download directly to your computer or save to your Central Library.
+          Paste any public video link from Facebook, YouTube Shorts, TikTok, Pinterest, Instagram, Twitter / X, or Direct Web Video to download directly to your computer or save to your Central Library.
         </p>
       </div>
 
@@ -197,12 +181,12 @@ export default function SafeDownloaderPage() {
 
         <div>
           <label className="font-bold block mb-1 text-foreground">
-            Public Video URL (Facebook, YouTube, TikTok) *
+            Public Video URL (YouTube, TikTok, Pinterest, Facebook, Instagram, Twitter/X) *
           </label>
           <input
             type="url"
             required
-            placeholder="e.g. https://www.facebook.com/reel/1026684323728937"
+            placeholder="e.g. https://youtube.com/shorts/... or https://tiktok.com/... or https://pin.it/..."
             value={videoUrl}
             onChange={(e) => setVideoUrl(e.target.value)}
             className="w-full px-3.5 py-2.5 border border-border rounded-lg bg-background text-foreground text-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
@@ -262,12 +246,26 @@ export default function SafeDownloaderPage() {
         <button
           type="submit"
           disabled={isProcessing}
-          className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-extrabold py-2.5 rounded-lg shadow-xs transition text-xs flex items-center justify-center gap-2"
+          className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-extrabold py-2.5 rounded-lg shadow-xs transition text-xs flex items-center justify-center gap-2 cursor-pointer"
         >
           <ArrowDownToLine className="w-4 h-4" />
           <span>{isProcessing ? "Processing & Extracting Media..." : "Download & Extract Media"}</span>
         </button>
       </form>
+
+      {/* Error Alert Card */}
+      {errorMessage && !isProcessing && (
+        <div className="border border-red-500/30 bg-red-500/10 p-4 rounded-xl flex items-start gap-3 text-xs text-red-600 dark:text-red-400 animate-in fade-in duration-200 shadow-xs">
+          <AlertCircle className="w-5 h-5 shrink-0 mt-0.5 text-red-500" />
+          <div className="space-y-1">
+            <span className="font-bold text-sm block text-red-600 dark:text-red-400">ভিডিও এক্সট্র্যাকশন সম্পন্ন করা যায়নি</span>
+            <p className="text-foreground/80 leading-relaxed">{errorMessage}</p>
+            <p className="text-[11px] text-muted-foreground pt-1">
+              পরামর্শ: লিংকটি কপি করে ব্রাউজারে চেক করুন ভিডিওটি পাবলিক আছে কিনা। কোনো কোনো ভিডিও প্রাইভেট, কপিরাইট ক্লেইমে রিমুভড অথবা বয়স-সীমাবদ্ধ (Age Restricted) থাকলে তা সরাসরি ডাউনলোড করা যায় না।
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* 3. Extracted Media Result Card with Live Player & Real Download */}
       {downloadedResult && (

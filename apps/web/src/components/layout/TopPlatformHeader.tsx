@@ -180,7 +180,7 @@ export function TopPlatformHeader({ currentMode = "SAFE" }: TopPlatformHeaderPro
   }
 
   return (
-    <header className="w-full border-b border-border bg-card text-foreground shadow-xs sticky top-0 z-50">
+    <header className="w-full border-b border-border bg-card text-foreground shadow-xs sticky top-0 z-30">
       {/* Toast Notification */}
       {toastMessage && (
         <div className="fixed top-16 right-6 z-50 bg-blue-600 text-white text-xs font-semibold px-4 py-2.5 rounded-xl shadow-2xl flex items-center gap-2 border border-blue-400 animate-in fade-in slide-in-from-top-2">

@@ -130,7 +130,7 @@ export default function AdvancedLayout({ children }: { children: React.ReactNode
       <TopPlatformHeader currentMode="ADVANCED" />
 
       {/* 2. Workspace Content with Sidebar */}
-      <div className="flex flex-1 overflow-hidden relative">
+      <div className="flex flex-1 overflow-hidden">
         {/* Desktop Persistent Sidebar */}
         <aside
           className={`hidden md:flex border-r border-border bg-card flex-col justify-between transition-all duration-300 shadow-sm shrink-0 overflow-hidden ${

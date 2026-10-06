@@ -6,6 +6,7 @@ export interface ClickableCard {
   id: string
   title: string
   description: string
+  caption?: string
   imageUrl: string
   destinationUrl: string
   displayDomain: string
@@ -26,8 +27,8 @@ export function useClickableCards(workspaceId?: string) {
       title: "Eid Mega Sale 2026 - Up to 50% Off Top Gadgets!",
       description: "Get original smartwatches, earbuds & tech accessories with fast home delivery.",
       imageUrl: "https://images.unsplash.com/photo-1542744094-3a3172720a8a?w=800&auto=format&fit=crop",
-      destinationUrl: "https://bmt.cards/eid-mega-offer",
-      displayDomain: "bmt.cards",
+      destinationUrl: "https://www.google.com",
+      displayDomain: "google.com",
       clickCount: 142,
       createdAt: "2026-08-01",
       workspaceId: "workspace-1",
@@ -37,8 +38,8 @@ export function useClickableCards(workspaceId?: string) {
       title: "Ultra ANC Wireless Earbuds with 48h Battery Life",
       description: "Limited stock offer! Tap to order today with free express shipping across BD.",
       imageUrl: "https://images.unsplash.com/photo-1590658268037-6bf12165a8df?w=800&auto=format&fit=crop",
-      destinationUrl: "https://bmt.cards/earbuds-pro",
-      displayDomain: "shope.bd",
+      destinationUrl: "https://www.facebook.com",
+      displayDomain: "facebook.com",
       clickCount: 89,
       createdAt: "2026-08-03",
       workspaceId: "workspace-1",

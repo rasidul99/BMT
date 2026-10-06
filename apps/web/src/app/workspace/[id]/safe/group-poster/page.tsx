@@ -31,6 +31,16 @@ import {
   AlertTriangle,
   Globe,
   X,
+  Info,
+  Film,
+  Smartphone,
+  Vote,
+  Music,
+  Upload,
+  HardDrive,
+  Loader2,
+  FolderPlus,
+  UploadCloud,
 } from "lucide-react"
 import { useFacebookAccounts } from "../../../../../hooks/useFacebookAccounts"
 import { useGroupPoster, GroupPostJob, CustomGroupItem } from "../../../../../hooks/useGroupPoster"
@@ -58,7 +68,7 @@ export default function SafeGroupPosterPage() {
   const [activeTab, setActiveTab] = useState<"composer" | "queue" | "groups" | "logs">("composer")
 
   // Post Composer State
-  const [postFormat, setPostFormat] = useState<"Text" | "Image" | "Video" | "Link">("Image")
+  const [postFormat, setPostFormat] = useState<"Text" | "Image" | "Video" | "Reel" | "Story" | "Poll">("Image")
   const [postTitle, setPostTitle] = useState("Eid Special Wholesale Watch Collection 2026")
   const [postContent, setPostContent] = useState(
     "আমাদের অফিশিয়াল গ্রুপ মেম্বারদের জন্য এক্সক্লুসিভ ৩০% ডিসকাউন্ট ডিল! স্টক সীমিত। অর্ডার করতে এখনই ইনবক্স করুন অথবা লিংকে ভিসিট করুন।"
@@ -68,6 +78,52 @@ export default function SafeGroupPosterPage() {
   )
   const [linkUrl, setLinkUrl] = useState("https://bmt.link/eid-deal-group")
   const [spinVariations, setSpinVariations] = useState(true)
+
+  // Format Specific States (Poll, Reel, Story)
+  const [pollQuestion, setPollQuestion] = useState("Which product feature matters most to you in 2026?")
+  const [pollOptions, setPollOptions] = useState<string[]>([
+    "Premium Build Quality & Durability",
+    "Long Battery Life (48 Hours+)",
+    "Affordable Price & Discounts",
+    "Fast 24-Hour Home Delivery",
+  ])
+  const [pollDurationDays, setPollDurationDays] = useState<number>(3)
+  const [reelAudioName, setReelAudioName] = useState("Original Sound - BMT Trending Audio")
+  const [storyLinkSticker, setStoryLinkSticker] = useState("https://bmt.link/eid-deal")
+  const [storyStickerText, setStoryStickerText] = useState("Swipe Up / Shop Now")
+
+  // Media Source & Local Upload States
+  const [mediaSourceType, setMediaSourceType] = useState<"local" | "url">("local")
+  const [isUploadingMedia, setIsUploadingMedia] = useState(false)
+  const [uploadedFileInfo, setUploadedFileInfo] = useState<{ name: string; size: string } | null>(null)
+  const localFileInputRef = useRef<HTMLInputElement>(null)
+
+  const handleLocalFileUpload = async (file: File) => {
+    try {
+      setIsUploadingMedia(true)
+      const formData = new FormData()
+      formData.append("file", file)
+      const res = await fetch("/api/media/upload", {
+        method: "POST",
+        body: formData,
+      })
+      const data = await res.json()
+      if (data.success && data.url) {
+        setMediaUrl(data.url)
+        setUploadedFileInfo({
+          name: data.originalName || file.name,
+          size: data.size || `${(file.size / (1024 * 1024)).toFixed(1)} MB`,
+        })
+      } else {
+        alert("Upload failed: " + (data.error || "Unknown error"))
+      }
+    } catch (err: any) {
+      console.error("Local file upload error:", err)
+      alert("Error uploading file: " + err.message)
+    } finally {
+      setIsUploadingMedia(false)
+    }
+  }
 
   // Asset Library Picker
   const [showLibraryModal, setShowLibraryModal] = useState(false)
@@ -81,6 +137,8 @@ export default function SafeGroupPosterPage() {
   // Anti-Ban Delay & Account Rotation Settings
   const [delayPreset, setDelayPreset] = useState<"fast" | "balanced" | "safe">("balanced")
   const [accountRotationMode, setAccountRotationMode] = useState<"auto" | "assigned">("auto")
+  const [dispatchExecutionMode, setDispatchExecutionMode] = useState<"live" | "simulation">("live")
+  const [showChromeWindow, setShowChromeWindow] = useState<boolean>(true)
 
   // Dispatch Runner State
   const [isDispatcherRunning, setIsDispatcherRunning] = useState(false)
@@ -131,7 +189,14 @@ export default function SafeGroupPosterPage() {
   const [newGroupMembers, setNewGroupMembers] = useState(50000)
   const [newGroupPrivacy, setNewGroupPrivacy] = useState<"Public" | "Private">("Public")
   const [newGroupIsAdmin, setNewGroupIsAdmin] = useState(false)
-  const [newGroupAssignedAcc, setNewGroupAssignedAcc] = useState("")
+  const [newGroupAssignedAcc, setNewGroupAssignedAcc] = useState<string>("none")
+
+  // Floating Toast Alert State
+  const [toast, setToast] = useState<{ message: string; type: "success" | "error" | "info" } | null>(null)
+  const showToast = (message: string, type: "success" | "error" | "info" = "success") => {
+    setToast({ message, type })
+    setTimeout(() => setToast(null), 3500)
+  }
 
   // Combine groups from connected accounts and custom groups
   const allAvailableGroups = useMemo(() => {
@@ -168,7 +233,8 @@ export default function SafeGroupPosterPage() {
 
     // 2. Custom Groups
     customGroups.forEach((cg) => {
-      const matchAcc = fbAccounts.find((a) => a.id === cg.assignedAccountId)
+      const isUnassigned = !cg.assignedAccountId || cg.assignedAccountId === "none"
+      const matchAcc = !isUnassigned ? fbAccounts.find((a) => a.id === cg.assignedAccountId) : null
       list.push({
         id: cg.id,
         name: cg.name,
@@ -176,8 +242,10 @@ export default function SafeGroupPosterPage() {
         memberCount: cg.memberCount,
         privacy: cg.privacy,
         isManagedAdmin: cg.isManagedAdmin,
-        assignedAccountId: cg.assignedAccountId,
-        assignedAccountName: matchAcc?.name || "General Account",
+        assignedAccountId: isUnassigned ? "none" : cg.assignedAccountId,
+        assignedAccountName: isUnassigned
+          ? "Shared (All IDs)"
+          : (matchAcc ? matchAcc.name : "Connected Account"),
         accountAvatar: matchAcc?.avatarUrl,
         url: cg.url,
       })
@@ -226,40 +294,84 @@ export default function SafeGroupPosterPage() {
   const handleAssetSelect = (asset: LibraryAsset) => {
     if (asset.title) setPostTitle(asset.title)
     if (asset.content) setPostContent(asset.content)
-    if (asset.mediaUrl) setMediaUrl(asset.mediaUrl)
-    if (asset.type === "Video") setPostFormat("Video")
-    else if (asset.type === "Image") setPostFormat("Image")
-    else setPostFormat("Text")
+    const media = asset.url || asset.videoUrl || ""
+    if (media) setMediaUrl(media)
+    if (asset.type === "Video") {
+      setPostFormat("Video")
+    } else if (asset.type === "Image") {
+      setPostFormat("Image")
+    } else if (asset.type === "Poll") {
+      setPostFormat("Poll")
+      if (asset.pollOptions && asset.pollOptions.length > 0) {
+        setPollOptions(asset.pollOptions)
+      }
+      if (asset.content) {
+        setPollQuestion(asset.content)
+      }
+    } else {
+      setPostFormat("Text")
+    }
     setShowLibraryModal(false)
   }
 
   // Add custom group submit
   const handleAddCustomGroupSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    if (!newGroupName.trim()) return
+    const groupNameTrimmed = newGroupName.trim()
+    const groupUrlTrimmed = newGroupUrl.trim()
 
+    if (!groupNameTrimmed) {
+      showToast("দয়া করে গ্রুপের নাম লিখুন।", "error")
+      return
+    }
+
+    if (!groupUrlTrimmed || (!groupUrlTrimmed.includes("facebook.com") && !groupUrlTrimmed.startsWith("http"))) {
+      showToast("দয়া করে একটি সঠিক ফেসবুক গ্রুপ URL দিন (যেমন: https://www.facebook.com/groups/...)", "error")
+      return
+    }
+
+    const chosenAccountId = newGroupAssignedAcc === "none" ? "none" : (newGroupAssignedAcc || "none")
     addGroup({
-      name: newGroupName.trim(),
+      name: groupNameTrimmed,
       category: newGroupCategory,
       memberCount: Number(newGroupMembers) || 10000,
       privacy: newGroupPrivacy,
       isManagedAdmin: newGroupIsAdmin,
-      assignedAccountId: newGroupAssignedAcc || (fbAccounts[0]?.id || "acc-101"),
-      url: newGroupUrl.trim() || `https://facebook.com/groups/${Date.now()}`,
+      assignedAccountId: chosenAccountId,
+      url: groupUrlTrimmed,
     })
 
     setNewGroupName("")
     setNewGroupUrl("")
+    setNewGroupAssignedAcc("none")
+    setNewGroupIsAdmin(false)
     setShowAddGroupModal(false)
+    showToast(`"${groupNameTrimmed}" গ্রুপটি সফলভাবে যোগ করা হয়েছে!`, "success")
+  }
+
+  // Delete custom group handler
+  const handleDeleteCustomGroup = (id: string, name: string) => {
+    deleteGroup(id)
+    setSelectedGroupIds((prev) => prev.filter((gid) => gid !== id))
+    showToast(`"${name}" গ্রুপটি তালিকা থেকে মুছে ফেলা হয়েছে।`, "info")
   }
 
   // Launch Multi-Group Auto Dispatch
   const handleLaunchDispatch = () => {
-    if (selectedGroupIds.length === 0) return alert("Please select at least one Facebook Group.")
-    if (!postTitle.trim() || !postContent.trim()) return alert("Please enter post title and content.")
+    if (selectedGroupIds.length === 0) {
+      showToast("দয়া করে কমপক্ষে একটি ফেসবুক গ্রুপ নির্বাচন করুন।", "error")
+      return
+    }
+    if (!postTitle.trim() || !postContent.trim()) {
+      showToast("পোস্টের টাইটেল এবং কনটেন্ট পূরণ করুন।", "error")
+      return
+    }
 
     const activeAccounts = fbAccounts.filter((a) => a.status === "Active")
-    if (activeAccounts.length === 0) return alert("No active Facebook accounts available to post.")
+    if (activeAccounts.length === 0) {
+      showToast("পোস্ট করার মতো কোনো সক্রিয় ফেসবুক একাউন্ট পাওয়া যায়নি।", "error")
+      return
+    }
 
     // Build Jobs
     const jobs: GroupPostJob[] = selectedGroupIds.map((groupId, index) => {
@@ -267,7 +379,11 @@ export default function SafeGroupPosterPage() {
       
       // Load balance / account rotation
       let assignedAccount = activeAccounts[index % activeAccounts.length]
-      if (accountRotationMode === "assigned" && groupData?.assignedAccountId) {
+      if (
+        accountRotationMode === "assigned" &&
+        groupData?.assignedAccountId &&
+        groupData.assignedAccountId !== "none"
+      ) {
         const matched = activeAccounts.find((a) => a.id === groupData.assignedAccountId)
         if (matched) assignedAccount = matched
       }
@@ -295,10 +411,13 @@ export default function SafeGroupPosterPage() {
         accountId: assignedAccount.id,
         accountName: assignedAccount.name,
         accountAvatar: assignedAccount.avatarUrl,
-        postTitle,
-        postContent: variedContent,
-        mediaUrl: postFormat === "Image" || postFormat === "Video" ? mediaUrl : undefined,
-        linkUrl: postFormat === "Link" ? linkUrl : undefined,
+        postTitle: postFormat === "Poll" ? pollQuestion || postTitle : postTitle,
+        postContent:
+          postFormat === "Poll"
+            ? `${variedContent}\n\n📊 Voting Options:\n${pollOptions.map((o, idx) => `${idx + 1}. ${o}`).join("\n")}`
+            : variedContent,
+        mediaUrl: postFormat === "Text" || postFormat === "Poll" ? undefined : mediaUrl,
+        linkUrl: postFormat === "Story" ? storyLinkSticker : undefined,
         postFormat,
         status: "Pending",
         delaySeconds: index === 0 ? 0 : delay, // 1st post executes immediately
@@ -308,6 +427,7 @@ export default function SafeGroupPosterPage() {
 
     addJobsToQueue(jobs)
     setActiveTab("queue")
+    showToast(`${jobs.length}টি গ্রুপের জন্য অটো-পোস্টিং কিউ তৈরি করা হয়েছে!`, "success")
     startQueueExecution(jobs)
   }
 
@@ -333,6 +453,8 @@ export default function SafeGroupPosterPage() {
       scheduledAt: new Date().toISOString(),
     }))
     addJobsToQueue(demoJobs)
+    setActiveTab("queue")
+    showToast("৩টি ডেমো গ্রুপের অটো-পোস্টিং কিউ চালু করা হয়েছে!", "info")
     startQueueExecution(demoJobs)
   }
 
@@ -373,29 +495,112 @@ export default function SafeGroupPosterPage() {
       setStatusNotice(`Posting to "${job.groupName}" via ${job.accountName} (Meta Graph API / Session)...`)
       updateJobStatus(job.id, { status: "Posting" })
 
-      // Dispatch to Facebook Graph API or Session Dispatcher
+      // Dispatch via Real Facebook Puppeteer Bot or Simulation
       try {
-        await new Promise((r) => setTimeout(r, 1500)) // Realistic network trip
+        const targetGroupItem = allAvailableGroups.find((g) => g.id === job.groupId)
+        const targetGroupUrl = targetGroupItem?.url || ""
+        const matchedAccount = fbAccounts.find((a) => a.id === job.accountId)
+        const accountCookie = matchedAccount?.tokenOrCookie?.includes("c_user=")
+          ? matchedAccount.tokenOrCookie
+          : undefined
 
-        const generatedPostId = `fb_grp_${job.groupId.replace(/[^a-zA-Z0-9]/g, "")}_${Date.now().toString().slice(-6)}`
-        
-        updateJobStatus(job.id, {
-          status: "Success",
-          postId: generatedPostId,
-          executedAt: new Date().toISOString(),
-        })
+        const isLiveUrl = targetGroupUrl.startsWith("http://") || targetGroupUrl.startsWith("https://")
 
-        addLog({
-          groupId: job.groupId,
-          groupName: job.groupName,
-          accountId: job.accountId,
-          accountName: job.accountName,
-          postTitle: job.postTitle,
-          contentExcerpt: job.postContent.slice(0, 75) + "...",
-          mediaUrl: job.mediaUrl,
-          status: "Success",
-          responseId: generatedPostId,
-        })
+        if (dispatchExecutionMode === "live" && isLiveUrl) {
+          setStatusNotice(`Launching real Facebook bot for "${job.groupName}" via ${job.accountName}...`)
+
+          const botResponse = await fetch("/api/facebook-bot/launch", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              accountName: matchedAccount?.name || job.accountName,
+              cookieString: accountCookie,
+              groups: [
+                {
+                  groupId: job.groupId,
+                  groupName: job.groupName,
+                  url: targetGroupUrl,
+                },
+              ],
+              postMessage: `${job.postTitle ? job.postTitle + "\n\n" : ""}${job.postContent}`,
+              mediaUrl: job.mediaUrl,
+              delaySeconds: 5,
+              waitForCompletion: true,
+              headless: !showChromeWindow,
+            }),
+          })
+
+          const botResult = await botResponse.json()
+
+          if (botResponse.ok && botResult.success) {
+            const confirmedPostId =
+              botResult.results?.[0]?.postId ||
+              botResult.jobId ||
+              `fb_live_${Date.now().toString().slice(-6)}`
+
+            updateJobStatus(job.id, {
+              status: "Success",
+              postId: confirmedPostId,
+              executedAt: new Date().toISOString(),
+            })
+
+            addLog({
+              groupId: job.groupId,
+              groupName: job.groupName,
+              accountId: job.accountId,
+              accountName: job.accountName,
+              postTitle: job.postTitle,
+              contentExcerpt: job.postContent.slice(0, 75) + "...",
+              mediaUrl: job.mediaUrl,
+              status: "Success",
+              responseId: confirmedPostId,
+            })
+          } else {
+            const errorMsg =
+              botResult.error ||
+              botResult.message ||
+              botResult.results?.[0]?.error ||
+              "Facebook posting failed"
+
+            updateJobStatus(job.id, {
+              status: "Failed",
+              error: errorMsg,
+            })
+
+            addLog({
+              groupId: job.groupId,
+              groupName: job.groupName,
+              accountId: job.accountId,
+              accountName: job.accountName,
+              postTitle: job.postTitle,
+              contentExcerpt: job.postContent.slice(0, 75) + "...",
+              status: "Failed",
+              error: errorMsg,
+            })
+          }
+        } else {
+          // Simulation / Sandboxed test execution
+          await new Promise((r) => setTimeout(r, 1800))
+          const simPostId = `sandbox_grp_${job.groupId.replace(/[^a-zA-Z0-9]/g, "")}_${Date.now().toString().slice(-6)}`
+
+          updateJobStatus(job.id, {
+            status: "Success",
+            postId: simPostId,
+            executedAt: new Date().toISOString(),
+          })
+
+          addLog({
+            groupId: job.groupId,
+            groupName: job.groupName,
+            accountId: job.accountId,
+            accountName: job.accountName,
+            postTitle: job.postTitle,
+            contentExcerpt: job.postContent.slice(0, 75) + "...",
+            mediaUrl: job.mediaUrl,
+            status: "Success",
+            responseId: `${simPostId} (Sandbox Mode)`,
+          })
+        }
       } catch (err: any) {
         updateJobStatus(job.id, {
           status: "Failed",
@@ -421,16 +626,57 @@ export default function SafeGroupPosterPage() {
     setCurrentJobStep(null)
     setCountdownSeconds(null)
     setStatusNotice("All queued group posts completed!")
+    showToast("সকল কিউ করা গ্রুপে সফলভাবে পোস্ট সম্পন্ন হয়েছে!", "success")
   }
 
   const handleStopExecution = () => {
     isCancelledRef.current = true
     setIsDispatcherRunning(false)
     setStatusNotice("Execution paused by user.")
+    showToast("পোস্টিং প্রক্রিয়া সাময়িকভাবে থামানো হয়েছে।", "info")
+  }
+
+  const handleClearQueueWithToast = () => {
+    clearQueue()
+    showToast("পোস্টিং কিউ সফলভাবে খালি করা হয়েছে।", "info")
+  }
+
+  const handleClearLogsWithToast = () => {
+    clearLogs()
+    showToast("অডিট লগ খালি করা হয়েছে।", "info")
   }
 
   return (
-    <div className="max-w-6xl mx-auto space-y-6 pb-20">
+    <div className="max-w-6xl mx-auto space-y-6 pb-20 relative">
+      {/* Toast Notification */}
+      {toast && (
+        <div
+          className={`fixed top-5 right-5 z-50 text-white font-semibold text-xs px-4 py-3 rounded-xl shadow-2xl flex items-center gap-2.5 animate-in slide-in-from-top-2 duration-200 border border-white/10 ${
+            toast.type === "error"
+              ? "bg-rose-600"
+              : toast.type === "info"
+              ? "bg-slate-900 text-slate-100"
+              : "bg-emerald-600 text-white"
+          }`}
+        >
+          {toast.type === "error" ? (
+            <AlertCircle className="w-4 h-4 shrink-0 text-white" />
+          ) : toast.type === "info" ? (
+            <Info className="w-4 h-4 shrink-0 text-blue-300" />
+          ) : (
+            <CheckCircle2 className="w-4 h-4 shrink-0 text-white" />
+          )}
+          <span>{toast.message}</span>
+          <button
+            type="button"
+            onClick={() => setToast(null)}
+            className="ml-2 hover:opacity-75 transition p-0.5 rounded text-white/80 hover:text-white"
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      )}
+
       {/* Header */}
       <div className="border-b pb-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
@@ -574,35 +820,59 @@ export default function SafeGroupPosterPage() {
                 <h2 className="font-extrabold text-sm flex items-center gap-2">
                   <Send className="w-4 h-4 text-blue-600" /> 1. Group Post Composer
                 </h2>
-                <button
-                  type="button"
-                  onClick={() => setShowLibraryModal(true)}
-                  className="px-2.5 py-1 rounded-lg border border-border hover:bg-muted text-foreground font-bold text-xs flex items-center gap-1 transition"
-                >
-                  <Sparkles className="w-3.5 h-3.5 text-blue-500" /> Import from Library
-                </button>
+                <span className="text-[10px] text-muted-foreground font-semibold">
+                  Multi-Account Broadcast Ready
+                </span>
               </div>
 
-              {/* Format Switcher */}
-              <div className="flex items-center gap-1.5 p-1 bg-muted/40 rounded-lg border">
-                {(["Text", "Image", "Video", "Link"] as const).map((fmt) => (
+              {/* Post Format & Asset Library Picker (Standardized across BMT) */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="font-bold text-xs">Post Format</label>
                   <button
-                    key={fmt}
                     type="button"
-                    onClick={() => setPostFormat(fmt)}
-                    className={`flex-1 py-1.5 rounded-md text-xs font-bold transition flex items-center justify-center gap-1 ${
-                      postFormat === fmt
-                        ? "bg-background shadow-xs text-foreground"
-                        : "text-muted-foreground hover:text-foreground"
-                    }`}
+                    onClick={() => setShowLibraryModal(true)}
+                    className="flex items-center space-x-1 text-xs text-blue-600 dark:text-blue-400 font-extrabold hover:underline bg-blue-500/10 px-2.5 py-1 rounded-lg border border-blue-500/20"
                   >
-                    {fmt === "Image" && <ImageIcon className="w-3.5 h-3.5 text-blue-500" />}
-                    {fmt === "Video" && <Video className="w-3.5 h-3.5 text-rose-500" />}
-                    {fmt === "Text" && <FileText className="w-3.5 h-3.5 text-purple-500" />}
-                    {fmt === "Link" && <Link2 className="w-3.5 h-3.5 text-amber-500" />}
-                    {fmt}
+                    <Sparkles className="w-3.5 h-3.5" />
+                    <span>Browse Central Asset Library</span>
                   </button>
-                ))}
+                </div>
+                <div className="grid grid-cols-6 gap-1.5 text-xs font-bold">
+                  {(["Text", "Image", "Video", "Reel", "Story", "Poll"] as const).map((fmt) => (
+                    <button
+                      key={fmt}
+                      type="button"
+                      onClick={() => {
+                        setPostFormat(fmt)
+                        if (fmt === "Video" || fmt === "Reel") {
+                          if (!mediaUrl || !mediaUrl.match(/\.(mp4|mov|webm)/i)) {
+                            setMediaUrl("/sample-video.mp4")
+                          }
+                        } else if (fmt === "Text" || fmt === "Poll") {
+                          setMediaUrl("")
+                        } else if (fmt === "Image" || fmt === "Story") {
+                          if (!mediaUrl || mediaUrl.match(/\.(mp4|mov|webm)/i)) {
+                            setMediaUrl("https://images.unsplash.com/photo-1522335789203-aabd1fc54bc9?w=600&auto=format&fit=crop&q=80")
+                          }
+                        }
+                      }}
+                      className={`py-2 rounded-lg border transition flex flex-col items-center justify-center space-y-1 ${
+                        postFormat === fmt
+                          ? "bg-blue-600 text-white border-blue-600 shadow-sm"
+                          : "hover:bg-muted text-muted-foreground border-border"
+                      }`}
+                    >
+                      {fmt === "Text" && <FileText className="w-3.5 h-3.5" />}
+                      {fmt === "Image" && <ImageIcon className="w-3.5 h-3.5" />}
+                      {fmt === "Video" && <Video className="w-3.5 h-3.5" />}
+                      {fmt === "Reel" && <Film className="w-3.5 h-3.5" />}
+                      {fmt === "Story" && <Smartphone className="w-3.5 h-3.5" />}
+                      {fmt === "Poll" && <Vote className="w-3.5 h-3.5" />}
+                      <span className="text-[10px]">{fmt}</span>
+                    </button>
+                  ))}
+                </div>
               </div>
 
               {/* Post Details */}
@@ -634,31 +904,257 @@ export default function SafeGroupPosterPage() {
                   />
                 </div>
 
-                {(postFormat === "Image" || postFormat === "Video") && (
-                  <div>
-                    <label className="font-bold block mb-1 text-foreground">
-                      {postFormat === "Image" ? "Image URL *" : "Video URL (MP4) *"}
-                    </label>
+                {/* Creative Media Attachment (Asset Library, Local Upload, Sample Video, URL) */}
+                {postFormat !== "Text" && postFormat !== "Poll" && (
+                  <div className="p-3 bg-muted/40 border border-border rounded-xl space-y-3">
+                    <div className="flex items-center justify-between">
+                      <label className="text-[11px] font-semibold text-muted-foreground uppercase flex items-center gap-1.5">
+                        {postFormat === "Image" && <ImageIcon className="w-3.5 h-3.5 text-blue-500" />}
+                        {postFormat === "Video" && <Video className="w-3.5 h-3.5 text-rose-500" />}
+                        {postFormat === "Reel" && <Film className="w-3.5 h-3.5 text-purple-500" />}
+                        {postFormat === "Story" && <Smartphone className="w-3.5 h-3.5 text-amber-500" />}
+                        <span>{postFormat} Creative Media Attachment</span>
+                      </label>
+                      <span className="text-[10px] text-blue-600 dark:text-blue-400 font-semibold bg-blue-50 dark:bg-blue-950/60 px-1.5 py-0.5 rounded border border-blue-200 dark:border-blue-900/60">
+                        Facebook Ready
+                      </span>
+                    </div>
+
+                    {/* Media Actions: 1) Asset Library, 2) Direct File Upload, 3) Sample Video */}
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setShowLibraryModal(true)}
+                        className="flex-1 min-w-[120px] h-8 px-2.5 rounded-lg border border-blue-500/30 bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 text-xs font-bold hover:bg-blue-500/20 transition flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
+                      >
+                        <FolderPlus className="w-3.5 h-3.5" />
+                        <span>From Library</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => localFileInputRef.current?.click()}
+                        disabled={isUploadingMedia}
+                        className="flex-1 min-w-[120px] h-8 px-2.5 rounded-lg border border-border bg-card hover:bg-muted text-foreground text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
+                      >
+                        {isUploadingMedia ? (
+                          <>
+                            <Loader2 className="w-3.5 h-3.5 animate-spin text-blue-500" />
+                            <span>Uploading...</span>
+                          </>
+                        ) : (
+                          <>
+                            <UploadCloud className="w-3.5 h-3.5 text-emerald-500" />
+                            <span>Upload File</span>
+                          </>
+                        )}
+                      </button>
+
+                      {(postFormat === "Video" || postFormat === "Reel") && (
+                        <button
+                          type="button"
+                          onClick={() => setMediaUrl("/sample-video.mp4")}
+                          className="h-8 px-2.5 rounded-lg border border-rose-500/30 bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 text-xs font-bold hover:bg-rose-500/20 transition flex items-center gap-1 cursor-pointer shadow-xs"
+                        >
+                          <Film className="w-3.5 h-3.5" />
+                          <span>Sample Video</span>
+                        </button>
+                      )}
+                    </div>
+
+                    {/* Hidden Local File Input */}
                     <input
-                      type="url"
-                      value={mediaUrl}
-                      onChange={(e) => setMediaUrl(e.target.value)}
-                      placeholder="https://images.unsplash.com/... or video link"
-                      className="w-full px-3 py-2 border rounded-lg bg-background font-mono text-xs focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition"
+                      ref={localFileInputRef}
+                      type="file"
+                      accept={
+                        postFormat === "Video" || postFormat === "Reel"
+                          ? "video/mp4,video/webm,video/quicktime"
+                          : "image/png,image/jpeg,image/webp,image/gif,video/mp4"
+                      }
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0]
+                        if (file) handleLocalFileUpload(file)
+                      }}
                     />
+
+                    {/* Media URL Input */}
+                    <div className="space-y-1">
+                      <span className="text-[10px] text-muted-foreground uppercase font-semibold">Or Media URL / Path:</span>
+                      <input
+                        type="text"
+                        value={mediaUrl}
+                        onChange={(e) => setMediaUrl(e.target.value)}
+                        placeholder={
+                          postFormat === "Image"
+                            ? "https://.../product.jpg or /uploads/..."
+                            : postFormat === "Video" || postFormat === "Reel"
+                            ? "/sample-video.mp4 or https://.../video.mp4"
+                            : "https://.../story-media.jpg"
+                        }
+                        className="w-full h-8 px-2.5 border border-border rounded-lg bg-background text-[11px] font-mono text-foreground focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 focus:outline-none transition"
+                      />
+                    </div>
+
+                    {/* Live Media Visual Preview */}
+                    {mediaUrl && (
+                      <div className="relative p-2 bg-background border border-border rounded-xl flex items-center gap-3">
+                        {mediaUrl.match(/\.(mp4|mov|webm)$/i) || mediaUrl.includes("sample-video") ? (
+                          <div className="w-20 h-14 bg-black rounded-lg overflow-hidden flex items-center justify-center shrink-0 border border-border">
+                            <video src={mediaUrl} className="w-full h-full object-cover" muted />
+                          </div>
+                        ) : (
+                          <div className="w-20 h-14 bg-muted rounded-lg overflow-hidden flex items-center justify-center shrink-0 border border-border">
+                            <img src={mediaUrl} alt="Preview" className="w-full h-full object-cover" />
+                          </div>
+                        )}
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-bold truncate text-foreground">
+                            {uploadedFileInfo?.name || (mediaUrl.startsWith("http") ? mediaUrl.split("/").pop() : mediaUrl)}
+                          </p>
+                          <p className="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold flex items-center gap-1">
+                            <CheckCircle2 className="w-3 h-3" />
+                            <span>Ready for Group Poster &amp; Facebook Bot</span>
+                            {uploadedFileInfo?.size && <span className="text-muted-foreground">({uploadedFileInfo.size})</span>}
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setMediaUrl("")
+                            setUploadedFileInfo(null)
+                          }}
+                          className="p-1.5 rounded-lg text-muted-foreground hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition cursor-pointer"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    )}
                   </div>
                 )}
 
-                {postFormat === "Link" && (
-                  <div>
-                    <label className="font-bold block mb-1 text-foreground">Target Destination URL *</label>
-                    <input
-                      type="url"
-                      value={linkUrl}
-                      onChange={(e) => setLinkUrl(e.target.value)}
-                      placeholder="https://bmt.link/..."
-                      className="w-full px-3 py-2 border rounded-lg bg-background font-mono text-xs focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition"
-                    />
+                {/* CONDITIONAL FORMAT: REEL SETTINGS */}
+                {postFormat === "Reel" && (
+                  <div className="p-3 bg-purple-500/10 border border-purple-500/20 rounded-xl space-y-2.5">
+                    <div className="flex items-center justify-between font-extrabold text-xs text-purple-700 dark:text-purple-300">
+                      <span className="flex items-center space-x-1.5">
+                        <Film className="w-4 h-4 text-purple-500" />
+                        <span>Facebook Group Reel (9:16 Vertical)</span>
+                      </span>
+                      <span className="text-[10px] bg-purple-500/20 px-2 py-0.5 rounded font-mono">Aspect: 9:16</span>
+                    </div>
+                    <div>
+                      <label className="text-[10px] font-bold text-muted-foreground uppercase">Audio Credit / Track Name</label>
+                      <input
+                        type="text"
+                        value={reelAudioName}
+                        onChange={(e) => setReelAudioName(e.target.value)}
+                        placeholder="Original Audio - Trending Sound"
+                        className="w-full mt-1 p-2 border rounded-lg bg-background text-xs"
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {/* CONDITIONAL FORMAT: STORY SETTINGS */}
+                {postFormat === "Story" && (
+                  <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl space-y-2.5">
+                    <div className="flex items-center justify-between font-extrabold text-xs text-amber-700 dark:text-amber-300">
+                      <span className="flex items-center space-x-1.5">
+                        <Smartphone className="w-4 h-4 text-amber-500" />
+                        <span>Facebook Group Story (24-Hour Ephemeral)</span>
+                      </span>
+                      <span className="text-[10px] bg-amber-500/20 px-2 py-0.5 rounded font-bold">24H Expiry</span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="text-[10px] font-bold text-muted-foreground uppercase">Link Sticker URL</label>
+                        <input
+                          type="url"
+                          value={storyLinkSticker}
+                          onChange={(e) => setStoryLinkSticker(e.target.value)}
+                          placeholder="https://bmt.link/..."
+                          className="w-full mt-1 p-2 border rounded-lg bg-background text-xs font-mono"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[10px] font-bold text-muted-foreground uppercase">Sticker Button Text</label>
+                        <input
+                          type="text"
+                          value={storyStickerText}
+                          onChange={(e) => setStoryStickerText(e.target.value)}
+                          placeholder="Shop Now / Click Deal"
+                          className="w-full mt-1 p-2 border rounded-lg bg-background text-xs"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* CONDITIONAL FORMAT: POLL CREATOR */}
+                {postFormat === "Poll" && (
+                  <div className="p-3.5 bg-emerald-500/10 border border-emerald-500/20 rounded-xl space-y-3">
+                    <div className="flex items-center justify-between font-extrabold text-xs text-emerald-700 dark:text-emerald-300">
+                      <span className="flex items-center space-x-1.5">
+                        <Vote className="w-4 h-4 text-emerald-500" />
+                        <span>Facebook Group Interactive Poll</span>
+                      </span>
+                      <span className="text-[10px] bg-emerald-500/20 px-2 py-0.5 rounded">
+                        Duration: {pollDurationDays} Days
+                      </span>
+                    </div>
+                    <div>
+                      <label className="text-[10px] font-bold text-muted-foreground uppercase">Poll Question *</label>
+                      <input
+                        type="text"
+                        value={pollQuestion}
+                        onChange={(e) => setPollQuestion(e.target.value)}
+                        placeholder="Ask a question for group members..."
+                        className="w-full mt-1 p-2 border rounded-lg bg-background text-xs font-bold"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <label className="text-[10px] font-bold text-muted-foreground uppercase">
+                          Voting Choices ({pollOptions.length}/4)
+                        </label>
+                        {pollOptions.length < 4 && (
+                          <button
+                            type="button"
+                            onClick={() => setPollOptions([...pollOptions, `New Choice ${pollOptions.length + 1}`])}
+                            className="text-[10px] text-emerald-600 font-bold hover:underline flex items-center space-x-0.5"
+                          >
+                            <Plus className="w-3 h-3" />
+                            <span>Add Option</span>
+                          </button>
+                        )}
+                      </div>
+                      {pollOptions.map((opt, idx) => (
+                        <div key={idx} className="flex items-center space-x-2">
+                          <span className="text-[10px] font-bold text-muted-foreground w-5">#{idx + 1}</span>
+                          <input
+                            type="text"
+                            value={opt}
+                            onChange={(e) => {
+                              const updated = [...pollOptions]
+                              updated[idx] = e.target.value
+                              setPollOptions(updated)
+                            }}
+                            placeholder={`Option ${idx + 1}`}
+                            className="flex-1 p-1.5 border rounded-lg bg-background text-xs"
+                          />
+                          {pollOptions.length > 2 && (
+                            <button
+                              type="button"
+                              onClick={() => setPollOptions(pollOptions.filter((_, i) => i !== idx))}
+                              className="p-1 text-muted-foreground hover:text-rose-500 rounded"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 )}
 
@@ -726,15 +1222,127 @@ export default function SafeGroupPosterPage() {
                   </p>
                 </div>
 
-                {/* Media */}
-                {postFormat === "Image" && mediaUrl && (
-                  <div className="h-44 rounded-lg overflow-hidden border bg-muted">
-                    <img src={mediaUrl} alt="Post preview" className="w-full h-full object-cover" />
+                {/* Media / Interactive Format Previews */}
+                {postFormat === "Image" && (
+                  mediaUrl ? (
+                    <div className="h-44 rounded-lg overflow-hidden border bg-muted">
+                      <img src={mediaUrl} alt="Post preview" className="w-full h-full object-cover" />
+                    </div>
+                  ) : (
+                    <div className="h-32 rounded-lg border border-dashed flex flex-col items-center justify-center text-muted-foreground bg-muted/20 gap-1">
+                      <ImageIcon className="w-6 h-6 text-muted-foreground/60" />
+                      <span className="text-[10px]">Photo attachment will show here</span>
+                    </div>
+                  )
+                )}
+
+                {postFormat === "Video" && (
+                  mediaUrl ? (
+                    <div className="h-44 rounded-lg overflow-hidden border bg-slate-900 flex items-center justify-center text-white relative group">
+                      {mediaUrl.endsWith(".mp4") || mediaUrl.includes("/downloads/") ? (
+                        <video src={mediaUrl} controls className="w-full h-full object-contain" />
+                      ) : (
+                        <>
+                          <div className="w-12 h-12 rounded-full bg-white/20 backdrop-blur-xs flex items-center justify-center text-white">
+                            <Play className="w-6 h-6 fill-white ml-0.5" />
+                          </div>
+                          <span className="absolute bottom-2 left-2 text-[10px] bg-black/60 px-2 py-0.5 rounded text-white font-mono">
+                            Video Attachment
+                          </span>
+                        </>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="h-32 rounded-lg border border-dashed flex flex-col items-center justify-center text-muted-foreground bg-slate-950/5 dark:bg-slate-900/40 gap-1">
+                      <Video className="w-6 h-6 text-blue-500/70" />
+                      <span className="text-[10px]">Video player will show here</span>
+                    </div>
+                  )
+                )}
+
+                {postFormat === "Reel" && (
+                  <div className="rounded-xl border bg-gradient-to-b from-slate-900 to-black p-3 text-white space-y-2">
+                    <div className="flex items-center justify-between text-[10px]">
+                      <span className="flex items-center gap-1 font-bold text-rose-400 bg-rose-500/20 px-2 py-0.5 rounded-full border border-rose-500/30">
+                        <Film className="w-3 h-3" /> Facebook Reel (9:16)
+                      </span>
+                      <span className="text-muted-foreground">Full Screen Vertical</span>
+                    </div>
+                    <div className="h-40 rounded-lg bg-slate-800/80 border border-white/10 flex flex-col items-center justify-center relative overflow-hidden">
+                      {mediaUrl ? (
+                        <img src={mediaUrl} alt="Reel preview" className="w-full h-full object-cover opacity-75" />
+                      ) : (
+                        <div className="w-10 h-10 rounded-full bg-rose-500/30 border border-rose-500/40 flex items-center justify-center">
+                          <Play className="w-5 h-5 fill-white text-white ml-0.5" />
+                        </div>
+                      )}
+                      <div className="absolute bottom-2 left-2 right-2 flex items-center justify-between text-[10px] bg-black/60 backdrop-blur-xs px-2 py-1 rounded">
+                        <span className="flex items-center gap-1 truncate text-xs font-medium text-white">
+                          <Music className="w-3 h-3 text-rose-400 shrink-0" />
+                          <span className="truncate">{reelAudioName || "Trending Audio Track"}</span>
+                        </span>
+                      </div>
+                    </div>
                   </div>
                 )}
-                {postFormat === "Video" && mediaUrl && (
-                  <div className="h-44 rounded-lg overflow-hidden border bg-slate-900 flex items-center justify-center text-white">
-                    <Video className="w-8 h-8 text-rose-500" />
+
+                {postFormat === "Story" && (
+                  <div className="rounded-xl border bg-gradient-to-tr from-amber-500/10 via-pink-500/10 to-purple-500/10 p-3 space-y-2">
+                    <div className="flex items-center justify-between text-[10px]">
+                      <span className="flex items-center gap-1 font-bold text-purple-600 dark:text-purple-400 bg-purple-500/10 px-2 py-0.5 rounded-full border border-purple-500/30">
+                        <Smartphone className="w-3 h-3" /> Facebook Group Story (24h)
+                      </span>
+                      <span className="text-[10px] text-muted-foreground font-semibold">Ephemeral Feed</span>
+                    </div>
+                    <div className="h-40 rounded-lg bg-muted border flex flex-col items-center justify-center relative overflow-hidden">
+                      {mediaUrl ? (
+                        <img src={mediaUrl} alt="Story preview" className="w-full h-full object-cover" />
+                      ) : (
+                        <Smartphone className="w-8 h-8 text-purple-400" />
+                      )}
+                      {storyLinkSticker && (
+                        <div className="absolute bottom-3 bg-white text-blue-600 px-3 py-1.5 rounded-full shadow-lg font-bold text-[11px] flex items-center gap-1.5 border border-blue-100 animate-pulse">
+                          <Link2 className="w-3 h-3 text-blue-600" />
+                          <span>{storyStickerText || "Visit Link"}</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {postFormat === "Poll" && (
+                  <div className="rounded-xl border bg-muted/20 p-3 space-y-2.5">
+                    <div className="flex items-center justify-between text-[10px]">
+                      <span className="flex items-center gap-1 font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/30">
+                        <Vote className="w-3 h-3" /> Live Group Poll • {pollDurationDays} Days
+                      </span>
+                      <span className="text-muted-foreground">Anonymous Voting</span>
+                    </div>
+                    <div className="font-bold text-xs text-foreground">
+                      {pollQuestion || postTitle || "What is your preference?"}
+                    </div>
+                    <div className="space-y-1.5">
+                      {pollOptions.map((opt, idx) => (
+                        <div
+                          key={idx}
+                          className="relative overflow-hidden rounded-lg border bg-background p-2 text-xs font-semibold flex items-center justify-between shadow-xs"
+                        >
+                          <div
+                            className="absolute inset-y-0 left-0 bg-blue-500/10 border-r border-blue-500/20"
+                            style={{ width: `${Math.max(10, 85 - idx * 25)}%` }}
+                          />
+                          <span className="relative z-10 flex items-center gap-1.5">
+                            <span className="w-4 h-4 rounded-full bg-blue-600/10 text-blue-600 text-[10px] flex items-center justify-center font-bold">
+                              {String.fromCharCode(65 + idx)}
+                            </span>
+                            <span>{opt || `Choice ${idx + 1}`}</span>
+                          </span>
+                          <span className="relative z-10 text-[10px] text-muted-foreground font-mono">
+                            {Math.max(10, 85 - idx * 25)}%
+                          </span>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 )}
 
@@ -867,6 +1475,11 @@ export default function SafeGroupPosterPage() {
                                   ADMIN
                                 </span>
                               )}
+                              {customGroups.some((cg) => cg.id === grp.id) && (
+                                <span className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 text-[9px] font-bold px-1.5 py-0.2 rounded">
+                                  CUSTOM
+                                </span>
+                              )}
                             </div>
                             <div className="text-[10px] text-muted-foreground flex items-center gap-2">
                               <span className="inline-flex items-center gap-1">
@@ -883,14 +1496,14 @@ export default function SafeGroupPosterPage() {
                           </div>
                         </div>
 
-                        {grp.assignedAccountName && (
-                          <div className="text-right shrink-0">
-                            <span className="text-[10px] text-muted-foreground block">Assigned Account</span>
-                            <span className="text-[11px] font-bold text-foreground">
-                              {grp.assignedAccountName.split(" ")[0]}
-                            </span>
-                          </div>
-                        )}
+                        <div className="text-right shrink-0">
+                          <span className="text-[10px] text-muted-foreground block">Assigned ID</span>
+                          <span className={`text-[11px] font-bold ${grp.assignedAccountId === "none" ? "text-blue-600 dark:text-blue-400" : "text-foreground"}`}>
+                            {grp.assignedAccountId === "none"
+                              ? "All IDs"
+                              : (grp.assignedAccountName?.split(" ")[0] || "Assigned")}
+                          </span>
+                        </div>
                       </div>
                     )
                   })
@@ -933,6 +1546,74 @@ export default function SafeGroupPosterPage() {
                       <option value="assigned">Group-Assigned Account</option>
                     </select>
                   </div>
+                </div>
+
+                {/* Execution Engine Switcher: Live vs Simulation */}
+                <div className="p-3 rounded-xl border bg-muted/30 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-[11px] flex items-center gap-1.5 text-foreground">
+                      <Sparkles className="w-3.5 h-3.5 text-blue-600" />
+                      Execution Engine
+                    </span>
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                      dispatchExecutionMode === "live"
+                        ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20"
+                        : "bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20"
+                    }`}>
+                      {dispatchExecutionMode === "live" ? "🟢 Live Real Facebook" : "🧪 Sandbox / Demo"}
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setDispatchExecutionMode("live")}
+                      className={`p-2 rounded-lg border text-left transition ${
+                        dispatchExecutionMode === "live"
+                          ? "border-emerald-600 bg-emerald-50/10 text-foreground font-bold shadow-xs"
+                          : "border-border text-muted-foreground hover:bg-muted"
+                      }`}
+                    >
+                      <div className="text-xs flex items-center gap-1 text-emerald-600 font-extrabold">
+                        <Globe className="w-3.5 h-3.5" /> Live Real Facebook
+                      </div>
+                      <div className="text-[10px] text-muted-foreground mt-0.5">
+                        Posts directly to Facebook via Puppeteer/Chrome &amp; active cookie
+                      </div>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setDispatchExecutionMode("simulation")}
+                      className={`p-2 rounded-lg border text-left transition ${
+                        dispatchExecutionMode === "simulation"
+                          ? "border-amber-600 bg-amber-50/10 text-foreground font-bold shadow-xs"
+                          : "border-border text-muted-foreground hover:bg-muted"
+                      }`}
+                    >
+                      <div className="text-xs flex items-center gap-1 text-amber-600 font-extrabold">
+                        <Sparkles className="w-3.5 h-3.5" /> Sandbox / Demo
+                      </div>
+                      <div className="text-[10px] text-muted-foreground mt-0.5">
+                        Tests delays, spinner &amp; queue without touching Facebook
+                      </div>
+                    </button>
+                  </div>
+
+                  {dispatchExecutionMode === "live" && (
+                    <div className="pt-1 flex items-center justify-between text-[11px] text-muted-foreground">
+                      <label className="flex items-center gap-1.5 cursor-pointer font-medium">
+                        <input
+                          type="checkbox"
+                          checked={showChromeWindow}
+                          onChange={(e) => setShowChromeWindow(e.target.checked)}
+                          className="w-3.5 h-3.5 rounded text-blue-600 focus:ring-blue-500"
+                        />
+                        <span>Show Visible Chrome Browser Window while posting</span>
+                      </label>
+                      <span className="text-[10px] text-emerald-600 font-mono">Real Puppeteer Bot</span>
+                    </div>
+                  )}
                 </div>
 
                 {/* Big Launch Dispatch Button */}
@@ -983,7 +1664,7 @@ export default function SafeGroupPosterPage() {
               )}
               {queue.length > 0 && (
                 <button
-                  onClick={clearQueue}
+                  onClick={handleClearQueueWithToast}
                   className="px-3 py-1.5 border hover:bg-muted text-muted-foreground hover:text-foreground font-bold text-xs rounded-lg"
                 >
                   Clear Queue
@@ -1191,8 +1872,11 @@ export default function SafeGroupPosterPage() {
                         </div>
                         <span className="text-[10px] text-muted-foreground font-semibold flex items-center gap-1">
                           {job.status === "Success" && (
-                            <span className="text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
-                              <CheckCircle2 className="w-3 h-3" /> Published &amp; Confirmed
+                            <span className="text-emerald-600 dark:text-emerald-400 flex items-center gap-1 font-bold">
+                              <CheckCircle2 className="w-3 h-3" />
+                              {job.postId?.startsWith("sandbox_") || job.postId?.startsWith("sim_") || job.postId?.startsWith("fb_grp_")
+                                ? "Sandbox / Simulation Mode"
+                                : "Live Facebook Confirmed"}
                             </span>
                           )}
                           {job.status === "Posting" && (
@@ -1200,7 +1884,9 @@ export default function SafeGroupPosterPage() {
                               <RotateCw className="w-3 h-3 animate-spin" />
                               {currentJobStep === "cooling"
                                 ? `Anti-Ban Wait: ${countdownSeconds}s remaining`
-                                : "Meta Graph API Dispatching..."}
+                                : dispatchExecutionMode === "live"
+                                ? "Running Live Facebook Bot..."
+                                : "Sandbox Dispatching..."}
                             </span>
                           )}
                           {job.status === "Pending" && "Waiting in Queue"}
@@ -1229,8 +1915,19 @@ export default function SafeGroupPosterPage() {
                     </div>
 
                     {job.postId && (
-                      <div className="text-[10px] font-mono text-emerald-600 dark:text-emerald-400 pt-0.5">
-                        Response ID: {job.postId}
+                      <div className="text-[10px] font-mono flex items-center justify-between pt-0.5">
+                        <span className="text-muted-foreground">
+                          Response ID: <strong className="text-foreground">{job.postId}</strong>
+                        </span>
+                        {job.postId?.startsWith("sandbox_") || job.postId?.startsWith("sim_") || job.postId?.startsWith("fb_grp_") ? (
+                          <span className="text-amber-600 bg-amber-500/10 border border-amber-500/20 px-1.5 py-0.2 rounded font-semibold text-[9px]">
+                            Simulated (No Real FB Post)
+                          </span>
+                        ) : (
+                          <span className="text-emerald-600 bg-emerald-500/10 border border-emerald-500/20 px-1.5 py-0.2 rounded font-semibold text-[9px]">
+                            Live Bot Execution
+                          </span>
+                        )}
                       </div>
                     )}
                   </div>
@@ -1262,35 +1959,63 @@ export default function SafeGroupPosterPage() {
           </div>
 
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {allAvailableGroups.map((grp) => (
-              <div key={grp.id} className="p-3.5 rounded-xl border bg-muted/10 space-y-2 text-xs">
-                <div className="flex items-start justify-between gap-2">
-                  <div className="font-extrabold text-foreground">{grp.name}</div>
-                  {grp.isManagedAdmin && (
-                    <span className="bg-blue-600 text-white text-[9px] font-bold px-1.5 py-0.5 rounded shrink-0">
-                      ADMIN
+            {allAvailableGroups.map((grp) => {
+              const isCustom = customGroups.some((cg) => cg.id === grp.id)
+              return (
+                <div key={grp.id} className="p-3.5 rounded-xl border bg-muted/10 space-y-2 text-xs relative group">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="font-extrabold text-foreground truncate">{grp.name}</div>
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      {grp.isManagedAdmin && (
+                        <span className="bg-blue-600 text-white text-[9px] font-bold px-1.5 py-0.5 rounded">
+                          ADMIN
+                        </span>
+                      )}
+                      {isCustom && (
+                        <span className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 text-[9px] font-bold px-1.5 py-0.5 rounded">
+                          CUSTOM
+                        </span>
+                      )}
+                      {isCustom && (
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteCustomGroup(grp.id, grp.name)}
+                          className="text-muted-foreground hover:text-rose-600 hover:bg-rose-500/10 p-1 rounded-md transition"
+                          title="গ্রুপটি মুছে ফেলুন"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                  <div className="text-[11px] text-muted-foreground flex items-center justify-between">
+                    <span>{(grp.memberCount / 1000).toFixed(1)}K Members</span>
+                    <span className="text-blue-600 dark:text-blue-400 font-semibold">{grp.category}</span>
+                  </div>
+                  <div className="pt-2 border-t flex items-center justify-between text-[11px]">
+                    <span className="text-muted-foreground truncate max-w-[170px]">
+                      {grp.assignedAccountId === "none" ? (
+                        <span className="text-blue-600 dark:text-blue-400 font-semibold flex items-center gap-1">
+                          <Globe className="w-3 h-3" /> Shared / All IDs
+                        </span>
+                      ) : (
+                        <span>Account: <strong className="text-foreground">{grp.assignedAccountName}</strong></span>
+                      )}
                     </span>
-                  )}
+                    {grp.url && (
+                      <a
+                        href={grp.url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-blue-600 hover:underline flex items-center gap-1 shrink-0"
+                      >
+                        Visit <ExternalLink className="w-3 h-3" />
+                      </a>
+                    )}
+                  </div>
                 </div>
-                <div className="text-[11px] text-muted-foreground flex items-center justify-between">
-                  <span>{(grp.memberCount / 1000).toFixed(1)}K Members</span>
-                  <span className="text-blue-600 dark:text-blue-400 font-semibold">{grp.category}</span>
-                </div>
-                <div className="pt-2 border-t flex items-center justify-between text-[11px]">
-                  <span className="text-muted-foreground">Account: {grp.assignedAccountName}</span>
-                  {grp.url && (
-                    <a
-                      href={grp.url}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="text-blue-600 hover:underline flex items-center gap-1"
-                    >
-                      Visit <ExternalLink className="w-3 h-3" />
-                    </a>
-                  )}
-                </div>
-              </div>
-            ))}
+              )
+            })}
           </div>
         </div>
       )}
@@ -1309,7 +2034,7 @@ export default function SafeGroupPosterPage() {
             </div>
             {logs.length > 0 && (
               <button
-                onClick={clearLogs}
+                onClick={handleClearLogsWithToast}
                 className="px-3 py-1.5 border rounded-lg text-xs font-bold text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition flex items-center gap-1.5"
               >
                 <Trash2 className="w-3.5 h-3.5" /> Clear Logs
@@ -1382,7 +2107,7 @@ export default function SafeGroupPosterPage() {
       {/* Add Custom Group Modal */}
       {showAddGroupModal && (
         <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-card border border-border rounded-2xl max-w-md w-full p-5 space-y-4 shadow-2xl animate-in zoom-in-95 duration-200">
+          <div className="bg-card border border-border rounded-2xl max-w-md w-full p-5 space-y-4 shadow-2xl animate-in zoom-in-95 duration-200 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between border-b pb-3">
               <h3 className="font-extrabold text-sm text-foreground">Add New Facebook Group</h3>
               <button
@@ -1394,7 +2119,7 @@ export default function SafeGroupPosterPage() {
               </button>
             </div>
 
-            <form onSubmit={handleAddCustomGroupSubmit} className="space-y-3 text-xs">
+            <form onSubmit={handleAddCustomGroupSubmit} className="space-y-3.5 text-xs">
               <div>
                 <label className="font-bold block mb-1">Group Name *</label>
                 <input
@@ -1408,14 +2133,21 @@ export default function SafeGroupPosterPage() {
               </div>
 
               <div>
-                <label className="font-bold block mb-1">Group URL</label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="font-bold block">Facebook Group URL *</label>
+                  <span className="text-[10px] text-muted-foreground">লাইভ ফেসবুক গ্রুপের লিংক</span>
+                </div>
                 <input
                   type="url"
-                  placeholder="https://facebook.com/groups/..."
+                  required
+                  placeholder="https://facebook.com/groups/123456789..."
                   value={newGroupUrl}
                   onChange={(e) => setNewGroupUrl(e.target.value)}
                   className="w-full px-3 py-2 border rounded-lg bg-background font-mono text-xs"
                 />
+                <p className="text-[10px] text-muted-foreground mt-1">
+                  💡 আসল ফেসবুকে পোস্ট করার জন্য আপনার জয়েন করা গ্রুপের সঠিক URL দিন।
+                </p>
               </div>
 
               <div className="grid grid-cols-2 gap-2">
@@ -1470,6 +2202,72 @@ export default function SafeGroupPosterPage() {
                     <span>I am an Admin</span>
                   </label>
                 </div>
+              </div>
+
+              {/* Assign to Connected Facebook ID / Account */}
+              <div className="space-y-2 p-3 rounded-xl border bg-muted/20">
+                <div className="flex items-center justify-between">
+                  <label className="font-bold block text-foreground flex items-center gap-1.5">
+                    <Users className="w-3.5 h-3.5 text-blue-600" />
+                    <span>Assign to Facebook ID / Account</span>
+                  </label>
+                  <span className="text-[10px] font-semibold text-blue-600 dark:text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded-full border border-blue-500/20">
+                    {fbAccounts.length} Connected IDs
+                  </span>
+                </div>
+
+                <select
+                  value={newGroupAssignedAcc}
+                  onChange={(e) => setNewGroupAssignedAcc(e.target.value)}
+                  className="w-full px-3 py-2 border rounded-lg bg-background text-xs font-semibold text-foreground focus:ring-2 focus:ring-blue-500/20"
+                >
+                  <option value="none">
+                    🌐 None / Unassigned (Shared across all IDs • Auto-Rotation)
+                  </option>
+                  {fbAccounts.map((acc) => (
+                    <option key={acc.id} value={acc.id}>
+                      👤 {acc.name} ({acc.status} • {acc.accountType})
+                    </option>
+                  ))}
+                </select>
+
+                {/* Selected Account Info Card Preview */}
+                {newGroupAssignedAcc && newGroupAssignedAcc !== "none" ? (
+                  (() => {
+                    const selectedAcc = fbAccounts.find((a) => a.id === newGroupAssignedAcc)
+                    return (
+                      <div className="flex items-center gap-2.5 p-2 rounded-lg border bg-background text-[11px] animate-in fade-in duration-150">
+                        {selectedAcc?.avatarUrl ? (
+                          <img
+                            src={selectedAcc.avatarUrl}
+                            alt={selectedAcc.name}
+                            className="w-7 h-7 rounded-full object-cover border shrink-0"
+                          />
+                        ) : (
+                          <div className="w-7 h-7 rounded-full bg-blue-600 text-white font-bold flex items-center justify-center text-[10px] shrink-0">
+                            {selectedAcc?.name?.slice(0, 2).toUpperCase() || "FB"}
+                          </div>
+                        )}
+                        <div className="min-w-0 flex-1">
+                          <p className="font-bold text-foreground truncate">{selectedAcc?.name}</p>
+                          <p className="text-[10px] text-muted-foreground truncate">
+                            UID: {selectedAcc?.uid || selectedAcc?.id} • Status: {selectedAcc?.status}
+                          </p>
+                        </div>
+                        <span className="text-[10px] font-bold text-emerald-600 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded shrink-0">
+                          Assigned ID
+                        </span>
+                      </div>
+                    )
+                  })()
+                ) : (
+                  <div className="p-2 rounded-lg border border-dashed text-[11px] text-muted-foreground flex items-center gap-2 bg-background/50">
+                    <Globe className="w-3.5 h-3.5 text-blue-500 shrink-0" />
+                    <span>
+                      কোনো নির্দিষ্ট আইডি সিলেক্ট না করলে গ্রুপটি সব আইডির জন্য উন্মুক্ত থাকবে এবং পোস্টিংয়ের সময় অটো-রোটেট হবে।
+                    </span>
+                  </div>
+                )}
               </div>
 
               <button

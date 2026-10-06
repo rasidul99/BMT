@@ -25,26 +25,46 @@ export async function POST(req: NextRequest) {
     }
 
     // Determine platform
-    let platform: "Facebook" | "YouTube" | "TikTok" | "Instagram" = "Facebook"
-    if (trimmedUrl.includes("youtube.com") || trimmedUrl.includes("youtu.be")) {
+    let platform = "Web Video"
+    const lowerUrl = trimmedUrl.toLowerCase()
+    if (lowerUrl.includes("youtube.com") || lowerUrl.includes("youtu.be")) {
       platform = "YouTube"
-    } else if (trimmedUrl.includes("tiktok.com")) {
+    } else if (lowerUrl.includes("tiktok.com")) {
       platform = "TikTok"
-    } else if (trimmedUrl.includes("instagram.com")) {
+    } else if (lowerUrl.includes("pinterest.") || lowerUrl.includes("pin.it")) {
+      platform = "Pinterest"
+    } else if (lowerUrl.includes("instagram.com")) {
       platform = "Instagram"
+    } else if (lowerUrl.includes("facebook.com") || lowerUrl.includes("fb.watch") || lowerUrl.includes("fb.com")) {
+      platform = "Facebook"
+    } else if (lowerUrl.includes("twitter.com") || lowerUrl.includes("x.com")) {
+      platform = "Twitter / X"
+    } else if (lowerUrl.includes("reddit.com") || lowerUrl.includes("v.redd.it")) {
+      platform = "Reddit"
+    } else if (lowerUrl.includes("vimeo.com")) {
+      platform = "Vimeo"
+    } else if (lowerUrl.endsWith(".mp4") || lowerUrl.includes(".mp4?")) {
+      platform = "Direct Video"
     }
 
     // Path to python script
-    const scriptPath = path.join(process.cwd(), "scripts", "extract_media.py")
+    let scriptPath = path.join(process.cwd(), "scripts", "extract_media.py")
+    if (!fs.existsSync(scriptPath)) {
+      scriptPath = path.join(process.cwd(), "apps", "web", "scripts", "extract_media.py")
+    }
 
-    // Run Python extractor
+    // Run Python extractor with UTF-8 environment
     const cmd = `python "${scriptPath}" "${trimmedUrl}" "${downloadsDir}" "${formatParam}"`
     
     let extractedData: any = null
     try {
       const { stdout } = await execPromise(cmd, {
         maxBuffer: 20 * 1024 * 1024,
-        timeout: 45000,
+        timeout: 60000,
+        env: {
+          ...process.env,
+          PYTHONIOENCODING: "utf-8",
+        },
       })
 
       // Extract JSON cleanly between first { and last }
@@ -71,7 +91,7 @@ export async function POST(req: NextRequest) {
         success: true,
         id: extractedData.id,
         title: extractedData.title,
-        platform,
+        platform: extractedData.platform || platform,
         format: isAudio ? "Audio (MP3)" : "1080p Video (MP4)",
         fileSize: extractedData.fileSize,
         videoUrl: extractedData.videoUrl,
@@ -80,22 +100,13 @@ export async function POST(req: NextRequest) {
       })
     }
 
-    // If live extraction failed or couldn't parse, fallback gracefully with clear message
-    const reelMatch = trimmedUrl.match(/reel\/(\d+)/) || trimmedUrl.match(/v=(\d+)/)
-    const fallbackId = reelMatch ? reelMatch[1] : Date.now().toString()
-
+    // If extraction failed, report the actual reason so user knows what happened
+    const failureReason = extractedData?.error || "ভিডিওটি ডাউনলোড করা সম্ভব হয়নি। লিংকটি সঠিক ও ভিডিওটি পাবলিক কিনা নিশ্চিত করুন।"
     return NextResponse.json({
-      success: true,
-      id: fallbackId,
-      title: `${platform} Video #${fallbackId.slice(-6)}`,
+      success: false,
+      error: failureReason,
       platform,
-      format: isAudio ? "Audio (MP3)" : "1080p Video (MP4)",
-      fileSize: "1.2 MB",
-      videoUrl: isAudio ? "/sample-audio.mp3" : "/sample-video.mp4",
-      thumbnailUrl: "https://images.unsplash.com/photo-1611162617213-7d7a39e9b1d7?w=600&auto=format&fit=crop",
-      duration: "0:13 min",
-      isFallback: true,
-    })
+    }, { status: 422 })
   } catch (err: any) {
     console.error("Extraction API fatal error:", err)
     return NextResponse.json({

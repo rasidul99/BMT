@@ -44,17 +44,20 @@ export function useDashboardMetrics() {
     if (typeof window === "undefined") return
 
     // 1. Load Connected Accounts
+    const realPageId = process.env.NEXT_PUBLIC_FB_PAGE_ID_CARE_HUB_BD || "892168940637389"
     const defaultAccounts: ConnectedAccount[] = [
-      { id: "page-1", pageId: "1742727983", name: "NB Hridoy Hossen (Profile)", category: "Profile Owner / Business", followers: "5.0K", status: "Connected", connectedAt: "Today, 10:00 AM" },
-      { id: "page-2", pageId: "109823487123", name: "CARE HUB BD", category: "Health & Care / Business", followers: "45.2K", status: "Connected", connectedAt: "Today, 11:30 AM" },
-      { id: "page-3", pageId: "987234812314", name: "সাধারণ রান্না বান্না ব্লগ", category: "Personal Blog & Cooking", followers: "18.9K", status: "Connected", connectedAt: "Yesterday" },
+      { id: "page-1", pageId: realPageId, name: "CARE HUB BD", category: "Health & Care / Business", followers: "45.2K", status: "Connected", connectedAt: "Active (.env Synced)" },
     ]
 
     const savedAccounts = localStorage.getItem("bmt_connected_pages")
     if (savedAccounts) {
       try {
         const parsed = JSON.parse(savedAccounts)
-        if (Array.isArray(parsed) && parsed.length > 0) {
+        // If storage contains stale mock ids, upgrade to real CARE HUB BD
+        if (Array.isArray(parsed) && parsed.some((p: any) => p.pageId === "109823487123" || p.pageId === "987234812314")) {
+          setAccounts(defaultAccounts)
+          localStorage.setItem("bmt_connected_pages", JSON.stringify(defaultAccounts))
+        } else if (Array.isArray(parsed) && parsed.length > 0) {
           setAccounts(parsed)
         } else {
           setAccounts(defaultAccounts)

@@ -16,6 +16,7 @@ import {
   FileText,
   AlertCircle,
   CheckCircle2,
+  Eye,
 } from "lucide-react"
 
 export interface CalendarEventItem {
@@ -51,6 +52,7 @@ export function ContentCalendarView({
   const [calendarView, setCalendarView] = useState<"Monthly" | "Weekly" | "Daily">("Monthly")
   const [selectedAccountFilter, setSelectedAccountFilter] = useState<string>("ALL")
   const [selectedEvent, setSelectedEvent] = useState<CalendarEventItem | null>(null)
+  const [selectedDayModalDate, setSelectedDayModalDate] = useState<string | null>(null)
 
   const year = currentDate.getFullYear()
   const month = currentDate.getMonth() // 0-indexed
@@ -91,6 +93,7 @@ export function ContentCalendarView({
 
   // Today's date string
   const todayStr = formatDateStr(new Date().getFullYear(), new Date().getMonth(), new Date().getDate())
+  const [dailyViewDate, setDailyViewDate] = useState<string>(todayStr)
 
   // Days array for the month grid
   const calendarCells: { dateStr: string; dayNum: number; isCurrentMonth: boolean }[] = []
@@ -138,15 +141,38 @@ export function ContentCalendarView({
   const getFormatBadge = (fmt?: string) => {
     switch (fmt) {
       case "Video":
-        return <span className="bg-rose-500/10 text-rose-500 font-bold px-1 rounded text-[9px]">Video</span>
+        return (
+          <span className="bg-sky-500/10 text-sky-500 dark:text-sky-400 border border-sky-500/25 font-bold px-1.5 py-0.5 rounded text-[9px] inline-flex items-center gap-1">
+            <Video className="w-2.5 h-2.5" />
+            <span>Video</span>
+          </span>
+        )
       case "Reel":
-        return <span className="bg-purple-500/10 text-purple-500 font-bold px-1 rounded text-[9px]">Reel</span>
+        return (
+          <span className="bg-purple-500/10 text-purple-500 dark:text-purple-400 border border-purple-500/25 font-bold px-1.5 py-0.5 rounded text-[9px] inline-flex items-center gap-1">
+            Reel
+          </span>
+        )
       case "Story":
-        return <span className="bg-amber-500/10 text-amber-500 font-bold px-1 rounded text-[9px]">Story</span>
+        return (
+          <span className="bg-amber-500/10 text-amber-500 dark:text-amber-400 border border-amber-500/25 font-bold px-1.5 py-0.5 rounded text-[9px] inline-flex items-center gap-1">
+            Story
+          </span>
+        )
       case "Poll":
-        return <span className="bg-emerald-500/10 text-emerald-500 font-bold px-1 rounded text-[9px]">Poll</span>
+        return (
+          <span className="bg-emerald-500/10 text-emerald-500 dark:text-emerald-400 border border-emerald-500/25 font-bold px-1.5 py-0.5 rounded text-[9px] inline-flex items-center gap-1">
+            <Vote className="w-2.5 h-2.5" />
+            <span>Poll</span>
+          </span>
+        )
       default:
-        return <span className="bg-blue-500/10 text-blue-500 font-bold px-1 rounded text-[9px]">Post</span>
+        return (
+          <span className="bg-blue-500/10 text-blue-500 dark:text-blue-400 border border-blue-500/25 font-bold px-1.5 py-0.5 rounded text-[9px] inline-flex items-center gap-1">
+            <FileText className="w-2.5 h-2.5" />
+            <span>Post</span>
+          </span>
+        )
     }
   }
 
@@ -272,22 +298,36 @@ export function ContentCalendarView({
                 >
                   {/* Top Bar inside cell: Day number + Today indicator */}
                   <div className="flex items-center justify-between">
-                    <span
-                      className={`text-[11px] font-extrabold rounded-md px-1.5 py-0.5 ${
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setSelectedDayModalDate(cell.dateStr)
+                      }}
+                      className={`text-[11px] font-extrabold rounded-md px-1.5 py-0.5 transition hover:scale-105 cursor-pointer ${
                         isToday
-                          ? "bg-blue-600 text-white"
+                          ? "bg-blue-600 text-white shadow-xs"
                           : cell.isCurrentMonth
-                          ? "text-foreground group-hover:text-blue-500"
+                          ? "text-foreground hover:bg-muted group-hover:text-blue-500"
                           : "text-muted-foreground"
                       }`}
+                      title={`View all posts for ${cell.dateStr}`}
                     >
                       {cell.dayNum}
-                    </span>
+                    </button>
 
                     {dayEvents.length > 0 && (
-                      <span className="text-[10px] font-bold text-muted-foreground">
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          setSelectedDayModalDate(cell.dateStr)
+                        }}
+                        className="text-[10px] font-bold text-muted-foreground hover:text-blue-500 hover:bg-blue-500/10 px-1 py-0.5 rounded transition cursor-pointer"
+                        title={`View ${dayEvents.length} posts scheduled`}
+                      >
                         {dayEvents.length} post{dayEvents.length > 1 ? "s" : ""}
-                      </span>
+                      </button>
                     )}
                   </div>
 
@@ -322,9 +362,17 @@ export function ContentCalendarView({
                     ))}
 
                     {dayEvents.length > 3 && (
-                      <div className="text-[9px] font-bold text-blue-500 text-center">
-                        +{dayEvents.length - 3} more
-                      </div>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          setSelectedDayModalDate(cell.dateStr)
+                        }}
+                        className="w-full py-0.5 text-[9px] font-bold text-blue-500 hover:text-blue-600 hover:bg-blue-500/10 rounded transition text-center cursor-pointer block border border-blue-500/20"
+                        title="Click to view all scheduled posts for this date"
+                      >
+                        +{dayEvents.length - 3} more (View all {dayEvents.length})
+                      </button>
                     )}
                   </div>
                 </div>
@@ -408,56 +456,98 @@ export function ContentCalendarView({
       {/* DAILY VIEW */}
       {calendarView === "Daily" && (
         <div className="space-y-3">
-          <div className="flex items-center justify-between bg-muted/30 p-3 rounded-xl border">
-            <div>
-              <span className="text-xs text-muted-foreground font-bold">Selected Date:</span>{" "}
-              <span className="font-extrabold text-sm text-foreground">{todayStr} (Today)</span>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 bg-muted/30 p-3 rounded-xl border">
+            <div className="flex items-center space-x-2 flex-wrap gap-y-2">
+              <span className="text-xs text-muted-foreground font-bold">Selected Date:</span>
+              <input
+                type="date"
+                value={dailyViewDate}
+                onChange={(e) => e.target.value && setDailyViewDate(e.target.value)}
+                className="bg-card border rounded-lg px-2.5 py-1 text-xs font-bold text-foreground focus:ring-1 focus:ring-blue-500"
+              />
+              <button
+                type="button"
+                onClick={() => setDailyViewDate(todayStr)}
+                className={`px-2 py-1 text-[11px] font-bold border rounded-lg transition ${
+                  dailyViewDate === todayStr ? "bg-blue-600 text-white border-blue-600" : "hover:bg-muted"
+                }`}
+              >
+                Today
+              </button>
             </div>
-            <span className="text-xs font-bold text-blue-500">
-              {filteredEvents.filter((e) => e.date === todayStr).length} Scheduled for Today
-            </span>
+            <div className="flex items-center space-x-3">
+              <span className="text-xs font-bold text-blue-500">
+                {filteredEvents.filter((e) => e.date === dailyViewDate).length} Scheduled for this day
+              </span>
+              {onDateClick && (
+                <button
+                  type="button"
+                  onClick={() => onDateClick(dailyViewDate)}
+                  className="px-2.5 py-1 text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition"
+                >
+                  + New Post
+                </button>
+              )}
+            </div>
           </div>
 
           <div className="space-y-2">
-            {filteredEvents.filter((e) => e.date === todayStr).length === 0 ? (
-              <div className="text-center py-12 text-muted-foreground text-xs space-y-1 border rounded-xl">
+            {filteredEvents.filter((e) => e.date === dailyViewDate).length === 0 ? (
+              <div className="text-center py-12 text-muted-foreground text-xs space-y-1 border rounded-xl bg-card">
                 <CalendarIcon className="w-8 h-8 mx-auto opacity-40 mb-2" />
-                <p className="font-bold">No posts scheduled for today</p>
-                <p className="text-[11px]">Use the Master Scheduler tab to schedule your posts.</p>
+                <p className="font-bold">No posts scheduled for {dailyViewDate}</p>
+                <p className="text-[11px]">Use the Master Scheduler tab to schedule your posts for this day.</p>
               </div>
             ) : (
               filteredEvents
-                .filter((e) => e.date === todayStr)
+                .filter((e) => e.date === dailyViewDate)
                 .map((evt) => (
                   <div
                     key={evt.id}
                     onClick={() => setSelectedEvent(evt)}
-                    className="p-3 border rounded-xl bg-card hover:border-blue-500 transition flex items-center justify-between cursor-pointer"
+                    className="p-3 border rounded-xl bg-card hover:border-blue-500 transition flex items-center justify-between cursor-pointer group shadow-2xs"
                   >
-                    <div className="flex items-center space-x-3">
-                      <div className="p-2 bg-blue-600/10 text-blue-600 rounded-lg">
+                    <div className="flex items-center space-x-3 min-w-0">
+                      <div className="p-2 bg-blue-600/10 text-blue-600 rounded-lg shrink-0">
                         <Clock className="w-4 h-4" />
                       </div>
-                      <div>
-                        <div className="flex items-center space-x-2">
-                          <span className="font-extrabold text-xs text-foreground">{evt.title}</span>
+                      <div className="min-w-0">
+                        <div className="flex items-center space-x-2 flex-wrap gap-y-1">
+                          <span className="font-extrabold text-xs text-foreground group-hover:text-blue-500 transition truncate">
+                            {evt.title}
+                          </span>
                           {getFormatBadge(evt.format)}
                           {getStatusBadge(evt.status)}
                         </div>
-                        <p className="text-[11px] text-muted-foreground mt-0.5">
-                          Account: {evt.accountName} • Time: {evt.time}
+                        <p className="text-[11px] text-muted-foreground mt-0.5 truncate">
+                          Account: <strong className="text-foreground/90">{evt.accountName}</strong> • Time: <strong className="text-foreground/90">{evt.time}</strong>
                         </p>
                       </div>
                     </div>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        onDeleteEvent(evt.id)
-                      }}
-                      className="p-1.5 text-muted-foreground hover:text-rose-500 rounded"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+                    <div className="flex items-center space-x-1 shrink-0">
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          setSelectedEvent(evt)
+                        }}
+                        className="p-1.5 text-muted-foreground hover:text-blue-500 rounded hover:bg-muted transition"
+                        title="View event details"
+                      >
+                        <Eye className="w-4 h-4" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          onDeleteEvent(evt.id)
+                        }}
+                        className="p-1.5 text-muted-foreground hover:text-rose-500 rounded hover:bg-muted transition"
+                        title="Delete event"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
                   </div>
                 ))
             )}
@@ -558,6 +648,140 @@ export function ContentCalendarView({
               >
                 Done
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* DAY SCHEDULE OVERVIEW MODAL */}
+      {selectedDayModalDate && (
+        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-card border border-border rounded-2xl max-w-lg w-full p-5 space-y-4 shadow-2xl animate-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between border-b pb-3">
+              <div className="flex items-center space-x-2.5">
+                <span className="p-2 bg-blue-600/10 text-blue-600 rounded-lg">
+                  <CalendarIcon className="w-5 h-5" />
+                </span>
+                <div>
+                  <h3 className="font-extrabold text-sm text-foreground">Day Schedule Overview</h3>
+                  <p className="text-[11px] text-muted-foreground">
+                    {selectedDayModalDate} • {filteredEvents.filter((e) => e.date === selectedDayModalDate).length} scheduled items
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedDayModalDate(null)}
+                className="text-muted-foreground hover:text-foreground font-bold p-1 rounded-lg hover:bg-muted transition"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* List of items on this day */}
+            <div className="space-y-2 max-h-[380px] overflow-y-auto pr-1">
+              {filteredEvents.filter((e) => e.date === selectedDayModalDate).length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground text-xs space-y-1">
+                  <CalendarIcon className="w-6 h-6 mx-auto opacity-30 mb-1" />
+                  <p className="font-bold">No posts scheduled for this date</p>
+                </div>
+              ) : (
+                filteredEvents
+                  .filter((e) => e.date === selectedDayModalDate)
+                  .map((evt) => (
+                    <div
+                      key={evt.id}
+                      className="p-3 border rounded-xl bg-muted/20 hover:bg-muted/40 transition space-y-2"
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="space-y-0.5 flex-1 min-w-0">
+                          <div className="flex items-center space-x-2 flex-wrap gap-y-1">
+                            <span className="font-extrabold text-xs text-foreground truncate">{evt.title}</span>
+                            {getFormatBadge(evt.format)}
+                            {getStatusBadge(evt.status)}
+                          </div>
+                          <div className="flex items-center space-x-2 text-[11px] text-muted-foreground">
+                            <span className="flex items-center space-x-1 font-bold">
+                              <Clock className="w-3 h-3 inline text-blue-500" />
+                              <span>{evt.time}</span>
+                            </span>
+                            <span>•</span>
+                            <span className="truncate">
+                              Page: <strong className="text-foreground">{evt.accountName}</strong>
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center space-x-1 shrink-0">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSelectedDayModalDate(null)
+                              setSelectedEvent(evt)
+                            }}
+                            className="p-1.5 text-muted-foreground hover:text-blue-500 rounded hover:bg-background transition"
+                            title="Inspect Post Details"
+                          >
+                            <Eye className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => onDeleteEvent(evt.id)}
+                            className="p-1.5 text-muted-foreground hover:text-rose-500 rounded hover:bg-background transition"
+                            title="Delete"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </div>
+
+                      {evt.description && (
+                        <p className="text-[10px] text-muted-foreground bg-background/50 p-2 rounded border line-clamp-2">
+                          {evt.description}
+                        </p>
+                      )}
+                    </div>
+                  ))
+              )}
+            </div>
+
+            {/* Modal Bottom Actions */}
+            <div className="flex items-center justify-between border-t pt-3">
+              <button
+                type="button"
+                onClick={() => {
+                  setDailyViewDate(selectedDayModalDate)
+                  setCalendarView("Daily")
+                  setSelectedDayModalDate(null)
+                }}
+                className="text-xs font-bold text-blue-500 hover:text-blue-600 flex items-center space-x-1"
+              >
+                <span>Open in Daily View</span>
+                <ChevronRight className="w-3.5 h-3.5" />
+              </button>
+
+              <div className="flex items-center space-x-2">
+                {onDateClick && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const d = selectedDayModalDate
+                      setSelectedDayModalDate(null)
+                      onDateClick(d)
+                    }}
+                    className="border border-blue-500/30 text-blue-500 hover:bg-blue-500/10 font-bold px-3 py-1.5 rounded-lg text-xs"
+                  >
+                    + Add Post
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => setSelectedDayModalDate(null)}
+                  className="bg-primary text-primary-foreground font-bold px-4 py-1.5 rounded-lg text-xs"
+                >
+                  Close
+                </button>
+              </div>
             </div>
           </div>
         </div>

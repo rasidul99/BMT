@@ -21,12 +21,17 @@ import {
   AlertTriangle,
   Clock,
   Settings,
+  Camera,
+  KeyRound,
+  Check,
 } from "lucide-react"
 import { useFacebookAccounts, FacebookAccountItem } from "../../../../../hooks/useFacebookAccounts"
 import { AddAccountModal } from "../../../../../components/facebook-market/AddAccountModal"
 import { BulkImportModal } from "../../../../../components/facebook-market/BulkImportModal"
 import { AssignGroupsModal } from "../../../../../components/facebook-market/AssignGroupsModal"
 import { GroupSharingModal } from "../../../../../components/facebook-market/GroupSharingModal"
+import { ChangeAvatarModal } from "../../../../../components/facebook-market/ChangeAvatarModal"
+import { EditAccountModal } from "../../../../../components/facebook-market/EditAccountModal"
 
 export default function FacebookMarketPage() {
   const params = useParams()
@@ -52,6 +57,8 @@ export default function FacebookMarketPage() {
   const [showBulkModal, setShowBulkModal] = useState(false)
   const [showSharingModal, setShowSharingModal] = useState(false)
   const [selectedAccountForGroups, setSelectedAccountForGroups] = useState<FacebookAccountItem | null>(null)
+  const [selectedAccountForAvatar, setSelectedAccountForAvatar] = useState<FacebookAccountItem | null>(null)
+  const [selectedAccountForEdit, setSelectedAccountForEdit] = useState<FacebookAccountItem | null>(null)
 
   // Filters
   const [searchQuery, setSearchQuery] = useState("")
@@ -274,13 +281,60 @@ export default function FacebookMarketPage() {
                     {/* Account Identity */}
                     <td className="p-3.5">
                       <div className="flex items-center space-x-3">
-                        <img
-                          src={acc.avatarUrl}
-                          alt={acc.name}
-                          className="w-9 h-9 rounded-full object-cover border border-border shadow-xs shrink-0"
-                        />
+                        <div
+                          className="relative group cursor-pointer shrink-0"
+                          onClick={() => setSelectedAccountForAvatar(acc)}
+                          title="Click to change profile photo (ছবি পরিবর্তন করুন)"
+                        >
+                          <img
+                            src={acc.avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(acc.name)}&background=2563eb&color=fff&bold=true`}
+                            alt={acc.name}
+                            onError={(e) => {
+                              const target = e.currentTarget
+                              target.onerror = null
+                              target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(acc.name)}&background=2563eb&color=fff&bold=true`
+                            }}
+                            className="w-9 h-9 rounded-full object-cover border border-border shadow-xs shrink-0 group-hover:ring-2 group-hover:ring-blue-500 transition"
+                          />
+                          <div className="absolute inset-0 bg-black/50 rounded-full opacity-0 group-hover:opacity-100 flex items-center justify-center transition text-white">
+                            <Camera className="w-3.5 h-3.5" />
+                          </div>
+                        </div>
                         <div className="space-y-0.5">
-                          <div className="font-extrabold text-foreground text-xs">{acc.name}</div>
+                          <div className="font-extrabold text-foreground text-xs flex items-center space-x-1.5">
+                            <span>{acc.name}</span>
+                            {acc.tokenOrCookie?.includes("c_user=") && acc.tokenOrCookie?.includes("xs=") ? (
+                              <button
+                                type="button"
+                                onClick={() => setSelectedAccountForEdit(acc)}
+                                className="text-[9px] bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-600 dark:text-emerald-400 font-bold px-1.5 py-0.5 rounded border border-emerald-500/30 flex items-center gap-0.5 transition cursor-pointer"
+                                title="ক্লিক করে কুকি পরিবর্তন বা চেক করুন"
+                              >
+                                <Check className="w-2.5 h-2.5" />
+                                <span>Cookie Active</span>
+                              </button>
+                            ) : acc.tokenOrCookie?.startsWith("EAAG") ? (
+                              <button
+                                type="button"
+                                onClick={() => setSelectedAccountForEdit(acc)}
+                                className="text-[9px] bg-blue-500/15 hover:bg-blue-500/25 text-blue-600 dark:text-blue-400 font-bold px-1.5 py-0.5 rounded border border-blue-500/30 flex items-center gap-0.5 transition cursor-pointer"
+                                title="ক্লিক করে টোকেন পরিবর্তন বা চেক করুন"
+                              >
+                                <Check className="w-2.5 h-2.5" />
+                                <span>Token Active</span>
+                              </button>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => setSelectedAccountForEdit(acc)}
+                                className="text-[9px] bg-amber-500/10 hover:bg-amber-500/20 text-amber-600 dark:text-amber-400 font-bold px-1.5 py-0.5 rounded border border-amber-500/30 flex items-center gap-0.5 transition cursor-pointer"
+                                title="ক্লিক করে কুকি বা টোকেন যুক্ত করুন"
+                              >
+                                <KeyRound className="w-2.5 h-2.5" />
+                                <span>+ Add Cookie</span>
+                              </button>
+                            )}
+                          </div>
                           <div className="font-mono text-[10px] text-muted-foreground flex items-center space-x-1.5">
                             <span>UID: {acc.uid}</span>
                             <span className="text-[10px] bg-muted px-1.5 py-0.2 rounded font-sans font-semibold">
@@ -393,6 +447,20 @@ export default function FacebookMarketPage() {
                     <td className="p-3.5 text-right">
                       <div className="flex items-center justify-end space-x-1.5">
                         <button
+                          onClick={() => setSelectedAccountForEdit(acc)}
+                          className="p-1.5 hover:bg-amber-500/10 rounded-lg text-amber-500 hover:text-amber-700 transition"
+                          title="Edit Account Credentials & Cookie (কুকি ও সেটিংস পরিবর্তন)"
+                        >
+                          <KeyRound className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => setSelectedAccountForAvatar(acc)}
+                          className="p-1.5 hover:bg-blue-500/10 rounded-lg text-blue-500 hover:text-blue-700 transition"
+                          title="Change Profile Photo (ছবি পরিবর্তন)"
+                        >
+                          <Camera className="w-4 h-4" />
+                        </button>
+                        <button
                           onClick={() => setSelectedAccountForGroups(acc)}
                           className="p-1.5 hover:bg-muted rounded-lg text-muted-foreground hover:text-foreground transition"
                           title="Assign Groups"
@@ -434,7 +502,8 @@ export default function FacebookMarketPage() {
       <AssignGroupsModal
         isOpen={selectedAccountForGroups !== null}
         onClose={() => setSelectedAccountForGroups(null)}
-        account={selectedAccountForGroups}
+        account={accounts.find((a) => a.id === selectedAccountForGroups?.id) || selectedAccountForGroups}
+        allAccounts={accounts}
         onAssignGroup={assignGroupToAccount}
         onRemoveGroup={removeAssignedGroup}
       />
@@ -444,6 +513,25 @@ export default function FacebookMarketPage() {
         onClose={() => setShowSharingModal(false)}
         accounts={accounts}
         onRecordShare={recordShare}
+      />
+
+      <ChangeAvatarModal
+        isOpen={selectedAccountForAvatar !== null}
+        onClose={() => setSelectedAccountForAvatar(null)}
+        account={selectedAccountForAvatar}
+        onSave={(accId, newUrl) => {
+          updateAccount(accId, { avatarUrl: newUrl })
+          setSelectedAccountForAvatar(null)
+        }}
+      />
+
+      <EditAccountModal
+        isOpen={selectedAccountForEdit !== null}
+        onClose={() => setSelectedAccountForEdit(null)}
+        account={accounts.find((a) => a.id === selectedAccountForEdit?.id) || selectedAccountForEdit}
+        onUpdate={(accId, updates) => {
+          updateAccount(accId, updates)
+        }}
       />
     </div>
   )

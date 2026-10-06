@@ -36,11 +36,11 @@ export default function SafeClickableImagePage() {
   const { cards, createCard, deleteCard } = useClickableCards(workspaceId)
 
   // Form states
-  const [destinationUrl, setDestinationUrl] = useState("https://bmt.cards/eid-mega-offer")
+  const [destinationUrl, setDestinationUrl] = useState("https://www.google.com")
   const [imageUrl, setImageUrl] = useState("https://images.unsplash.com/photo-1542744094-3a3172720a8a?w=800&auto=format&fit=crop")
   const [cardTitle, setCardTitle] = useState("Eid Mega Sale 2026 - Up to 50% Off Top Gadgets!")
   const [cardDescription, setCardDescription] = useState("Order original tech accessories & smartwatches with instant home delivery across BD.")
-  const [displayDomain, setDisplayDomain] = useState("bmt.cards")
+  const [displayDomain, setDisplayDomain] = useState("google.com")
   const [postCaption, setPostCaption] = useState("আজকের বিশেষ অফার! নিচের ছবিতে ক্লিক করে সরাসরি স্পেশাল ৫০% ডিসকাউন্ট উপভোগ করুন।")
 
   // Generated state & toast
@@ -63,12 +63,27 @@ export default function SafeClickableImagePage() {
       return
     }
 
+    let dest = destinationUrl.trim()
+    if (!dest.startsWith("http://") && !dest.startsWith("https://")) {
+      dest = "https://" + dest
+    }
+
+    let domain = displayDomain.trim()
+    if (!domain) {
+      try {
+        domain = new URL(dest).hostname
+      } catch {
+        domain = "google.com"
+      }
+    }
+
     const newCard = createCard({
       title: cardTitle.trim(),
       description: cardDescription.trim(),
+      caption: postCaption.trim(),
       imageUrl: imageUrl.trim() || "https://images.unsplash.com/photo-1542744094-3a3172720a8a?w=800&auto=format&fit=crop",
-      destinationUrl: destinationUrl.trim(),
-      displayDomain: displayDomain.trim() || "bmt.cards",
+      destinationUrl: dest,
+      displayDomain: domain,
       workspaceId,
     })
 

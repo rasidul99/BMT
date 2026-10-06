@@ -28,6 +28,8 @@ import {
 import { useCtaPinTemplates, CTAPinTemplate, CTAPinLog } from "../../../../../hooks/useCtaPinTemplates"
 import { env } from "../../../../../lib/env"
 import { getPublishToken, FacebookPageEntry, getPageRegistry, initializeDefaultPages } from "../../../../../lib/fb-page-registry"
+import { useFacebookAccounts } from "../../../../../hooks/useFacebookAccounts"
+import { useGroupPoster } from "../../../../../hooks/useGroupPoster"
 
 export default function SafeCtaPinCommentPage() {
   const {
@@ -41,7 +43,12 @@ export default function SafeCtaPinCommentPage() {
     clearLogs,
   } = useCtaPinTemplates()
 
-  // Available pages for assignment
+  // Dynamic Accounts Integration (Module 8 - 100 Accounts Engine)
+  const { accounts: fbAccounts = [] } = useFacebookAccounts()
+  // Dynamic Groups Integration (Module 12 - Group Poster)
+  const { groups: customGroups = [] } = useGroupPoster()
+
+  // Available pages and accounts for assignment
   const [registeredPages, setRegisteredPages] = useState<FacebookPageEntry[]>([])
   
   useEffect(() => {
@@ -68,9 +75,75 @@ export default function SafeCtaPinCommentPage() {
         category: "Digital Creator / Business",
       },
     ]
-    const pages = initializeDefaultPages(defaults)
+    let pages = initializeDefaultPages(defaults)
+
+    // Sync connected client pages from localStorage ("bmt_connected_pages")
+    if (typeof window !== "undefined") {
+      try {
+        const connectedJson = localStorage.getItem("bmt_connected_pages")
+        if (connectedJson) {
+          const parsed = JSON.parse(connectedJson)
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            const mappedDynamic: FacebookPageEntry[] = parsed.map((item: any) => ({
+              pageId: String(item.pageId || item.id),
+              pageName: String(item.name || item.pageName),
+              accessToken: item.accessToken || item.token || (item.name === "CARE HUB BD" ? (env.NEXT_PUBLIC_FB_PAGE_TOKEN_CARE_HUB_BD || "") : ""),
+              tokenExpiry: Date.now() + 60 * 24 * 60 * 60 * 1000,
+              category: item.category || "General Business",
+              isActive: true,
+            }))
+
+            const seen = new Set<string>()
+            const combined: FacebookPageEntry[] = []
+
+            for (const dp of mappedDynamic) {
+              const key = dp.pageName.toLowerCase().trim()
+              if (!seen.has(key)) {
+                seen.add(key)
+                combined.push(dp)
+              }
+            }
+
+            for (const sp of pages) {
+              const key = sp.pageName.toLowerCase().trim()
+              if (!seen.has(key)) {
+                seen.add(key)
+                combined.push(sp)
+              }
+            }
+
+            pages = combined
+          }
+        }
+      } catch (err) {
+        console.error("Error reading bmt_connected_pages in cta-pin-comment:", err)
+      }
+    }
+
     setRegisteredPages(pages)
   }, [])
+
+  // Combined selectable targets: Pages, Personal Accounts, and Facebook Groups
+  const allSelectableTargets = [
+    ...registeredPages.map((p) => ({
+      id: p.pageId,
+      name: p.pageName,
+      type: "Facebook Page",
+      badge: "Page",
+    })),
+    ...fbAccounts.map((a) => ({
+      id: a.id,
+      name: a.name,
+      type: "Personal Account",
+      badge: "Account",
+    })),
+    ...customGroups.map((g) => ({
+      id: g.id,
+      name: g.name,
+      type: "Facebook Group",
+      badge: "Group",
+    })),
+  ]
 
   // Navigation tab
   const [activeTab, setActiveTab] = useState<"templates" | "testConsole" | "auditLogs">("templates")
@@ -512,17 +585,37 @@ export default function SafeCtaPinCommentPage() {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="font-bold block mb-1 text-foreground">Target Facebook Page</label>
+                  <label className="font-bold block mb-1 text-foreground">Target Profile, Page, or Group</label>
                   <select
                     value={assignedPage}
                     onChange={(e) => setAssignedPage(e.target.value)}
                     className="w-full px-2.5 py-2 border rounded-lg bg-background font-semibold text-xs"
                   >
-                    {registeredPages.map((p) => (
-                      <option key={p.pageId} value={p.pageName}>
-                        {p.pageName}
-                      </option>
-                    ))}
+                    <optgroup label="Facebook Pages">
+                      {registeredPages.map((p) => (
+                        <option key={p.pageId} value={p.pageName}>
+                          📄 {p.pageName}
+                        </option>
+                      ))}
+                    </optgroup>
+                    {fbAccounts.length > 0 && (
+                      <optgroup label="Personal Profiles / Accounts">
+                        {fbAccounts.map((a) => (
+                          <option key={a.id} value={a.name}>
+                            👤 {a.name}
+                          </option>
+                        ))}
+                      </optgroup>
+                    )}
+                    {customGroups.length > 0 && (
+                      <optgroup label="Facebook Groups">
+                        {customGroups.map((g) => (
+                          <option key={g.id} value={g.name}>
+                            👥 {g.name}
+                          </option>
+                        ))}
+                      </optgroup>
+                    )}
                   </select>
                 </div>
 
@@ -710,17 +803,37 @@ export default function SafeCtaPinCommentPage() {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="font-semibold block mb-1 text-foreground">Target Facebook Page</label>
+                  <label className="font-semibold block mb-1 text-foreground">Target Profile, Page, or Group</label>
                   <select
                     value={testTargetPage}
                     onChange={(e) => setTestTargetPage(e.target.value)}
                     className="w-full px-2.5 py-2 border rounded-lg bg-background font-medium text-xs focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none"
                   >
-                    {registeredPages.map((p) => (
-                      <option key={p.pageId} value={p.pageName}>
-                        {p.pageName}
-                      </option>
-                    ))}
+                    <optgroup label="Facebook Pages">
+                      {registeredPages.map((p) => (
+                        <option key={p.pageId} value={p.pageName}>
+                          📄 {p.pageName}
+                        </option>
+                      ))}
+                    </optgroup>
+                    {fbAccounts.length > 0 && (
+                      <optgroup label="Personal Profiles / Accounts">
+                        {fbAccounts.map((a) => (
+                          <option key={a.id} value={a.name}>
+                            👤 {a.name}
+                          </option>
+                        ))}
+                      </optgroup>
+                    )}
+                    {customGroups.length > 0 && (
+                      <optgroup label="Facebook Groups">
+                        {customGroups.map((g) => (
+                          <option key={g.id} value={g.name}>
+                            👥 {g.name}
+                          </option>
+                        ))}
+                      </optgroup>
+                    )}
                   </select>
                 </div>
 

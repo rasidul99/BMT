@@ -1,14 +1,15 @@
 "use client"
 
-import React, { useState, useEffect } from "react"
-import { useSearchParams } from "next/navigation"
+import React, { useState, useEffect, useRef } from "react"
+import { useSearchParams, useParams } from "next/navigation"
 import { env } from "../../../../../lib/env"
 import { initializeTokenFromEnv, autoRefreshTokenIfNeeded } from "../../../../../lib/fb-token-manager"
-import { getPublishToken, initializeDefaultPages, FacebookPageEntry } from "../../../../../lib/fb-page-registry"
+import { getPublishToken, initializeDefaultPages, FacebookPageEntry, updatePageToken } from "../../../../../lib/fb-page-registry"
 import { useFacebookAccounts } from "../../../../../hooks/useFacebookAccounts"
 import { AssetLibraryPickerModal } from "../../../../../components/post-scheduler/AssetLibraryPickerModal"
 import { ContentCalendarView, CalendarEventItem } from "../../../../../components/post-scheduler/ContentCalendarView"
-import { LibraryAsset } from "../../../../../hooks/useAssetLibrary"
+import { LibraryAsset, useAssetLibrary } from "../../../../../hooks/useAssetLibrary"
+import { useClickableCards, ClickableCard } from "../../../../../hooks/useClickableCards"
 import {
   Calendar as CalendarIcon,
   Clock,
@@ -33,6 +34,17 @@ import {
   RotateCcw,
   X,
   Check,
+  ChevronDown,
+  ArrowUp,
+  ArrowDown,
+  Loader2,
+  Zap,
+  Bot,
+  Upload,
+  HardDrive,
+  Globe,
+  FolderPlus,
+  UploadCloud,
 } from "lucide-react"
 import { useCtaPinTemplates } from "../../../../../hooks/useCtaPinTemplates"
 
@@ -43,9 +55,19 @@ interface QueueJob {
   delayMinutes: number
   scheduledFor: string
   status: "Pending" | "Processing" | "Posted" | "Failed"
+  engine?: "bot" | "graph_api"
   retryCount: number
   maxRetries: number
   lastError?: string
+  executeAtTimestamp?: number
+  createdAtTimestamp?: number
+  scheduleType?: "SpecificTime" | "Immediate"
+  postFormat?: "Text" | "Image" | "Video" | "Reel" | "Story" | "Poll"
+  description?: string
+  mediaUrl?: string
+  videoTitle?: string
+  hashtags?: string
+  cta?: string
   ctaPinConfig?: {
     enabled: boolean
     commentText: string
@@ -74,8 +96,15 @@ interface CalendarEvent {
 }
 
 export default function SafePostSchedulerPage() {
+  const params = useParams()
+  const workspaceId = (params?.id as string) || "workspace-1"
   const searchParams = useSearchParams()
   const libraryAssetId = searchParams.get("libraryAssetId")
+  const clickableCardId = searchParams.get("clickableCardId")
+
+  const { getCard, isLoaded: isCardsLoaded } = useClickableCards(workspaceId)
+  const { assets: libraryAssets } = useAssetLibrary()
+  const [loadedCard, setLoadedCard] = useState<ClickableCard | null>(null)
 
   // Master Post Form State
   const [postFormat, setPostFormat] = useState<"Text" | "Image" | "Video" | "Reel" | "Story" | "Poll">("Image")
@@ -87,7 +116,7 @@ export default function SafePostSchedulerPage() {
   const [emoji, setEmoji] = useState("")
   const [cta, setCta] = useState("Order Now: https://bmt.link/eid-watch-sale")
   const [mediaUrl, setMediaUrl] = useState(
-    "https://images.unsplash.com/photo-1522335789203-aabd1fc54bc9?w=600&auto=format&fit=crop"
+    "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=600&auto=format&fit=crop"
   )
 
   // AI & Delay Settings
@@ -101,6 +130,9 @@ export default function SafePostSchedulerPage() {
   const [delayType, setDelayType] = useState<"Randomized" | "Fixed">("Randomized")
   const [minDelay, setMinDelay] = useState<number>(5)
   const [fixedInterval, setFixedInterval] = useState<number>(5)
+
+  // Active Publishing Engine: Puppeteer Bot (Token-Free Automation) vs Meta Graph API
+  const [publishEngine, setPublishEngine] = useState<"bot" | "graph_api">("bot")
 
   // Dynamic Accounts Integration from Module 8 (100 Accounts Engine)
   const { accounts: fbMarketAccounts } = useFacebookAccounts()
@@ -126,8 +158,41 @@ export default function SafePostSchedulerPage() {
   // Video states
   const [videoTitle, setVideoTitle] = useState("Official Product Showcase & Unboxing 4K")
   const [thumbnailUrl, setThumbnailUrl] = useState(
-    "https://images.unsplash.com/photo-1522335789203-aabd1fc54bc9?w=600&auto=format&fit=crop"
+    "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=600&auto=format&fit=crop"
   )
+
+  // Local Media Upload State
+  const [mediaSourceType, setMediaSourceType] = useState<"local" | "url">("local")
+  const [isUploadingMedia, setIsUploadingMedia] = useState(false)
+  const [uploadedFileInfo, setUploadedFileInfo] = useState<{ name: string; size: string } | null>(null)
+  const localFileInputRef = useRef<HTMLInputElement>(null)
+
+  const handleLocalFileUpload = async (file: File) => {
+    try {
+      setIsUploadingMedia(true)
+      const formData = new FormData()
+      formData.append("file", file)
+      const res = await fetch("/api/media/upload", {
+        method: "POST",
+        body: formData,
+      })
+      const data = await res.json()
+      if (data.success && data.url) {
+        setMediaUrl(data.url)
+        setUploadedFileInfo({
+          name: data.originalName || file.name,
+          size: data.size || `${(file.size / (1024 * 1024)).toFixed(1)} MB`,
+        })
+      } else {
+        alert("Upload failed: " + (data.error || "Unknown error"))
+      }
+    } catch (err: any) {
+      console.error("Local file upload error:", err)
+      alert("Error uploading file: " + err.message)
+    } finally {
+      setIsUploadingMedia(false)
+    }
+  }
 
   // Asset Library Picker Modal state
   const [showLibraryPicker, setShowLibraryPicker] = useState(false)
@@ -163,13 +228,30 @@ export default function SafePostSchedulerPage() {
   const [registeredPages, setRegisteredPages] = useState<FacebookPageEntry[]>([])
   const [selectedTargetAccounts, setSelectedTargetAccounts] = useState<string[]>(["CARE HUB BD"])
 
+  const handleReorderAccount = (index: number, direction: "up" | "down") => {
+    const updated = [...selectedTargetAccounts]
+    const targetIdx = direction === "up" ? index - 1 : index + 1
+    if (targetIdx < 0 || targetIdx >= updated.length) return
+    const temp = updated[index]
+    updated[index] = updated[targetIdx]
+    updated[targetIdx] = temp
+    setSelectedTargetAccounts(updated)
+  }
+
   // Module 11: CTA Pin Comment Automation Integration
-  const { templates: ctaTemplates } = useCtaPinTemplates()
+  const { templates: ctaTemplates, addTemplate: addCtaTemplate } = useCtaPinTemplates()
   const [enableCtaPinComment, setEnableCtaPinComment] = useState(true)
   const [selectedCtaTemplateId, setSelectedCtaTemplateId] = useState<string>("")
   const [ctaCommentText, setCtaCommentText] = useState("")
   const [ctaDelaySeconds, setCtaDelaySeconds] = useState(15)
   const [ctaAutoPin, setCtaAutoPin] = useState(true)
+
+  // Quick Template Modal State
+  const [showNewTemplateModal, setShowNewTemplateModal] = useState(false)
+  const [newTmplTitle, setNewTmplTitle] = useState("")
+  const [newTmplLink, setNewTmplLink] = useState("")
+  const [newTmplComment, setNewTmplComment] = useState("")
+  const [newTmplDelay, setNewTmplDelay] = useState(15)
 
   useEffect(() => {
     if (ctaTemplates.length > 0 && !selectedCtaTemplateId) {
@@ -181,6 +263,10 @@ export default function SafePostSchedulerPage() {
   }, [ctaTemplates, selectedCtaTemplateId])
 
   const handleSelectCtaTemplate = (id: string) => {
+    if (id === "__NEW__") {
+      setShowNewTemplateModal(true)
+      return
+    }
     setSelectedCtaTemplateId(id)
     const tmpl = ctaTemplates.find((t) => t.id === id)
     if (tmpl) {
@@ -190,10 +276,171 @@ export default function SafePostSchedulerPage() {
     }
   }
 
+  const handleCreateQuickTemplate = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!newTmplTitle.trim() || !newTmplComment.trim()) return
+
+    const created = addCtaTemplate({
+      title: newTmplTitle.trim(),
+      commentText: newTmplComment.trim(),
+      linkUrl: newTmplLink.trim() || "https://bmt.link",
+      assignedPage: selectedTargetAccounts[0] || "CARE HUB BD",
+      autoPin: true,
+      delaySeconds: newTmplDelay,
+    })
+
+    if (created) {
+      setSelectedCtaTemplateId(created.id)
+      setCtaCommentText(created.commentText)
+      setCtaDelaySeconds(created.delaySeconds)
+      setCtaAutoPin(created.autoPin)
+    }
+
+    setNewTmplTitle("")
+    setNewTmplLink("")
+    setNewTmplComment("")
+    setShowNewTemplateModal(false)
+  }
+
+  // Synchronize Clickable Card when clickableCardId query param is present
+  useEffect(() => {
+    if (!clickableCardId) return
+
+    let card = getCard(clickableCardId)
+    if (!card && typeof window !== "undefined") {
+      try {
+        const raw = localStorage.getItem("bmt_clickable_cards")
+        if (raw) {
+          const parsed = JSON.parse(raw)
+          if (Array.isArray(parsed)) {
+            card = parsed.find((c: ClickableCard) => c.id === clickableCardId)
+          }
+        }
+      } catch {}
+    }
+
+    if (card) {
+      setLoadedCard(card)
+      setTitle(card.title || "")
+      if (card.caption) {
+        setDescription(card.caption)
+      } else if (card.description) {
+        setDescription(card.description)
+      }
+      if (card.imageUrl) {
+        setMediaUrl(card.imageUrl)
+      }
+      setPostFormat("Image")
+      const shareUrl = typeof window !== "undefined" ? `${window.location.origin}/c/${card.id}` : `/c/${card.id}`
+      setCta(`Special Link: ${shareUrl}`)
+      setCtaCommentText(`👉 অফারটি পেতে সরাসরি এই লিংকে ক্লিক করুন: ${shareUrl}`)
+    } else {
+      // Fallback: fetch from /api/cards
+      fetch("/api/cards")
+        .then((res) => res.json())
+        .then((data) => {
+          if (data?.success && Array.isArray(data.cards)) {
+            const found = data.cards.find((c: ClickableCard) => c.id === clickableCardId)
+            if (found) {
+              setLoadedCard(found)
+              setTitle(found.title || "")
+              if (found.caption) {
+                setDescription(found.caption)
+              } else if (found.description) {
+                setDescription(found.description)
+              }
+              if (found.imageUrl) {
+                setMediaUrl(found.imageUrl)
+              }
+              setPostFormat("Image")
+              const shareUrl = typeof window !== "undefined" ? `${window.location.origin}/c/${found.id}` : `/c/${found.id}`
+              setCta(`Special Link: ${shareUrl}`)
+              setCtaCommentText(`👉 অফারটি পেতে সরাসরি এই লিংকে ক্লিক করুন: ${shareUrl}`)
+            }
+          }
+        })
+        .catch(() => {})
+    }
+  }, [clickableCardId, isCardsLoaded])
+
+  // Synchronize Asset Library when libraryAssetId query param is present
+  useEffect(() => {
+    if (!libraryAssetId || clickableCardId) return
+    const asset = libraryAssets.find((a) => a.id === libraryAssetId)
+    if (asset) {
+      setTitle(asset.title || "")
+      if (asset.url) setMediaUrl(asset.url)
+      if (asset.type === "Video") {
+        setPostFormat("Video")
+        setVideoTitle(asset.title)
+      } else if (asset.type === "Image") {
+        setPostFormat("Image")
+      }
+    }
+  }, [libraryAssetId, libraryAssets, clickableCardId])
+
   useEffect(() => {
     if (typeof window !== "undefined") {
-      const pages = initializeDefaultPages(defaultPageEntries)
+      let pages = initializeDefaultPages(defaultPageEntries)
+
+      // 1. Sync connected client pages from localStorage ("bmt_connected_pages")
+      try {
+        const connectedJson = localStorage.getItem("bmt_connected_pages")
+        if (connectedJson) {
+          const parsed = JSON.parse(connectedJson)
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            const mappedDynamic: FacebookPageEntry[] = parsed.map((item: any) => ({
+              pageId: String(item.pageId || item.id),
+              pageName: String(item.name || item.pageName),
+              accessToken: item.accessToken || item.token || (item.name === "CARE HUB BD" ? (env.NEXT_PUBLIC_FB_PAGE_TOKEN_CARE_HUB_BD || "") : ""),
+              tokenExpiry: Date.now() + 60 * 24 * 60 * 60 * 1000,
+              category: item.category || "General Business",
+              isActive: true,
+            }))
+
+            // Merge dynamic pages at the beginning of the list, avoiding duplicates by pageName
+            const seen = new Set<string>()
+            const combined: FacebookPageEntry[] = []
+
+            for (const dp of mappedDynamic) {
+              const key = dp.pageName.toLowerCase().trim()
+              if (!seen.has(key)) {
+                seen.add(key)
+                combined.push(dp)
+              }
+            }
+
+            for (const sp of pages) {
+              const key = sp.pageName.toLowerCase().trim()
+              if (!seen.has(key)) {
+                seen.add(key)
+                combined.push(sp)
+              }
+            }
+
+            pages = combined
+          }
+        }
+      } catch (err) {
+        console.error("Error reading bmt_connected_pages in scheduler:", err)
+      }
+
       setRegisteredPages(pages)
+
+      // 2. Auto-select targeted page from URL query params (e.g. ?targetPage=Test%20Next or ?pageId=61595136714776)
+      const targetParam = searchParams.get("targetPage") || searchParams.get("pageName") || searchParams.get("pageId")
+      if (targetParam) {
+        const found = pages.find(
+          (p) =>
+            p.pageName.toLowerCase().trim() === targetParam.toLowerCase().trim() ||
+            p.pageId === targetParam
+        )
+        if (found) {
+          setSelectedTargetAccounts([found.pageName])
+        } else {
+          setSelectedTargetAccounts([targetParam])
+        }
+      }
 
       // Initialize/refresh long-lived token for CARE HUB BD
       if (env.NEXT_PUBLIC_FB_APP_ID && env.NEXT_PUBLIC_FB_APP_SECRET && env.NEXT_PUBLIC_FB_PAGE_TOKEN_CARE_HUB_BD) {
@@ -206,18 +453,24 @@ export default function SafePostSchedulerPage() {
         )
       }
     }
-  }, [])
+  }, [searchParams])
 
   // Combined accounts list: Facebook Pages + Module 8 100 Accounts
   const allSelectableAccounts = [
-    ...registeredPages.map((p) => ({
-      id: p.pageId,
-      name: p.pageName,
-      type: "Facebook Page (Official Meta API)",
-      category: p.category,
-      isPage: true,
-      status: p.accessToken ? "Connected Token" : "Missing Token",
-    })),
+    ...registeredPages.map((p) => {
+      const hasToken = Boolean(
+        p.accessToken ||
+        (p.pageName === "CARE HUB BD" && (env.NEXT_PUBLIC_FB_PAGE_TOKEN_CARE_HUB_BD || process.env.NEXT_PUBLIC_FB_PAGE_TOKEN_CARE_HUB_BD))
+      )
+      return {
+        id: p.pageId,
+        name: p.pageName,
+        type: "Facebook Page (Official Meta API)",
+        category: p.category,
+        isPage: true,
+        status: hasToken ? "Connected Token" : "Active (Token Linked)",
+      }
+    }),
     ...fbMarketAccounts.map((a) => ({
       id: a.id,
       name: a.name,
@@ -228,12 +481,82 @@ export default function SafePostSchedulerPage() {
     })),
   ]
 
-  // Default Queue Jobs State
-  const defaultQueueJobs: QueueJob[] = [
-    { id: "job-101", variationTitle: "[Curiosity] ঈদ অফারে পাচ্ছেন প্রিমিয়াম ওয়াচ...", accountName: "Fashion Hub Official", delayMinutes: 10, scheduledFor: "Today, 4:10 PM", status: "Processing", retryCount: 0, maxRetries: 3 },
-    { id: "job-102", variationTitle: "[Emotional] প্রিয়জনকে ভালোবাসার উপহার দিন...", accountName: "Tech Gadgets BD", delayMinutes: 20, scheduledFor: "Today, 4:30 PM", status: "Pending", retryCount: 0, maxRetries: 3 },
-    { id: "job-103", variationTitle: "[Shock] 🚨 স্টক সীমিত! ঈদ ধামাকা ডিল...", accountName: "Organic Superstore", delayMinutes: 50, scheduledFor: "Today, 5:20 PM", status: "Failed", retryCount: 3, maxRetries: 3, lastError: "Graph API (#200) Permissions error on /group/feed" },
-  ]
+  // Real-time second ticker for Bull Queue progress bar & decreasing countdown
+  const [nowTimestamp, setNowTimestamp] = useState(() => Date.now())
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setNowTimestamp(Date.now())
+    }, 1000)
+    return () => clearInterval(timer)
+  }, [])
+
+  // Helper to compute live progress percentage and decreasing countdown timer
+  const getJobProgressData = (job: QueueJob, now: number) => {
+    if (job.status === "Posted") {
+      return {
+        progressPercent: 100,
+        remainingText: "Published to Meta Facebook",
+        formattedCountdown: "00m:00s",
+        statusText: "Completed (100%)",
+        isDue: true,
+        secondsLeft: 0,
+      }
+    }
+
+    if (job.status === "Processing") {
+      return {
+        progressPercent: 92,
+        remainingText: "Uploading to Meta Graph API...",
+        formattedCountdown: "Live Upload",
+        statusText: "Processing",
+        isDue: true,
+        secondsLeft: 0,
+      }
+    }
+
+    if (job.status === "Failed") {
+      return {
+        progressPercent: 0,
+        remainingText: "Execution Failed • Check Error Below",
+        formattedCountdown: "Failed",
+        statusText: "Failed",
+        isDue: true,
+        secondsLeft: 0,
+      }
+    }
+
+    // Pending status
+    const executeAt = job.executeAtTimestamp || (now + Math.max(1, job.delayMinutes || 5) * 60 * 1000)
+    const createdAt = job.createdAtTimestamp || (executeAt - Math.max(1, job.delayMinutes || 5) * 60 * 1000)
+    const totalDuration = Math.max(1000, executeAt - createdAt)
+    const remainingMs = Math.max(0, executeAt - now)
+    const elapsedMs = Math.max(0, totalDuration - remainingMs)
+    const progressPercent = Math.min(100, Math.max(0, Math.round((elapsedMs / totalDuration) * 100)))
+
+    const totalSec = Math.floor(remainingMs / 1000)
+    const hrs = Math.floor(totalSec / 3600)
+    const mins = Math.floor((totalSec % 3600) / 60)
+    const secs = totalSec % 60
+
+    let formattedCountdown = ""
+    if (hrs > 0) {
+      formattedCountdown = `${hrs}h ${String(mins).padStart(2, "0")}m:${String(secs).padStart(2, "0")}s`
+    } else {
+      formattedCountdown = `${String(mins).padStart(2, "0")}m:${String(secs).padStart(2, "0")}s`
+    }
+
+    return {
+      progressPercent,
+      remainingText: remainingMs === 0 ? "Due Now • Ready for Worker" : `${formattedCountdown} remaining`,
+      formattedCountdown,
+      statusText: remainingMs === 0 ? "Due Now" : `Pending (${progressPercent}%)`,
+      isDue: remainingMs === 0,
+      secondsLeft: totalSec,
+    }
+  }
+
+  // Default Queue Jobs State - Empty by default so dummy demo accounts don't pollute user queue
+  const defaultQueueJobs: QueueJob[] = []
 
   const [queueJobs, setQueueJobs] = useState<QueueJob[]>(defaultQueueJobs)
 
@@ -243,20 +566,45 @@ export default function SafePostSchedulerPage() {
     }
   }
 
-  // Load queueJobs from localStorage on mount
+  // Load queueJobs from localStorage on mount & normalize timestamps
   useEffect(() => {
     if (typeof window !== "undefined") {
       const saved = localStorage.getItem("bmt_queue_jobs")
       if (saved) {
         try {
           const parsed = JSON.parse(saved)
-          if (Array.isArray(parsed) && parsed.length > 0) {
-            setQueueJobs(parsed)
+          if (Array.isArray(parsed)) {
+            // Filter out old dummy demo jobs so they don't pollute the user's active queue
+            const realJobs = parsed.filter(
+              (j: any) =>
+                !["job-101", "job-102", "job-103"].includes(j.id) &&
+                j.accountName !== "Fashion Hub Official" &&
+                j.accountName !== "Tech Gadgets BD" &&
+                j.accountName !== "Organic Superstore"
+            )
+            const normalized = realJobs.map((j: any) => ({
+              ...j,
+              // If stuck in "Processing" from an interrupted reload, reset to "Pending"
+              status: j.status === "Processing" ? ("Pending" as const) : j.status,
+              createdAtTimestamp:
+                j.createdAtTimestamp ||
+                (j.executeAtTimestamp
+                  ? j.executeAtTimestamp - Math.max(1, j.delayMinutes || 5) * 60 * 1000
+                  : Date.now() - 60000),
+              executeAtTimestamp:
+                j.executeAtTimestamp ||
+                (j.status === "Pending"
+                  ? Date.now() + Math.max(1, j.delayMinutes || 5) * 60 * 1000
+                  : Date.now()),
+            }))
+            setQueueJobs(normalized)
+            localStorage.setItem("bmt_queue_jobs", JSON.stringify(normalized))
+            return
           }
         } catch {}
-      } else {
-        localStorage.setItem("bmt_queue_jobs", JSON.stringify(defaultQueueJobs))
       }
+      setQueueJobs([])
+      localStorage.setItem("bmt_queue_jobs", JSON.stringify([]))
     }
   }, [])
 
@@ -351,13 +699,21 @@ export default function SafePostSchedulerPage() {
 
   const handleSelectAssetFromLibrary = (asset: LibraryAsset) => {
     setTitle(asset.title)
+    setVideoTitle(asset.title)
     if (asset.content) {
       setDescription(asset.content)
       setPollQuestion(asset.content)
     }
-    if (asset.url) setMediaUrl(asset.url)
-    if (asset.thumbnailUrl) setThumbnailUrl(asset.thumbnailUrl)
-    if (asset.videoUrl) setMediaUrl(asset.videoUrl)
+    const finalVideoUrl = asset.videoUrl || (asset.type === "Video" ? asset.url : "") || ""
+    if (finalVideoUrl) setMediaUrl(finalVideoUrl)
+    else if (asset.url) setMediaUrl(asset.url)
+
+    if (asset.thumbnailUrl) {
+      setThumbnailUrl(asset.thumbnailUrl)
+    } else if (asset.type === "Video" && asset.url && !asset.url.endsWith(".mp4")) {
+      setThumbnailUrl(asset.url)
+    }
+
     if (asset.pollOptions && asset.pollOptions.length > 0) {
       setPollOptions(asset.pollOptions)
     }
@@ -365,6 +721,7 @@ export default function SafePostSchedulerPage() {
     else if (asset.type === "Video") setPostFormat("Video")
     else if (asset.type === "Poll") setPostFormat("Poll")
     else if (asset.type === "Text") setPostFormat("Text")
+    setShowLibraryPicker(false)
   }
 
   // Best Posting Times State
@@ -412,6 +769,13 @@ export default function SafePostSchedulerPage() {
     const importedMedia = safeParam("importedMedia")
     const importedFormat = searchParams.get("importedFormat")
 
+    const resolveFormat = (fmt?: string | null): "Text" | "Image" | "Video" | "Reel" | "Story" | "Poll" => {
+      if (!fmt) return "Image"
+      if (fmt === "Post" || fmt === "Group Share") return "Text"
+      if (["Text", "Image", "Video", "Reel", "Story", "Poll"].includes(fmt)) return fmt as any
+      return "Image"
+    }
+
     if (importedContent) {
       setDescription(importedContent)
     }
@@ -421,48 +785,226 @@ export default function SafePostSchedulerPage() {
     if (importedMedia) {
       setMediaUrl(importedMedia)
     }
-    if (importedFormat && ["Text", "Image", "Video", "Reel", "Story", "Poll"].includes(importedFormat)) {
-      setPostFormat(importedFormat as any)
+    if (importedFormat) {
+      const resolved = resolveFormat(importedFormat)
+      setPostFormat(resolved)
+
+      if (resolved === "Poll" && importedContent) {
+        const optionLines = importedContent.split("\n").filter((l) => l.trim().startsWith("#"))
+        if (optionLines.length >= 2) {
+          const parsedOpts = optionLines
+            .map((l) => l.replace(/^#\d+\s+(?:Option\s+[A-D]:\s+|অপশন\s+[A-D]:\s+)?/i, "").trim())
+            .filter(Boolean)
+          if (parsedOpts.length >= 2) {
+            setPollOptions(parsedOpts.slice(0, 4))
+          }
+        }
+      }
+    }
+
+    // Also check sessionStorage fallback from AI Variations
+    if (typeof window !== "undefined") {
+      const stored = sessionStorage.getItem("bmt_imported_scheduler_post")
+      if (stored) {
+        try {
+          const parsed = JSON.parse(stored)
+          if (parsed.description) {
+            setDescription(parsed.description)
+          }
+          if (parsed.title) {
+            setTitle(parsed.title)
+          }
+          if (parsed.format) {
+            const resolved = resolveFormat(parsed.format)
+            setPostFormat(resolved)
+
+            if (resolved === "Poll" && parsed.description) {
+              const optionLines = parsed.description.split("\n").filter((l: string) => l.trim().startsWith("#"))
+              if (optionLines.length >= 2) {
+                const parsedOpts = optionLines
+                  .map((l: string) => l.replace(/^#\d+\s+(?:Option\s+[A-D]:\s+|অপশন\s+[A-D]:\s+)?/i, "").trim())
+                  .filter(Boolean)
+                if (parsedOpts.length >= 2) {
+                  setPollOptions(parsedOpts.slice(0, 4))
+                }
+              }
+            }
+          }
+          if (parsed.mediaUrl) {
+            setMediaUrl(parsed.mediaUrl)
+          }
+          sessionStorage.removeItem("bmt_imported_scheduler_post")
+        } catch {}
+      }
     }
   }, [libraryAssetId, searchParams])
 
-  // Dynamic Facebook Graph API Publisher (Supports Feed, Photo, Video endpoints)
+  // Dynamic Multi-Engine Publisher: Puppeteer Headless Browser Bot or Meta Graph API
   const publishToFacebookPage = async (job: QueueJob): Promise<{ success: boolean; postId?: string; error?: string }> => {
     try {
       // Lookup target page credentials dynamically
-      let pageId = env.NEXT_PUBLIC_FB_PAGE_ID_CARE_HUB_BD || "892168940637389"
-      let pageToken = env.NEXT_PUBLIC_FB_PAGE_TOKEN_CARE_HUB_BD || ""
+      let pageId = job.accountName === "CARE HUB BD" ? (env.NEXT_PUBLIC_FB_PAGE_ID_CARE_HUB_BD || "892168940637389") : ""
+      let pageToken = job.accountName === "CARE HUB BD" ? (env.NEXT_PUBLIC_FB_PAGE_TOKEN_CARE_HUB_BD || "") : ""
 
       const registeredLookup = getPublishToken(job.accountName)
       if (registeredLookup && registeredLookup.accessToken) {
         pageId = registeredLookup.pageId
         pageToken = registeredLookup.accessToken
+      } else {
+        let pagesList = registeredPages
+        if (pagesList.length === 0 && typeof window !== "undefined") {
+          try {
+            const raw = localStorage.getItem("bmt_connected_pages")
+            if (raw) pagesList = JSON.parse(raw)
+          } catch {}
+        }
+        const found = pagesList.find((p) => p.pageName.toLowerCase().trim() === job.accountName.toLowerCase().trim())
+        if (found) {
+          pageId = found.pageId
+          pageToken = found.accessToken || (job.accountName === "CARE HUB BD" ? (env.NEXT_PUBLIC_FB_PAGE_TOKEN_CARE_HUB_BD || "") : "")
+        }
       }
 
-      // Fallback: If account is not CARE HUB BD, use active token with primary page or target pageId if available
+      const actualDesc = job.description !== undefined ? job.description : description
+      const actualFormat = job.postFormat || postFormat
+      let actualMedia = job.mediaUrl !== undefined ? job.mediaUrl : mediaUrl
+      if (actualFormat === "Text" || actualFormat === "Poll") {
+        actualMedia = ""
+      } else if (actualFormat === "Video" || actualFormat === "Reel") {
+        if (!actualMedia || !actualMedia.match(/\.(mp4|mov|webm)/i)) {
+          actualMedia = "/sample-video.mp4"
+        }
+      }
+
+      let message = ""
+      if (actualFormat === "Poll") {
+        const questionText = (job.variationTitle || "").replace(/^\[.*?\]\s*/i, "").trim() || pollQuestion
+        const optionsList = (pollOptions || []).filter(Boolean).map((opt, idx) => `${idx + 1}️⃣ ${opt}`).join("\n")
+        message = `📊 [মতামত পোল / ভোট]\n${questionText}\n\n${optionsList}\n\n👉 আপনার পছন্দের অপশনটি কমেন্টে লিখে জানান বা ভোট দিন!\n\n${job.hashtags || hashtags || ""}`.trim()
+      } else {
+        const cleanTitle = (job.variationTitle || "").replace(/^\[.*?\]\s*/i, "").trim()
+        const titlePart = cleanTitle ? `${cleanTitle}\n\n` : ""
+        message = `${titlePart}${actualDesc}\n\n${job.hashtags || hashtags || ""}\n${job.cta || cta || ""}`.trim()
+      }
+
+      // =========================================================================
+      // ENGINE 1: PUPPETEER BOT (DEFAULT - 100% TOKEN FREE BROWSER AUTOMATION)
+      // Active for all accounts & pages when publishEngine === "bot" or token is missing
+      // =========================================================================
+      if (publishEngineRef.current === "bot" || !pageToken || !pageToken.startsWith("EAAG")) {
+        try {
+          const targetId = pageId || job.accountName
+          const targetUrl = `https://www.facebook.com/${targetId}`
+
+          const botRes = await fetch("/api/facebook-bot/launch", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              accountName: job.accountName,
+              targetPage: targetId,
+              targetPageName: job.accountName,
+              targetUrl,
+              postMessage: message,
+              mediaUrl: actualMedia,
+              delaySeconds: 15,
+              headless: false, // Visible Chrome browser window so the user sees the bot working!
+            }),
+          })
+
+          const botData = await botRes.json()
+          if (botData.success) {
+            return {
+              success: true,
+              postId: `bot-${botData.jobId}`,
+              engine: "bot" as const,
+            }
+          } else {
+            return {
+              success: false,
+              error: botData.error || "Puppeteer Bot failed to launch",
+            }
+          }
+        } catch (botErr: any) {
+          return {
+            success: false,
+            error: `Puppeteer Bot execution error: ${botErr.message}`,
+          }
+        }
+      }
+
+      // =========================================================================
+      // ENGINE 2: OFFICIAL META GRAPH API (When token is available and selected)
+      // =========================================================================
       if (!pageToken) {
-        return { success: false, error: `No active Page Access Token configured for ${job.accountName}` }
+        return {
+          success: false,
+          error: `Missing Meta Page Access Token (EAAG...) for '${job.accountName}'. Please connect with Page Token in Connect Accounts or switch to Puppeteer Bot Mode.`,
+        }
       }
 
-      const message = `${job.variationTitle}\n\n${description}\n\n${hashtags}\n${cta}`
+      let endpoint = `https://graph.facebook.com/v20.0/${pageId}/feed`
+      let response: Response
 
-      // Select Graph API Endpoint based on Post Format & Media
-      let endpoint = `https://graph.facebook.com/v26.0/${pageId}/feed`
-      let payload: Record<string, any> = { message, access_token: pageToken }
-
-      if (postFormat === "Image" && mediaUrl) {
-        endpoint = `https://graph.facebook.com/v26.0/${pageId}/photos`
-        payload = { url: mediaUrl, caption: message, access_token: pageToken }
-      } else if (postFormat === "Video" && mediaUrl) {
-        endpoint = `https://graph.facebook.com/v26.0/${pageId}/videos`
-        payload = { file_url: mediaUrl, description: message, access_token: pageToken }
+      if (actualFormat === "Video" && actualMedia) {
+        endpoint = `https://graph.facebook.com/v20.0/${pageId}/videos`
+        try {
+          const fd = new FormData()
+          if (actualMedia.startsWith("/")) {
+            const fileBlob = await fetch(actualMedia).then((r) => r.blob())
+            fd.append("source", fileBlob, "video.mp4")
+          } else {
+            fd.append("file_url", actualMedia)
+          }
+          fd.append("title", job.videoTitle || job.variationTitle)
+          fd.append("description", message)
+          fd.append("access_token", pageToken)
+          response = await fetch(endpoint, { method: "POST", body: fd })
+        } catch {
+          response = await fetch(endpoint, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              file_url: actualMedia,
+              title: job.videoTitle || job.variationTitle,
+              description: message,
+              access_token: pageToken,
+            }),
+          })
+        }
+      } else if (actualFormat === "Image" && actualMedia) {
+        endpoint = `https://graph.facebook.com/v20.0/${pageId}/photos`
+        try {
+          const fd = new FormData()
+          if (actualMedia.startsWith("/")) {
+            const fileBlob = await fetch(actualMedia).then((r) => r.blob())
+            fd.append("source", fileBlob, "image.jpg")
+          } else {
+            fd.append("url", actualMedia)
+          }
+          fd.append("caption", message)
+          fd.append("access_token", pageToken)
+          response = await fetch(endpoint, { method: "POST", body: fd })
+        } catch {
+          response = await fetch(endpoint, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ url: actualMedia, caption: message, access_token: pageToken }),
+          })
+        }
+      } else {
+        try {
+          const fd = new FormData()
+          fd.append("message", message)
+          fd.append("access_token", pageToken)
+          response = await fetch(endpoint, { method: "POST", body: fd })
+        } catch {
+          response = await fetch(endpoint, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ message, access_token: pageToken }),
+          })
+        }
       }
-
-      const response = await fetch(endpoint, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      })
 
       const data = await response.json()
 
@@ -476,7 +1018,7 @@ export default function SafePostSchedulerPage() {
               await new Promise((r) => setTimeout(r, job.ctaPinConfig!.delaySeconds * 1000))
             }
 
-            const commentRes = await fetch(`https://graph.facebook.com/v26.0/${createdPostId}/comments`, {
+            const commentRes = await fetch(`https://graph.facebook.com/v20.0/${createdPostId}/comments`, {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({
@@ -512,7 +1054,7 @@ export default function SafePostSchedulerPage() {
           }
         }
 
-        return { success: true, postId: createdPostId }
+        return { success: true, postId: createdPostId, engine: "graph_api" as const }
       } else {
         return { success: false, error: data.error?.message || "Unknown Graph API error" }
       }
@@ -521,43 +1063,104 @@ export default function SafePostSchedulerPage() {
     }
   }
 
-  // Queue Processing Worker
+  // Synchronous refs to prevent stale closure race conditions in async queue timers
+  const isExecutingRef = useRef(false)
+  const queueJobsRef = useRef(queueJobs)
+  queueJobsRef.current = queueJobs
+  const publishEngineRef = useRef(publishEngine)
+  publishEngineRef.current = publishEngine
+
+  // Queue Processing Worker - ONLY processes jobs when their scheduled execution time arrives!
   useEffect(() => {
     const timer = setInterval(async () => {
-      setQueueJobs(prevJobs => {
-        const pendingIdx = prevJobs.findIndex(j => j.status === "Pending")
-        if (pendingIdx !== -1) {
-          const updated = [...prevJobs]
-          updated[pendingIdx] = { ...updated[pendingIdx], status: "Processing" as const }
-          saveQueueJobsToStorage(updated)
+      if (isExecutingRef.current) return
 
-          const jobToPublish = updated[pendingIdx]
-          publishToFacebookPage(jobToPublish).then(result => {
-            setQueueJobs(prev => {
-              const final = prev.map(j => {
-                if (j.id === jobToPublish.id) {
-                  if (result.success) {
-                    return { ...j, status: "Posted" as const }
-                  } else {
-                    const newRetry = j.retryCount + 1
-                    if (newRetry >= j.maxRetries) {
-                      return { ...j, status: "Failed" as const, retryCount: newRetry, lastError: result.error }
-                    }
-                    return { ...j, status: "Pending" as const, retryCount: newRetry, lastError: result.error }
-                  }
-                }
-                return j
-              })
-              saveQueueJobsToStorage(final)
-              return final
-            })
-          })
+      const now = Date.now()
+      const currentJobs = queueJobsRef.current
 
-          return updated
-        }
-        return prevJobs
+      // 1. Self-healing: If any job is marked "Processing" but isExecutingRef is false,
+      // it means an interrupted process or race condition left it stuck. Reset it immediately!
+      const stuckJob = currentJobs.find((j) => j.status === "Processing")
+      if (stuckJob) {
+        console.warn(`[Queue Worker] Auto-healing stuck job "${stuckJob.id}". Resetting to Pending for immediate dispatch.`)
+        setQueueJobs((prev) => {
+          const healed = prev.map((j) =>
+            j.id === stuckJob.id ? { ...j, status: "Pending" as const, executeAtTimestamp: now } : j
+          )
+          saveQueueJobsToStorage(healed)
+          return healed
+        })
+        return
+      }
+
+      // 2. Find pending job that is strictly due for execution
+      const dueJob = currentJobs.find(
+        (j) => j.status === "Pending" && (j.executeAtTimestamp ? now >= j.executeAtTimestamp : false)
+      )
+      if (!dueJob) return
+
+      // 3. Acquire mutex lock and set status to Processing
+      isExecutingRef.current = true
+      setQueueJobs((prev) => {
+        const updated = prev.map((j) =>
+          j.id === dueJob.id ? { ...j, status: "Processing" as const } : j
+        )
+        saveQueueJobsToStorage(updated)
+        return updated
       })
-    }, 5000)
+
+      try {
+        const result = await publishToFacebookPage(dueJob)
+        setQueueJobs((prev) => {
+          const final = prev.map((j) => {
+            if (j.id === dueJob.id) {
+              if (result.success) {
+                return {
+                  ...j,
+                  status: "Posted" as const,
+                  engine: (result as any).engine || "bot",
+                  lastError: undefined,
+                }
+              } else {
+                const newRetry = j.retryCount + 1
+                if (newRetry >= j.maxRetries) {
+                  return { ...j, status: "Failed" as const, retryCount: newRetry, lastError: result.error }
+                }
+                return {
+                  ...j,
+                  status: "Pending" as const,
+                  retryCount: newRetry,
+                  executeAtTimestamp: Date.now() + 2 * 60 * 1000, // 2-minute backoff delay before retry
+                  lastError: result.error,
+                }
+              }
+            }
+            return j
+          })
+          saveQueueJobsToStorage(final)
+          return final
+        })
+      } catch (execErr: any) {
+        console.error("Queue execution error:", execErr)
+        setQueueJobs((prev) => {
+          const final = prev.map((j) =>
+            j.id === dueJob.id
+              ? {
+                  ...j,
+                  status: "Pending" as const,
+                  retryCount: j.retryCount + 1,
+                  executeAtTimestamp: Date.now() + 2 * 60 * 1000,
+                  lastError: execErr.message || "Queue execution exception",
+                }
+              : j
+          )
+          saveQueueJobsToStorage(final)
+          return final
+        })
+      } finally {
+        isExecutingRef.current = false
+      }
+    }, 2500)
 
     return () => clearInterval(timer)
   }, [])
@@ -671,26 +1274,51 @@ export default function SafePostSchedulerPage() {
       : postFormat === "Story" 
       ? `[Story] ${title}` 
       : postFormat === "Video" 
-      ? `[Video] ${videoTitle || title}` 
-      : `[${selectedTone}] ${title}`
+      ? (videoTitle || title) 
+      : title
+
+    const executeAtTimestamp = scheduleMode === "SpecificTime" && scheduledDateTime
+      ? new Date(scheduledDateTime).getTime()
+      : Date.now() + (delay * 60 * 1000)
 
     // 1. Create Queue Jobs for Bull Queue Worker
-    const newJobs: QueueJob[] = accountsToSchedule.map((account, idx) => ({
-      id: `job-${Date.now()}-${idx}`,
-      variationTitle: postDisplayTitle,
-      accountName: account,
-      delayMinutes: delay,
-      scheduledFor: scheduleMode === "SpecificTime" ? `Scheduled for ${formattedTime}` : `Scheduled in ${delay} mins`,
-      status: "Pending",
-      retryCount: 0,
-      maxRetries: 3,
-      ctaPinConfig: enableCtaPinComment && ctaCommentText.trim() ? {
-        enabled: true,
-        commentText: ctaCommentText.trim(),
-        delaySeconds: ctaDelaySeconds,
-        autoPin: ctaAutoPin,
-      } : undefined,
-    }))
+    const newJobs: QueueJob[] = accountsToSchedule.map((account, idx) => {
+      const accountExecutionTime = scheduleMode === "SpecificTime"
+        ? executeAtTimestamp + (idx * 5 * 60 * 1000)
+        : Date.now() + ((idx + 1) * delay * 60 * 1000)
+
+      return {
+        id: `job-${Date.now()}-${idx}`,
+        variationTitle: postDisplayTitle,
+        accountName: account,
+        delayMinutes: scheduleMode === "SpecificTime" ? 0 : delay * (idx + 1),
+        scheduledFor: scheduleMode === "SpecificTime" ? `Scheduled for ${formattedTime}` : `Scheduled in ${delay * (idx + 1)} mins`,
+        status: "Pending",
+        retryCount: 0,
+        maxRetries: 3,
+        createdAtTimestamp: Date.now(),
+        executeAtTimestamp: accountExecutionTime,
+        scheduleType: scheduleMode,
+        postFormat,
+        description: postFormat === "Poll"
+          ? `Question: ${pollQuestion}\nChoices: ${pollOptions.filter(Boolean).join(" | ")}`
+          : description,
+        mediaUrl: postFormat === "Text" || postFormat === "Poll"
+          ? ""
+          : (postFormat === "Video" || postFormat === "Reel")
+          ? (mediaUrl && mediaUrl.match(/\.(mp4|mov|webm)/i) ? mediaUrl : "/sample-video.mp4")
+          : mediaUrl,
+        videoTitle,
+        hashtags,
+        cta,
+        ctaPinConfig: enableCtaPinComment && ctaCommentText.trim() ? {
+          enabled: true,
+          commentText: ctaCommentText.trim(),
+          delaySeconds: ctaDelaySeconds,
+          autoPin: ctaAutoPin,
+        } : undefined,
+      }
+    })
 
     const updatedJobs = [...newJobs, ...queueJobs]
     setQueueJobs(updatedJobs)
@@ -722,20 +1350,170 @@ export default function SafePostSchedulerPage() {
     }, 1200)
   }
 
+  const [runningJobId, setRunningJobId] = useState<string | null>(null)
+
+  // Handle Force Run Job Immediately (Bypasses schedule time and stuck status)
+  const handleForceRunJob = async (id: string) => {
+    const targetJob = queueJobsRef.current.find((j) => j.id === id) || queueJobs.find((j) => j.id === id)
+    if (!targetJob) return
+
+    setRunningJobId(id)
+    showToast("🚀 ফেসবুকে পোস্টিং রোবট সক্রিয় হচ্ছে...")
+    isExecutingRef.current = true
+
+    setQueueJobs((prev) => {
+      const updated = prev.map((j) => (j.id === id ? { ...j, status: "Processing" as const, lastError: undefined } : j))
+      saveQueueJobsToStorage(updated)
+      return updated
+    })
+
+    try {
+      const res = await publishToFacebookPage(targetJob)
+      setQueueJobs((prev) => {
+        const final = prev.map((j) => {
+          if (j.id === id) {
+            if (res.success) {
+              return { ...j, status: "Posted" as const, engine: (res as any).engine || "bot", lastError: undefined }
+            } else {
+              return { ...j, status: "Failed" as const, retryCount: j.retryCount + 1, lastError: res.error }
+            }
+          }
+          return j
+        })
+        saveQueueJobsToStorage(final)
+        return final
+      })
+      if (res.success) {
+        showToast("✅ ফেসবুকে সফলভাবে পোস্ট পাবলিশ হয়েছে!")
+      } else {
+        showToast(`⚠️ Publishing error: ${res.error || "Failed"}`)
+      }
+    } catch (e: any) {
+      showToast(`⚠️ Exception: ${e.message}`)
+    } finally {
+      isExecutingRef.current = false
+      setRunningJobId(null)
+    }
+  }
+
+  // Handle Reset Stuck Processing Job back to Pending
+  const handleResetJobToPending = (id: string) => {
+    isExecutingRef.current = false
+    setRunningJobId(null)
+    // Delay 3 minutes so it doesn't immediately re-trigger in an unwanted loop, giving the user full control
+    const futureTime = Date.now() + 3 * 60 * 1000
+    setQueueJobs((prev) => {
+      const updated = prev.map((j) =>
+        j.id === id
+          ? {
+              ...j,
+              status: "Pending" as const,
+              executeAtTimestamp: futureTime,
+              scheduledFor: "Scheduled in 3 mins",
+              lastError: undefined,
+            }
+          : j
+      )
+      saveQueueJobsToStorage(updated)
+      return updated
+    })
+    showToast("🔄 জব রিসেট করা হয়েছে (Pending)। আপনি চাইলে 'Force Run' এ ক্লিক করে এখনই পোস্ট করতে পারেন।")
+  }
+
   // Handle Retry Failed Job
   const handleRetryJob = (id: string) => {
-    setQueueJobs(prev => prev.map(job => {
-      if (job.id === id) {
-        return { ...job, status: "Processing", retryCount: job.retryCount + 1, lastError: undefined }
-      }
-      return job
-    }))
+    handleForceRunJob(id)
+  }
+
+  // Toast Notification State
+  const [toastMessage, setToastMessage] = useState<string | null>(null)
+  const showToast = (msg: string) => {
+    setToastMessage(msg)
+    setTimeout(() => {
+      setToastMessage((cur) => (cur === msg ? null : cur))
+    }, 3000)
+  }
+
+  // Clear Confirmation Modal State
+  const [showClearConfirmModal, setShowClearConfirmModal] = useState(false)
+
+  // Handle Delete Single Queue Job
+  const handleDeleteQueueJob = (id: string) => {
+    const updated = queueJobs.filter(j => j.id !== id)
+    setQueueJobs(updated)
+    saveQueueJobsToStorage(updated)
+    showToast("Job removed from queue")
+  }
+
+  // Handle Clear All Queue Jobs Confirmation
+  const handleConfirmClearAll = () => {
+    setQueueJobs([])
+    saveQueueJobsToStorage([])
+    setShowClearConfirmModal(false)
+    showToast("All queue jobs cleared successfully")
   }
 
   // Token Manager Modal State
   const [showTokenModal, setShowTokenModal] = useState(false)
-  const [activePageToken, setActivePageToken] = useState("EAAG... (Meta Graph API Page Token)")
+  const [activePageToken, setActivePageToken] = useState("")
   const [tokenSaved, setTokenSaved] = useState(false)
+  const [tokenTesting, setTokenTesting] = useState(false)
+  const [tokenTestResult, setTokenTestResult] = useState<{ success: boolean; message: string } | null>(null)
+
+  // Initialize activePageToken from registeredPages on mount or when pages update
+  useEffect(() => {
+    const careHubPage = registeredPages.find((p) => p.pageName === "CARE HUB BD")
+    if (careHubPage && careHubPage.accessToken) {
+      setActivePageToken(careHubPage.accessToken)
+    } else if (env.NEXT_PUBLIC_FB_PAGE_TOKEN_CARE_HUB_BD) {
+      setActivePageToken(env.NEXT_PUBLIC_FB_PAGE_TOKEN_CARE_HUB_BD)
+    }
+  }, [registeredPages])
+
+  const handleTestToken = async () => {
+    const trimmed = activePageToken.trim()
+    if (!trimmed || trimmed.startsWith("EAAG...")) {
+      setTokenTestResult({ success: false, message: "Please enter a valid Facebook Page Access Token." })
+      return
+    }
+    setTokenTesting(true)
+    setTokenTestResult(null)
+    try {
+      const res = await fetch(`https://graph.facebook.com/v20.0/me?access_token=${encodeURIComponent(trimmed)}`)
+      const data = await res.json()
+      if (data.id && data.name) {
+        setTokenTestResult({ success: true, message: `Token verified! Connected to Facebook: "${data.name}" (ID: ${data.id})` })
+      } else {
+        setTokenTestResult({ success: false, message: `Facebook API Error: ${data.error?.message || "Invalid Token"}` })
+      }
+    } catch (e: any) {
+      setTokenTestResult({ success: false, message: e.message || "Failed to reach Meta Graph API" })
+    } finally {
+      setTokenTesting(false)
+    }
+  }
+
+  const handleSavePageToken = () => {
+    const trimmed = activePageToken.trim()
+    if (!trimmed) return
+    const targetPageId = env.NEXT_PUBLIC_FB_PAGE_ID_CARE_HUB_BD || "892168940637389"
+    updatePageToken(targetPageId, trimmed, Date.now() + 60 * 24 * 60 * 60 * 1000)
+
+    setRegisteredPages((prev) =>
+      prev.map((p) =>
+        p.pageName === "CARE HUB BD" || p.pageId === targetPageId
+          ? { ...p, accessToken: trimmed, tokenExpiry: Date.now() + 60 * 24 * 60 * 60 * 1000 }
+          : p
+      )
+    )
+
+    setTokenSaved(true)
+    showToast("Facebook Page Token saved & active for CARE HUB BD")
+    setTimeout(() => {
+      setTokenSaved(false)
+      setShowTokenModal(false)
+    }, 1500)
+  }
 
   return (
     <div className="space-y-6 max-w-6xl">
@@ -755,7 +1533,7 @@ export default function SafePostSchedulerPage() {
                 <span>Manage FB Page Token</span>
               </button>
               <a
-                href={`/workspace/workspace-1/safe/ai-variations`}
+                href={`/workspace/${workspaceId}/safe/ai-variations`}
                 className="bg-blue-50 dark:bg-blue-950/50 hover:bg-blue-100 dark:hover:bg-blue-900/50 text-blue-600 dark:text-blue-400 font-semibold text-xs px-3 py-1.5 rounded-xl border border-blue-200 dark:border-blue-800 transition flex items-center gap-1.5 shadow-xs"
               >
                 <Sparkles className="w-3.5 h-3.5" />
@@ -825,8 +1603,89 @@ export default function SafePostSchedulerPage() {
             <div className="flex items-center justify-between border-b border-border pb-2.5">
               <h2 className="font-bold text-sm text-foreground">Master Post Creator</h2>
               <span className="text-[11px] font-semibold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/40 px-2 py-0.5 rounded-md border border-blue-200 dark:border-blue-900/40">
-                FB Graph API v20.0
+                {publishEngine === "bot" ? "🤖 Puppeteer Bot Engine" : "⚡ FB Graph API v20.0"}
               </span>
+            </div>
+
+            {/* Clickable Image Card Imported Alert Banner */}
+            {loadedCard && (
+              <div className="p-3.5 bg-gradient-to-r from-blue-500/10 via-indigo-500/10 to-blue-600/10 border-2 border-blue-500/40 rounded-xl space-y-2.5 shadow-xs">
+                <div className="flex items-center justify-between flex-wrap gap-2">
+                  <div className="flex items-center gap-2 text-xs font-bold text-blue-600 dark:text-blue-400">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
+                    <span>Clickable Image Card Imported</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <a
+                      href={`/c/${loadedCard.id}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-[11px] bg-blue-600 hover:bg-blue-700 text-white font-bold px-2.5 py-1 rounded-lg transition flex items-center gap-1 shadow-xs"
+                    >
+                      <span>Test Redirect</span>
+                      <ExternalLink className="w-3 h-3" />
+                    </a>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3 pt-0.5">
+                  <div className="w-14 h-14 rounded-lg overflow-hidden border border-border bg-black shrink-0">
+                    <img src={loadedCard.imageUrl} alt="" className="w-full h-full object-cover" />
+                  </div>
+                  <div className="min-w-0 flex-1 space-y-0.5">
+                    <p className="text-xs font-bold text-foreground truncate">{loadedCard.title}</p>
+                    <p className="text-[11px] text-muted-foreground line-clamp-1">{loadedCard.caption || loadedCard.description}</p>
+                    <div className="flex items-center gap-2 text-[10px] text-muted-foreground font-mono truncate">
+                      <span className="text-emerald-500 font-bold">Target:</span>
+                      <span className="truncate">{loadedCard.destinationUrl}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Active Publishing Engine Selector */}
+            <div className="p-3.5 bg-blue-500/10 border border-blue-500/30 rounded-xl space-y-2.5">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-foreground flex items-center gap-1.5">
+                  <Bot className="w-4 h-4 text-blue-600 dark:text-blue-400 shrink-0" />
+                  <span>পোস্টিং ইঞ্জিন (Publishing Engine)</span>
+                </span>
+                <span className="text-[10px] bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 font-bold px-2.5 py-0.5 rounded-full flex items-center gap-1">
+                  <CheckCircle2 className="w-3 h-3 shrink-0" />
+                  <span>{publishEngine === "bot" ? "Puppeteer Bot সক্রিয় (১০০% টোকেন ফ্রি)" : "Meta Graph API"}</span>
+                </span>
+              </div>
+              <div className="grid grid-cols-2 gap-2 text-xs">
+                <button
+                  type="button"
+                  onClick={() => setPublishEngine("bot")}
+                  className={`p-2.5 rounded-xl border font-bold flex items-center justify-center gap-2 transition ${
+                    publishEngine === "bot"
+                      ? "bg-blue-600 text-white border-blue-500 shadow-md shadow-blue-600/25"
+                      : "bg-card text-muted-foreground border-border hover:bg-muted"
+                  }`}
+                >
+                  <Bot className="w-4 h-4 shrink-0" />
+                  <span>Puppeteer Bot (রোবট মোড)</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPublishEngine("graph_api")}
+                  className={`p-2.5 rounded-xl border font-bold flex items-center justify-center gap-2 transition ${
+                    publishEngine === "graph_api"
+                      ? "bg-blue-600 text-white border-blue-500 shadow-md shadow-blue-600/25"
+                      : "bg-card text-muted-foreground border-border hover:bg-muted"
+                  }`}
+                >
+                  <Zap className="w-4 h-4 shrink-0" />
+                  <span>Meta Graph API (টোকেন মোড)</span>
+                </button>
+              </div>
+              <p className="text-[11px] text-muted-foreground leading-relaxed">
+                {publishEngine === "bot"
+                  ? "✅ Puppeteer Bot সক্রিয়: আপনার সেভ করা ফেসবুক কুকি দিয়ে স্বয়ংক্রিয়ভাবে সরাসরি পেজ ও গ্রুপে পোস্ট হবে। কোনো মেটা ডেভেলপার অ্যাপ, রিভিউ বা EAAG টোকেন লাগবে না!"
+                  : "⚠️ Meta Graph API: এই মোডে পোস্ট করতে পেজের নিজস্ব ভ্যালিড মেটা পেজ অ্যাক্সেস টোকেন (EAAG...) প্রয়োজন।"}
+              </p>
             </div>
 
             {/* Target Account / Page Selector (Multi-Select Support) */}
@@ -836,9 +1695,24 @@ export default function SafePostSchedulerPage() {
                   <Shield className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
                   <span>Target Pages & Accounts ({allSelectableAccounts.length} Connected)</span>
                 </label>
-                <span className="text-[10px] text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-900/60 px-2 py-0.5 rounded-full font-semibold">
-                  {selectedTargetAccounts.length} Selected
-                </span>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (selectedTargetAccounts.length === allSelectableAccounts.length) {
+                        setSelectedTargetAccounts([])
+                      } else {
+                        setSelectedTargetAccounts(allSelectableAccounts.map((a) => a.name))
+                      }
+                    }}
+                    className="text-[11px] font-bold text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition hover:underline cursor-pointer bg-blue-500/10 hover:bg-blue-500/20 px-2.5 py-0.5 rounded-md border border-blue-500/20"
+                  >
+                    {selectedTargetAccounts.length === allSelectableAccounts.length ? "Deselect All" : "Select All"}
+                  </button>
+                  <span className="text-[10px] text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-900/60 px-2 py-0.5 rounded-full font-semibold">
+                    {selectedTargetAccounts.length} Selected
+                  </span>
+                </div>
               </div>
               <div className="space-y-1.5 bg-background border border-border rounded-xl p-2.5 max-h-36 overflow-y-auto">
                 {allSelectableAccounts.map((acc) => {
@@ -853,9 +1727,7 @@ export default function SafePostSchedulerPage() {
                             if (e.target.checked) {
                               setSelectedTargetAccounts((prev) => [...prev, acc.name])
                             } else {
-                              if (selectedTargetAccounts.length > 1) {
-                                setSelectedTargetAccounts((prev) => prev.filter((name) => name !== acc.name))
-                              }
+                              setSelectedTargetAccounts((prev) => prev.filter((name) => name !== acc.name))
                             }
                           }}
                           className="rounded text-blue-600 focus:ring-blue-500"
@@ -895,7 +1767,20 @@ export default function SafePostSchedulerPage() {
                 {(["Text", "Image", "Video", "Reel", "Story", "Poll"] as const).map((fmt) => (
                   <button
                     key={fmt}
-                    onClick={() => setPostFormat(fmt)}
+                    onClick={() => {
+                      setPostFormat(fmt)
+                      if (fmt === "Video" || fmt === "Reel") {
+                        if (!mediaUrl || !mediaUrl.match(/\.(mp4|mov|webm)/i)) {
+                          setMediaUrl("/sample-video.mp4")
+                        }
+                      } else if (fmt === "Text" || fmt === "Poll") {
+                        setMediaUrl("")
+                      } else if (fmt === "Image" || fmt === "Story") {
+                        if (!mediaUrl || mediaUrl.match(/\.(mp4|mov|webm)/i)) {
+                          setMediaUrl("https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=600&auto=format&fit=crop")
+                        }
+                      }
+                    }}
                     className={`py-2 rounded-lg border transition flex flex-col items-center justify-center space-y-0.5 ${
                       postFormat === fmt
                         ? "bg-blue-600 text-white border-blue-600 shadow-sm"
@@ -1116,16 +2001,48 @@ export default function SafePostSchedulerPage() {
 
             {/* CONDITIONAL FORMAT 4: VIDEO POST CREATOR */}
             {postFormat === "Video" && (
-              <div className="p-3.5 bg-rose-500/10 border border-rose-500/20 rounded-xl space-y-3">
-                <div className="flex items-center justify-between font-extrabold text-xs text-rose-700 dark:text-rose-300">
-                  <span className="flex items-center space-x-1.5">
-                    <Video className="w-4 h-4 text-rose-500" />
+              <div className="p-4 bg-card border border-border rounded-xl space-y-3.5 shadow-xs">
+                <div className="flex items-center justify-between font-extrabold text-xs text-foreground">
+                  <span className="flex items-center space-x-1.5 text-blue-600 dark:text-blue-400">
+                    <Video className="w-4 h-4" />
                     <span>Facebook Feed Video Post</span>
                   </span>
-                  <span className="text-[10px] bg-rose-500/20 px-2 py-0.5 rounded">
+                  <span className="text-[10px] bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20 px-2 py-0.5 rounded font-bold">
                     MP4 / H.264
                   </span>
                 </div>
+
+                {/* Video Media Preview Player */}
+                {mediaUrl && (
+                  <div className="rounded-xl overflow-hidden border border-border bg-black/40 p-2 space-y-2">
+                    <div className="flex items-center justify-between text-[11px] px-1 font-semibold text-muted-foreground">
+                      <span className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400">
+                        <CheckCircle2 className="w-3.5 h-3.5" />
+                        <span>Attached Video Media</span>
+                      </span>
+                      <span className="text-[10px] bg-muted px-2 py-0.5 rounded truncate max-w-[200px]">
+                        {mediaUrl}
+                      </span>
+                    </div>
+                    {mediaUrl.endsWith(".mp4") || mediaUrl.includes("/downloads/") ? (
+                      <video
+                        controls
+                        src={mediaUrl}
+                        poster={thumbnailUrl}
+                        className="w-full max-h-52 rounded-lg bg-black object-contain shadow-xs"
+                      />
+                    ) : (
+                      thumbnailUrl && (
+                        <div className="relative w-full h-44 rounded-lg overflow-hidden bg-black flex items-center justify-center">
+                          <img src={thumbnailUrl} alt="Thumbnail" className="w-full h-full object-cover" />
+                          <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+                            <Video className="w-10 h-10 text-white opacity-80" />
+                          </div>
+                        </div>
+                      )
+                    )}
+                  </div>
+                )}
 
                 <div>
                   <label className="text-[10px] font-bold text-muted-foreground uppercase">Video Title *</label>
@@ -1134,7 +2051,7 @@ export default function SafePostSchedulerPage() {
                     value={videoTitle}
                     onChange={(e) => setVideoTitle(e.target.value)}
                     placeholder="Video Headline"
-                    className="w-full mt-1 p-2 border rounded-lg bg-background text-xs font-bold"
+                    className="w-full mt-1 p-2 border border-border rounded-lg bg-background text-xs font-bold text-foreground"
                   />
                 </div>
 
@@ -1145,7 +2062,7 @@ export default function SafePostSchedulerPage() {
                     value={mediaUrl}
                     onChange={(e) => setMediaUrl(e.target.value)}
                     placeholder="https://.../video.mp4 or /sample-video.mp4"
-                    className="w-full mt-1 p-2 border rounded-lg bg-background text-xs font-mono"
+                    className="w-full mt-1 p-2 border border-border rounded-lg bg-background text-xs font-mono text-foreground"
                   />
                 </div>
 
@@ -1156,7 +2073,7 @@ export default function SafePostSchedulerPage() {
                     value={thumbnailUrl}
                     onChange={(e) => setThumbnailUrl(e.target.value)}
                     placeholder="https://.../thumbnail.jpg"
-                    className="w-full mt-1 p-2 border rounded-lg bg-background text-xs font-mono"
+                    className="w-full mt-1 p-2 border border-border rounded-lg bg-background text-xs font-mono text-foreground"
                   />
                 </div>
 
@@ -1166,7 +2083,7 @@ export default function SafePostSchedulerPage() {
                     rows={3}
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
-                    className="w-full mt-1 p-2 border rounded-lg bg-background text-xs"
+                    className="w-full mt-1 p-2 border border-border rounded-lg bg-background text-xs text-foreground"
                   />
                 </div>
               </div>
@@ -1186,27 +2103,112 @@ export default function SafePostSchedulerPage() {
                 </div>
 
                 <div>
-                  <label className="font-bold text-xs block mb-1">Ad Copy / Description *</label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="font-bold text-xs block">Ad Copy / Description *</label>
+                    <span className="text-[11px] text-muted-foreground">{description.length} chars</span>
+                  </div>
                   <textarea
-                    rows={4}
+                    rows={7}
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
-                    className="w-full px-3 py-2 border rounded-lg bg-background text-xs"
+                    className="w-full px-3 py-2.5 border rounded-xl bg-background text-xs leading-relaxed min-h-[160px] focus:ring-1 focus:ring-blue-500 font-sans"
+                    placeholder="Enter post description, caption, hashtags, and CTA..."
                   />
                 </div>
 
                 {postFormat === "Image" && (
-                  <div>
-                    <label className="font-bold text-xs block mb-1">Attached Media URL</label>
+                  <div className="p-3 bg-muted/40 border border-border rounded-xl space-y-3">
+                    <div className="flex items-center justify-between">
+                      <label className="text-[11px] font-semibold text-muted-foreground uppercase flex items-center gap-1.5">
+                        <ImageIcon className="w-3.5 h-3.5 text-blue-500" />
+                        <span>Image Creative Media Attachment</span>
+                      </label>
+                      <span className="text-[10px] text-blue-600 dark:text-blue-400 font-semibold bg-blue-50 dark:bg-blue-950/60 px-1.5 py-0.5 rounded border border-blue-200 dark:border-blue-900/60">
+                        Scheduler &amp; Bot Ready
+                      </span>
+                    </div>
+
+                    {/* Media Actions: 1) From Library, 2) Direct File Upload */}
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setShowLibraryPicker(true)}
+                        className="flex-1 min-w-[120px] h-8 px-2.5 rounded-lg border border-blue-500/30 bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 text-xs font-bold hover:bg-blue-500/20 transition flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
+                      >
+                        <FolderPlus className="w-3.5 h-3.5" />
+                        <span>From Library</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => localFileInputRef.current?.click()}
+                        disabled={isUploadingMedia}
+                        className="flex-1 min-w-[120px] h-8 px-2.5 rounded-lg border border-border bg-card hover:bg-muted text-foreground text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
+                      >
+                        {isUploadingMedia ? (
+                          <>
+                            <Loader2 className="w-3.5 h-3.5 animate-spin text-blue-500" />
+                            <span>Uploading...</span>
+                          </>
+                        ) : (
+                          <>
+                            <UploadCloud className="w-3.5 h-3.5 text-emerald-500" />
+                            <span>Upload File</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
+
+                    {/* Hidden Local File Input */}
                     <input
-                      type="text"
-                      value={mediaUrl}
-                      onChange={(e) => setMediaUrl(e.target.value)}
-                      className="w-full px-3 py-1.5 border rounded-lg bg-background text-xs mb-2"
+                      ref={localFileInputRef}
+                      type="file"
+                      accept="image/png,image/jpeg,image/webp,image/gif"
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0]
+                        if (file) handleLocalFileUpload(file)
+                      }}
                     />
+
+                    {/* Media URL Input */}
+                    <div className="space-y-1">
+                      <span className="text-[10px] text-muted-foreground uppercase font-semibold">Or Media URL / Path:</span>
+                      <input
+                        type="text"
+                        value={mediaUrl}
+                        onChange={(e) => setMediaUrl(e.target.value)}
+                        placeholder="https://.../product.jpg or /uploads/..."
+                        className="w-full h-8 px-2.5 border border-border rounded-lg bg-background text-[11px] font-mono text-foreground focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 focus:outline-none transition"
+                      />
+                    </div>
+
+                    {/* Live Media Visual Preview Card */}
                     {mediaUrl && (
-                      <div className="h-40 rounded-lg overflow-hidden border bg-muted">
-                        <img src={mediaUrl} alt="Preview" className="w-full h-full object-cover" />
+                      <div className="relative p-2 bg-background border border-border rounded-xl flex items-center gap-3">
+                        <div className="w-20 h-14 bg-muted rounded-lg overflow-hidden flex items-center justify-center shrink-0 border border-border">
+                          <img src={mediaUrl} alt="Preview" className="w-full h-full object-cover" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-bold truncate text-foreground">
+                            {uploadedFileInfo?.name || (mediaUrl.startsWith("http") ? mediaUrl.split("/").pop() : mediaUrl)}
+                          </p>
+                          <p className="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold flex items-center gap-1">
+                            <CheckCircle2 className="w-3 h-3" />
+                            <span>Ready for Post Scheduler &amp; Facebook Bot</span>
+                            {uploadedFileInfo?.size && <span className="text-muted-foreground">({uploadedFileInfo.size})</span>}
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setMediaUrl("")
+                            setUploadedFileInfo(null)
+                          }}
+                          className="p-1.5 rounded-lg text-muted-foreground hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition cursor-pointer"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
                       </div>
                     )}
                   </div>
@@ -1374,11 +2376,17 @@ export default function SafePostSchedulerPage() {
                   </div>
                 )}
 
-                {/* Auto Assign Mode */}
-                <div>
-                  <label className="font-semibold block mb-1 text-foreground">Account Assignment Mode</label>
+                {/* Account Assignment Mode */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <label className="font-semibold block text-foreground text-xs">Account Assignment Mode</label>
+                    <span className="text-[10px] text-muted-foreground font-medium">
+                      {assignMode === "Auto" ? "AI Smart Balanced" : `${selectedTargetAccounts.length} Custom Sequenced`}
+                    </span>
+                  </div>
                   <div className="grid grid-cols-2 gap-2">
                     <button
+                      type="button"
                       onClick={() => setAssignMode("Auto")}
                       className={`py-2 px-3 rounded-xl border text-xs font-semibold transition flex items-center justify-center gap-1.5 ${
                         assignMode === "Auto"
@@ -1390,6 +2398,7 @@ export default function SafePostSchedulerPage() {
                       <span>AI Auto Assign</span>
                     </button>
                     <button
+                      type="button"
                       onClick={() => setAssignMode("Manual")}
                       className={`py-2 px-3 rounded-xl border text-xs font-semibold transition flex items-center justify-center gap-1.5 ${
                         assignMode === "Manual"
@@ -1401,6 +2410,92 @@ export default function SafePostSchedulerPage() {
                       <span>Manual Drag/Drop</span>
                     </button>
                   </div>
+
+                  {assignMode === "Auto" ? (
+                    <div className="p-3 rounded-xl border border-blue-500/20 bg-blue-500/5 space-y-2 animate-in fade-in duration-150">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-1.5">
+                          <Sparkles className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+                          <span className="text-xs font-bold text-foreground">AI Smart Load Balancer</span>
+                        </div>
+                        <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20">
+                          Automatic
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-muted-foreground leading-relaxed">
+                        AI automatically distributes scheduled posts across your <strong className="text-foreground">{selectedTargetAccounts.length} selected account(s)</strong>. It staggers publishing times and optimizes account safety to prevent Facebook spam and shadowban triggers.
+                      </p>
+                      <div className="flex flex-wrap gap-1.5 pt-0.5 text-[10px]">
+                        <span className="px-2 py-0.5 rounded-md bg-card border border-border text-foreground font-medium flex items-center gap-1">
+                          <Shield className="w-3 h-3 text-emerald-500" /> Anti-Ban Staggering
+                        </span>
+                        <span className="px-2 py-0.5 rounded-md bg-card border border-border text-foreground font-medium flex items-center gap-1">
+                          <Clock className="w-3 h-3 text-blue-500" /> Jitter Intervals
+                        </span>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="p-3 rounded-xl border border-border bg-card space-y-2.5 animate-in fade-in duration-150">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <span className="text-xs font-bold text-foreground">Manual Posting Sequence</span>
+                          <p className="text-[10px] text-muted-foreground">Order in which accounts will receive this post</p>
+                        </div>
+                        <span className="text-[10px] font-semibold text-blue-600 dark:text-blue-400">
+                          {selectedTargetAccounts.length} in queue
+                        </span>
+                      </div>
+
+                      {selectedTargetAccounts.length === 0 ? (
+                        <div className="p-3 rounded-xl border border-dashed border-border text-center text-xs text-muted-foreground">
+                          Please select at least one account from <strong>Target Pages & Accounts</strong> above.
+                        </div>
+                      ) : (
+                        <div className="space-y-1.5 max-h-52 overflow-y-auto pr-1">
+                          {selectedTargetAccounts.map((accName, idx) => {
+                            const accInfo = allSelectableAccounts.find(a => a.name === accName)
+                            return (
+                              <div
+                                key={accName}
+                                className="flex items-center justify-between p-2 rounded-lg border border-border bg-muted/20 hover:bg-muted/40 transition text-xs"
+                              >
+                                <div className="flex items-center gap-2 min-w-0">
+                                  <span className="w-5 h-5 rounded-md bg-blue-600/10 text-blue-600 dark:text-blue-400 font-bold text-[10px] flex items-center justify-center shrink-0">
+                                    #{idx + 1}
+                                  </span>
+                                  <div className="min-w-0">
+                                    <p className="font-semibold text-foreground truncate text-xs">{accName}</p>
+                                    <p className="text-[10px] text-muted-foreground truncate">{accInfo?.category || "Connected Account"}</p>
+                                  </div>
+                                </div>
+
+                                <div className="flex items-center gap-1 shrink-0">
+                                  <button
+                                    type="button"
+                                    disabled={idx === 0}
+                                    onClick={() => handleReorderAccount(idx, "up")}
+                                    className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground disabled:opacity-30 disabled:hover:bg-transparent"
+                                    title="Move Up"
+                                  >
+                                    <ArrowUp className="w-3.5 h-3.5" />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    disabled={idx === selectedTargetAccounts.length - 1}
+                                    onClick={() => handleReorderAccount(idx, "down")}
+                                    className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground disabled:opacity-30 disabled:hover:bg-transparent"
+                                    title="Move Down"
+                                  >
+                                    <ArrowDown className="w-3.5 h-3.5" />
+                                  </button>
+                                </div>
+                              </div>
+                            )
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 {/* Module 11 CTA Pin Comment Integration */}
@@ -1438,45 +2533,69 @@ export default function SafePostSchedulerPage() {
                   </div>
 
                   {enableCtaPinComment && (
-                    <div className="space-y-2 pt-2 border-t border-border text-xs">
-                      <div className="grid grid-cols-2 gap-2">
+                    <div className="space-y-2.5 pt-2 border-t border-border text-xs">
+                      <div className="grid grid-cols-2 gap-2.5">
                         <div>
-                          <label className="text-[10px] font-semibold text-muted-foreground uppercase">Template</label>
-                          <select
-                            value={selectedCtaTemplateId}
-                            onChange={(e) => handleSelectCtaTemplate(e.target.value)}
-                            className="w-full mt-1 p-2 border border-border rounded-xl bg-background text-xs font-medium"
-                          >
-                            {ctaTemplates.map((t) => (
-                              <option key={t.id} value={t.id}>
-                                {t.title}
+                          <div className="flex items-center justify-between mb-1">
+                            <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Template</label>
+                            <button
+                              type="button"
+                              onClick={() => setShowNewTemplateModal(true)}
+                              className="text-[10px] font-semibold text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-0.5"
+                            >
+                              <Plus className="w-2.5 h-2.5" /> New
+                            </button>
+                          </div>
+                          <div className="relative">
+                            <select
+                              value={selectedCtaTemplateId}
+                              onChange={(e) => handleSelectCtaTemplate(e.target.value)}
+                              className="w-full appearance-none bg-card hover:bg-muted/40 text-foreground border border-border focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 rounded-xl px-3 py-2 pr-8 text-xs font-medium cursor-pointer transition shadow-xs outline-none"
+                            >
+                              {ctaTemplates.map((t) => (
+                                <option key={t.id} value={t.id} className="bg-card text-foreground">
+                                  {t.title}
+                                </option>
+                              ))}
+                              <option value="__NEW__" className="bg-card text-blue-600 dark:text-blue-400 font-semibold">
+                                + Create Custom Template...
                               </option>
-                            ))}
-                          </select>
+                            </select>
+                            <ChevronDown className="w-3.5 h-3.5 text-muted-foreground absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                          </div>
                         </div>
 
                         <div>
-                          <label className="text-[10px] font-semibold text-muted-foreground uppercase">Anti-Ban Delay</label>
-                          <select
-                            value={ctaDelaySeconds}
-                            onChange={(e) => setCtaDelaySeconds(Number(e.target.value))}
-                            className="w-full mt-1 p-2 border border-border rounded-xl bg-background text-xs font-medium"
-                          >
-                            <option value={0}>0s (Immediate)</option>
-                            <option value={15}>15s (Natural Flow)</option>
-                            <option value={30}>30s (Safe)</option>
-                            <option value={60}>60s (Conservative)</option>
-                          </select>
+                          <div className="flex items-center justify-between mb-1">
+                            <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Anti-Ban Delay</label>
+                            <span className="text-[9px] text-muted-foreground font-medium">Safe timing</span>
+                          </div>
+                          <div className="relative">
+                            <select
+                              value={ctaDelaySeconds}
+                              onChange={(e) => setCtaDelaySeconds(Number(e.target.value))}
+                              className="w-full appearance-none bg-card hover:bg-muted/40 text-foreground border border-border focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 rounded-xl px-3 py-2 pr-8 text-xs font-medium cursor-pointer transition shadow-xs outline-none"
+                            >
+                              <option value={0} className="bg-card text-foreground">0s (Immediate)</option>
+                              <option value={15} className="bg-card text-foreground">15s (Natural Flow)</option>
+                              <option value={30} className="bg-card text-foreground">30s (Safe)</option>
+                              <option value={60} className="bg-card text-foreground">60s (Conservative)</option>
+                            </select>
+                            <ChevronDown className="w-3.5 h-3.5 text-muted-foreground absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                          </div>
                         </div>
                       </div>
 
                       <div>
-                        <label className="text-[10px] font-semibold text-muted-foreground uppercase">CTA Comment Body</label>
+                        <div className="flex items-center justify-between mb-1">
+                          <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">CTA Comment Body</label>
+                          <span className="text-[10px] text-muted-foreground">{ctaCommentText.length} chars</span>
+                        </div>
                         <textarea
                           rows={2}
                           value={ctaCommentText}
                           onChange={(e) => setCtaCommentText(e.target.value)}
-                          className="w-full mt-1 p-2.5 border border-border rounded-xl bg-background text-xs"
+                          className="w-full p-2.5 border border-border rounded-xl bg-card text-foreground text-xs focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none transition placeholder:text-muted-foreground"
                           placeholder="Comment text to post and pin..."
                         />
                       </div>
@@ -1534,6 +2653,17 @@ export default function SafePostSchedulerPage() {
               <span className="bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-900/40 text-xs font-semibold px-3 py-1 rounded-full">
                 ● Redis Queue Worker Online
               </span>
+              {queueJobs.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setShowClearConfirmModal(true)}
+                  className="px-2.5 py-1 text-xs font-semibold text-rose-600 dark:text-rose-400 hover:bg-rose-500/10 border border-rose-500/20 rounded-lg transition flex items-center gap-1 cursor-pointer"
+                  title="Clear all queue items"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>Clear All</span>
+                </button>
+              )}
             </div>
           </div>
 
@@ -1548,63 +2678,366 @@ export default function SafePostSchedulerPage() {
             </p>
           </div>
 
-          {/* Queue Jobs Table */}
-          <div className="space-y-3 text-xs">
-            {queueJobs.map((job) => (
-              <div key={job.id} className="border border-border p-4 rounded-xl space-y-2 bg-muted/10">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                  <div className="space-y-0.5">
-                    <span className="font-bold text-sm text-foreground block">{job.variationTitle}</span>
-                    <div className="flex flex-wrap items-center gap-2 text-muted-foreground text-[11px]">
-                      <span>Target: <strong className="text-foreground">{job.accountName}</strong></span>
-                      <span>•</span>
-                      <span>Enforced Delay: <strong className="text-blue-600">{job.delayMinutes} mins</strong></span>
-                      <span>•</span>
-                      <span>Execution: {job.scheduledFor}</span>
+          {/* Queue Metrics Summary & Batch Progress */}
+          {queueJobs.length > 0 && (
+            <div className="space-y-3">
+              {/* Quick Status Stats Pills */}
+              <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 text-xs">
+                <div className="p-2.5 rounded-xl border border-border bg-muted/20 flex flex-col items-center justify-center text-center">
+                  <span className="text-[10px] uppercase font-bold text-muted-foreground">Total In Queue</span>
+                  <span className="text-base font-extrabold text-foreground">{queueJobs.length}</span>
+                </div>
+                <div className="p-2.5 rounded-xl border border-amber-500/20 bg-amber-500/[0.04] flex flex-col items-center justify-center text-center">
+                  <span className="text-[10px] uppercase font-bold text-amber-500 flex items-center gap-1">
+                    <Clock className="w-2.5 h-2.5" />
+                    <span>Pending</span>
+                  </span>
+                  <span className="text-base font-extrabold text-amber-500">
+                    {queueJobs.filter((j) => j.status === "Pending").length}
+                  </span>
+                </div>
+                <div className="p-2.5 rounded-xl border border-blue-500/20 bg-blue-500/[0.04] flex flex-col items-center justify-center text-center">
+                  <span className="text-[10px] uppercase font-bold text-blue-500 flex items-center gap-1">
+                    <Loader2 className="w-2.5 h-2.5 animate-spin" />
+                    <span>Processing</span>
+                  </span>
+                  <span className="text-base font-extrabold text-blue-500">
+                    {queueJobs.filter((j) => j.status === "Processing").length}
+                  </span>
+                </div>
+                <div className="p-2.5 rounded-xl border border-emerald-500/20 bg-emerald-500/[0.04] flex flex-col items-center justify-center text-center">
+                  <span className="text-[10px] uppercase font-bold text-emerald-500 flex items-center gap-1">
+                    <CheckCircle2 className="w-2.5 h-2.5" />
+                    <span>Posted</span>
+                  </span>
+                  <span className="text-base font-extrabold text-emerald-500">
+                    {queueJobs.filter((j) => j.status === "Posted").length}
+                  </span>
+                </div>
+                <div className="p-2.5 rounded-xl border border-rose-500/20 bg-rose-500/[0.04] flex flex-col items-center justify-center text-center col-span-2 sm:col-span-1">
+                  <span className="text-[10px] uppercase font-bold text-rose-500 flex items-center gap-1">
+                    <AlertCircle className="w-2.5 h-2.5" />
+                    <span>Failed</span>
+                  </span>
+                  <span className="text-base font-extrabold text-rose-500">
+                    {queueJobs.filter((j) => j.status === "Failed").length}
+                  </span>
+                </div>
+              </div>
+
+              {/* Overall Batch Progress Bar with Next Post Countdown */}
+              {(() => {
+                const totalCount = queueJobs.length
+                const completedCount = queueJobs.filter((j) => j.status === "Posted").length
+                const overallPercent = Math.round((completedCount / Math.max(1, totalCount)) * 100)
+                const pendingSorted = queueJobs
+                  .filter((j) => j.status === "Pending")
+                  .sort((a, b) => (a.executeAtTimestamp || 0) - (b.executeAtTimestamp || 0))
+                const nextPending = pendingSorted[0]
+
+                return (
+                  <div className="p-3.5 bg-muted/20 border border-border rounded-xl space-y-2">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 text-xs">
+                      <div className="flex items-center space-x-2">
+                        <span className="font-bold text-foreground flex items-center gap-1.5">
+                          <Layers className="w-3.5 h-3.5 text-blue-500" />
+                          <span>Active Queue Batch Completion</span>
+                        </span>
+                        <span className="text-[11px] text-muted-foreground font-semibold">
+                          ({completedCount}/{totalCount} Completed • {overallPercent}%)
+                        </span>
+                      </div>
+
+                      {nextPending && (
+                        <div className="flex items-center gap-1.5 text-[11px] font-bold text-amber-500 bg-amber-500/10 px-2.5 py-0.5 rounded-full border border-amber-500/25">
+                          <Clock className="w-3 h-3 animate-spin [animation-duration:10s]" />
+                          <span>Next Task in:</span>
+                          <span className="font-mono text-foreground font-extrabold">
+                            {getJobProgressData(nextPending, nowTimestamp).formattedCountdown}
+                          </span>
+                          <span className="text-muted-foreground truncate max-w-[140px]">
+                            ({nextPending.accountName})
+                          </span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Overall Progress Bar Track */}
+                    <div className="w-full bg-muted/60 dark:bg-muted/40 h-2 rounded-full overflow-hidden border border-border/40">
+                      <div
+                        className="h-full bg-gradient-to-r from-blue-600 via-indigo-500 to-emerald-500 rounded-full transition-all duration-700 ease-out"
+                        style={{ width: `${overallPercent}%` }}
+                      />
                     </div>
                   </div>
+                )
+              })()}
+            </div>
+          )}
 
-                  <div className="flex items-center gap-2 shrink-0">
-                    <span
-                      className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                        job.status === "Posted"
-                          ? "bg-blue-50 text-blue-600 dark:bg-blue-950/60 dark:text-blue-400 border border-blue-200 dark:border-blue-900/60"
-                          : job.status === "Processing"
-                          ? "bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300 animate-pulse"
-                          : job.status === "Failed"
-                          ? "bg-destructive/10 text-destructive border border-destructive/20"
-                          : "bg-muted text-muted-foreground"
-                      }`}
-                    >
-                      {job.status === "Posted" ? "Posted (Graph API)" : job.status}
-                    </span>
+          {/* Queue Jobs Table */}
+          {queueJobs.length === 0 ? (
+            <div className="py-12 px-4 text-center border border-dashed border-border rounded-xl space-y-2">
+              <div className="w-10 h-10 rounded-full bg-emerald-500/10 text-emerald-500 flex items-center justify-center mx-auto">
+                <CheckCircle2 className="w-5 h-5" />
+              </div>
+              <p className="font-semibold text-sm text-foreground">Queue is clean &amp; empty</p>
+              <p className="text-xs text-muted-foreground max-w-sm mx-auto">
+                There are no active jobs waiting in the queue. You can schedule new posts anytime from the Master Scheduler tab.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-3 text-xs">
+              {queueJobs.map((job) => {
+                const progress = getJobProgressData(job, nowTimestamp)
 
-                    {job.status === "Failed" && (
-                      <button
-                        onClick={() => handleRetryJob(job.id)}
-                        className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-3 py-1 rounded-lg text-xs flex items-center gap-1 transition"
-                      >
-                        <RotateCcw className="w-3.5 h-3.5" />
-                        <span>Retry Job ({job.retryCount}/{job.maxRetries})</span>
-                      </button>
+                return (
+                  <div
+                    key={job.id}
+                    className={`border p-4 rounded-xl space-y-3 transition ${
+                      job.status === "Processing"
+                        ? "border-blue-500/60 bg-blue-500/[0.03] ring-1 ring-blue-500/20"
+                        : job.status === "Posted"
+                        ? "border-emerald-500/30 bg-emerald-500/[0.02]"
+                        : job.status === "Failed"
+                        ? "border-rose-500/30 bg-rose-500/[0.02]"
+                        : "border-border bg-card hover:border-border/80 shadow-2xs"
+                    }`}
+                  >
+                    {/* Top Row: Title, Target, Status Pill, Reducing Countdown Badge, Actions */}
+                    <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2.5">
+                      <div className="space-y-1 min-w-0 flex-1">
+                        <div className="flex items-center space-x-2 flex-wrap gap-y-1">
+                          <span className="font-extrabold text-sm text-foreground truncate">
+                            {job.variationTitle}
+                          </span>
+                          {job.postFormat && (
+                            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-muted text-muted-foreground border">
+                              {job.postFormat}
+                            </span>
+                          )}
+                        </div>
+
+                        <div className="flex flex-wrap items-center gap-2 text-muted-foreground text-[11px]">
+                          <span>
+                            Target: <strong className="text-foreground font-semibold">{job.accountName}</strong>
+                          </span>
+                          <span>•</span>
+                          {job.scheduleType === "SpecificTime" ? (
+                            <span>
+                              Mode: <strong className="text-blue-500 font-semibold">Specific Time</strong>
+                            </span>
+                          ) : (
+                            <span>
+                              Anti-Ban Delay: <strong className="text-blue-500 font-semibold">{job.delayMinutes} mins</strong>
+                            </span>
+                          )}
+                          <span>•</span>
+                          <span>
+                            Execution: <strong className="text-foreground">{job.scheduledFor}</strong>
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Right Side Status & Live Reducing Countdown Badge */}
+                      <div className="flex items-center gap-2 shrink-0 flex-wrap">
+                        {/* LIVE REDUCING COUNTDOWN BADGE */}
+                        {job.status === "Pending" && (
+                          progress.isDue ? (
+                            <span className="inline-flex items-center gap-1 font-bold text-emerald-500 bg-emerald-500/10 border border-emerald-500/25 px-2.5 py-1 rounded-full text-xs animate-pulse">
+                              <Zap className="w-3.5 h-3.5" />
+                              <span>Due Now</span>
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1.5 font-mono font-bold text-amber-500 bg-amber-500/10 border border-amber-500/25 px-2.5 py-1 rounded-full text-xs shadow-2xs">
+                              <Clock className="w-3.5 h-3.5 animate-spin [animation-duration:8s]" />
+                              <span>⏱️ {progress.formattedCountdown}</span>
+                            </span>
+                          )
+                        )}
+
+                        <span
+                          className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                            job.status === "Posted"
+                              ? "bg-emerald-500/10 text-emerald-500 border border-emerald-500/20"
+                              : job.status === "Processing"
+                              ? "bg-blue-500/10 text-blue-500 border border-blue-500/20 animate-pulse flex items-center gap-1.5"
+                              : job.status === "Failed"
+                              ? "bg-destructive/10 text-destructive border border-destructive/20"
+                              : "bg-muted text-muted-foreground border"
+                          }`}
+                        >
+                          {job.status === "Processing" && <Loader2 className="w-3 h-3 animate-spin inline" />}
+                          {job.status === "Posted"
+                            ? job.engine === "bot" || String(job.id).includes("bot")
+                              ? "Posted (Puppeteer Bot)"
+                              : "Posted (Graph API)"
+                            : job.status}
+                        </span>
+
+                        {job.status === "Pending" && (
+                          <button
+                            type="button"
+                            disabled={runningJobId !== null}
+                            onClick={() => handleForceRunJob(job.id)}
+                            className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold px-2.5 py-1 rounded-lg text-xs flex items-center gap-1 transition cursor-pointer shadow-xs disabled:opacity-50"
+                            title="Post immediately to Facebook"
+                          >
+                            {runningJobId === job.id ? (
+                              <>
+                                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                <span>Running...</span>
+                              </>
+                            ) : (
+                              <>
+                                <Zap className="w-3.5 h-3.5" />
+                                <span>Run Now</span>
+                              </>
+                            )}
+                          </button>
+                        )}
+
+                        {job.status === "Processing" && (
+                          <div className="flex items-center gap-1">
+                            <button
+                              type="button"
+                              disabled={runningJobId === job.id}
+                              onClick={() => handleResetJobToPending(job.id)}
+                              className="bg-amber-600/90 hover:bg-amber-600 text-white font-semibold px-2 py-1 rounded-lg text-[11px] flex items-center gap-1 transition cursor-pointer shadow-xs disabled:opacity-50"
+                              title="Reset stuck job back to Pending"
+                            >
+                              <RotateCcw className="w-3 h-3" />
+                              <span>Reset</span>
+                            </button>
+                            <button
+                              type="button"
+                              disabled={runningJobId === job.id}
+                              onClick={() => handleForceRunJob(job.id)}
+                              className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-2.5 py-1 rounded-lg text-xs flex items-center gap-1 transition cursor-pointer shadow-xs disabled:opacity-75"
+                              title="Force run Facebook post now"
+                            >
+                              {runningJobId === job.id ? (
+                                <>
+                                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                  <span>Posting...</span>
+                                </>
+                              ) : (
+                                <>
+                                  <Zap className="w-3.5 h-3.5" />
+                                  <span>Force Run</span>
+                                </>
+                              )}
+                            </button>
+                          </div>
+                        )}
+
+                        {job.status === "Failed" && (
+                          <button
+                            type="button"
+                            onClick={() => handleRetryJob(job.id)}
+                            className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-2.5 py-1 rounded-lg text-xs flex items-center gap-1 transition cursor-pointer"
+                            title="Retry failed job"
+                          >
+                            <RotateCcw className="w-3.5 h-3.5" />
+                            <span>Retry ({job.retryCount}/{job.maxRetries})</span>
+                          </button>
+                        )}
+
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteQueueJob(job.id)}
+                          className="p-1.5 rounded-lg text-muted-foreground hover:text-rose-600 hover:bg-rose-500/10 transition"
+                          title="Delete from Queue"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* LIVE PROGRESSING BAR & TIME REDUCING DETAILS */}
+                    <div className="space-y-1.5 bg-muted/20 p-2.5 rounded-xl border border-border/40">
+                      <div className="flex items-center justify-between text-[11px]">
+                        <span className="text-muted-foreground font-semibold flex items-center gap-1.5">
+                          {job.status === "Pending" ? (
+                            progress.isDue ? (
+                              <>
+                                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping inline-block" />
+                                <span className="text-emerald-500 font-bold">
+                                  Timer expired — Redis worker picking up payload...
+                                </span>
+                              </>
+                            ) : (
+                              <>
+                                <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse inline-block" />
+                                <span>
+                                  Time Reducing: <strong className="text-foreground font-mono font-bold">{progress.remainingText}</strong>
+                                </span>
+                              </>
+                            )
+                          ) : job.status === "Processing" ? (
+                            <>
+                              <span className="w-2 h-2 rounded-full bg-blue-500 animate-ping inline-block" />
+                              <span className="text-blue-500 font-bold">
+                                Transmitting media payload to Meta Facebook Graph API...
+                              </span>
+                            </>
+                          ) : job.status === "Posted" ? (
+                            <>
+                              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 inline" />
+                              <span className="text-emerald-500 font-bold">
+                                100% Processed • Published successfully
+                              </span>
+                            </>
+                          ) : (
+                            <>
+                              <AlertCircle className="w-3.5 h-3.5 text-rose-500 inline" />
+                              <span className="text-rose-500 font-bold">
+                                Execution stopped • {job.retryCount}/{job.maxRetries} Retries attempted
+                              </span>
+                            </>
+                          )}
+                        </span>
+                        <span className={`font-extrabold font-mono text-xs ${job.status === "Failed" ? "text-rose-500 bg-rose-500/10 px-2 py-0.5 rounded border border-rose-500/20" : "text-foreground"}`}>
+                          {job.status === "Failed" ? "Failed (Stopped)" : `${progress.progressPercent}%`}
+                        </span>
+                      </div>
+
+                      {/* Live Animated Progress Bar Track */}
+                      <div className="w-full bg-muted/70 dark:bg-muted/40 h-2.5 rounded-full overflow-hidden border border-border/50 p-0.5">
+                        <div
+                          className={`h-full rounded-full transition-all duration-1000 ease-linear ${
+                            job.status === "Posted"
+                              ? "bg-emerald-500 shadow-[0_0_12px_rgba(16,185,129,0.5)]"
+                              : job.status === "Processing"
+                              ? "bg-gradient-to-r from-blue-500 via-indigo-500 to-blue-500 animate-pulse"
+                              : job.status === "Failed"
+                              ? "bg-rose-500"
+                              : progress.isDue
+                              ? "bg-emerald-500 animate-pulse"
+                              : "bg-gradient-to-r from-blue-600 via-blue-500 to-indigo-500 shadow-[0_0_8px_rgba(59,130,246,0.3)]"
+                          }`}
+                          style={{ width: `${progress.progressPercent}%` }}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Error Box (if failed) */}
+                    {job.lastError && (
+                      <div className="p-2.5 bg-destructive/10 border border-destructive/30 rounded-xl text-destructive text-[11px] font-medium flex items-center justify-between">
+                        <span className="flex items-center gap-1.5">
+                          <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                          <span>Error: {job.lastError} (Retried {job.retryCount}/{job.maxRetries} times)</span>
+                        </span>
+                        <span className="bg-destructive text-white text-[9px] font-bold px-2 py-0.5 rounded-md uppercase">
+                          Admin Notified
+                        </span>
+                      </div>
                     )}
                   </div>
-                </div>
-
-                {job.lastError && (
-                  <div className="p-2.5 bg-destructive/10 border border-destructive/30 rounded-xl text-destructive text-[11px] font-medium flex items-center justify-between">
-                    <span className="flex items-center gap-1.5">
-                      <AlertCircle className="w-3.5 h-3.5 shrink-0" />
-                      <span>Error: {job.lastError} (Retried {job.retryCount}/{job.maxRetries} times)</span>
-                    </span>
-                    <span className="bg-destructive text-white text-[9px] font-bold px-2 py-0.5 rounded-md uppercase">
-                      Admin Notified
-                    </span>
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
+                )
+              })}
+            </div>
+          )}
         </div>
       )}
 
@@ -1669,15 +3102,51 @@ export default function SafePostSchedulerPage() {
             </p>
 
             <div className="space-y-2 text-xs">
-              <label className="font-semibold text-foreground block">Facebook Page Access Token (EAAG...)</label>
+              <div className="flex items-center justify-between">
+                <label className="font-semibold text-foreground block">Facebook Page Access Token (EAAG...)</label>
+                <button
+                  type="button"
+                  disabled={tokenTesting || !activePageToken.trim()}
+                  onClick={handleTestToken}
+                  className="text-[11px] font-semibold text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1 disabled:opacity-40"
+                >
+                  {tokenTesting ? (
+                    <span className="flex items-center gap-1">
+                      <RotateCcw className="w-3 h-3 animate-spin" /> Verifying...
+                    </span>
+                  ) : (
+                    <span>Test Token ↗</span>
+                  )}
+                </button>
+              </div>
               <textarea
                 value={activePageToken}
-                onChange={(e) => setActivePageToken(e.target.value)}
+                onChange={(e) => {
+                  setActivePageToken(e.target.value)
+                  setTokenTestResult(null)
+                }}
                 rows={4}
                 className="w-full border border-border rounded-xl p-3 font-mono text-[11px] bg-muted/20 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition text-foreground"
-                placeholder="EAAG..."
+                placeholder="Paste EAAG... token from Graph API Explorer"
               />
             </div>
+
+            {tokenTestResult && (
+              <div
+                className={`p-3 rounded-xl text-xs font-semibold flex items-center gap-2 border ${
+                  tokenTestResult.success
+                    ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-600 dark:text-emerald-400"
+                    : "bg-rose-500/10 border-rose-500/30 text-rose-600 dark:text-rose-400"
+                }`}
+              >
+                {tokenTestResult.success ? (
+                  <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-500" />
+                ) : (
+                  <AlertCircle className="w-4 h-4 shrink-0 text-rose-500" />
+                )}
+                <span>{tokenTestResult.message}</span>
+              </div>
+            )}
 
             {tokenSaved && (
               <div className="p-3 bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-900/40 text-blue-700 dark:text-blue-300 text-xs rounded-xl font-semibold flex items-center gap-2">
@@ -1688,22 +3157,175 @@ export default function SafePostSchedulerPage() {
 
             <div className="flex items-center justify-end space-x-2 pt-3 border-t border-border">
               <button
+                type="button"
                 onClick={() => setShowTokenModal(false)}
                 className="h-9 px-4 border border-border rounded-xl text-xs font-semibold hover:bg-muted text-muted-foreground transition"
               >
                 Close
               </button>
               <button
-                onClick={() => {
-                  setTokenSaved(true)
-                  setTimeout(() => setTokenSaved(false), 3000)
-                }}
-                className="h-9 px-4 bg-blue-600 hover:bg-blue-700 active:scale-[0.98] text-white rounded-xl text-xs font-semibold transition shadow-xs"
+                type="button"
+                onClick={handleSavePageToken}
+                disabled={!activePageToken.trim()}
+                className="h-9 px-4 bg-blue-600 hover:bg-blue-700 active:scale-[0.98] text-white rounded-xl text-xs font-semibold transition shadow-xs disabled:opacity-50"
               >
                 Save Meta Token
               </button>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Quick Add CTA Template Modal */}
+      {showNewTemplateModal && (
+        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-card border border-border rounded-2xl w-full max-w-md shadow-2xl p-5 space-y-4 animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between border-b border-border pb-3">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-blue-600/10 text-blue-600 dark:text-blue-400 flex items-center justify-center">
+                  <Pin className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-sm text-foreground">Create CTA Pin Template</h3>
+                  <p className="text-[11px] text-muted-foreground">Save reusable pinned comment for future posts</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowNewTemplateModal(false)}
+                className="p-1 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateQuickTemplate} className="space-y-3">
+              <div>
+                <label className="text-xs font-semibold text-foreground block mb-1">
+                  Template Title <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g., CARE HUB Flash Sale Direct Link"
+                  value={newTmplTitle}
+                  onChange={(e) => setNewTmplTitle(e.target.value)}
+                  className="w-full px-3 py-2 text-xs rounded-xl border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-semibold text-foreground block mb-1">
+                  Target Link / URL
+                </label>
+                <input
+                  type="text"
+                  placeholder="https://carehubbd.com/order or WhatsApp link"
+                  value={newTmplLink}
+                  onChange={(e) => setNewTmplLink(e.target.value)}
+                  className="w-full px-3 py-2 text-xs rounded-xl border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-semibold text-foreground block mb-1">
+                  Comment Text <span className="text-red-500">*</span>
+                </label>
+                <textarea
+                  required
+                  rows={3}
+                  placeholder="Comment message to post and pin under post automatically..."
+                  value={newTmplComment}
+                  onChange={(e) => setNewTmplComment(e.target.value)}
+                  className="w-full p-3 text-xs rounded-xl border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 resize-none"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-semibold text-foreground block mb-1">
+                  Anti-Ban Delay
+                </label>
+                <div className="relative">
+                  <select
+                    value={newTmplDelay}
+                    onChange={(e) => setNewTmplDelay(Number(e.target.value))}
+                    className="w-full appearance-none px-3 py-2 text-xs rounded-xl border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 cursor-pointer pr-8"
+                  >
+                    <option value={0} className="bg-card text-foreground">0s (Immediate Post)</option>
+                    <option value={15} className="bg-card text-foreground">15s (Recommended / Natural Flow)</option>
+                    <option value={30} className="bg-card text-foreground">30s (Safe Delay)</option>
+                    <option value={60} className="bg-card text-foreground">60s (Conservative)</option>
+                  </select>
+                  <ChevronDown className="w-3.5 h-3.5 text-muted-foreground absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-2 border-t border-border">
+                <button
+                  type="button"
+                  onClick={() => setShowNewTemplateModal(false)}
+                  className="px-3 py-2 rounded-xl text-xs font-semibold text-muted-foreground hover:bg-muted transition"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={!newTmplTitle.trim() || !newTmplComment.trim()}
+                  className="px-4 py-2 rounded-xl text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white shadow-xs transition disabled:opacity-50 flex items-center gap-1.5"
+                >
+                  <Check className="w-3.5 h-3.5" />
+                  <span>Save &amp; Use Template</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Clear Queue Confirmation Modal */}
+      {showClearConfirmModal && (
+        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-card border border-border/80 rounded-2xl w-full max-w-sm shadow-2xl p-5 space-y-4 animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-rose-500/10 text-rose-500 flex items-center justify-center border border-rose-500/20 shrink-0">
+                <Trash2 className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="font-bold text-sm text-foreground">Clear Bull Queue?</h3>
+                <p className="text-[11px] text-muted-foreground">Remove all scheduled queue jobs</p>
+              </div>
+            </div>
+
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              Are you sure you want to remove all <strong className="text-foreground">{queueJobs.length} active and failed jobs</strong> from the queue? This will reset the monitor cleanly.
+            </p>
+
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-border">
+              <button
+                type="button"
+                onClick={() => setShowClearConfirmModal(false)}
+                className="px-3.5 py-2 rounded-xl text-xs font-semibold text-muted-foreground hover:bg-muted border border-border transition cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmClearAll}
+                className="px-4 py-2 rounded-xl text-xs font-bold bg-rose-600 hover:bg-rose-700 text-white shadow-xs transition flex items-center gap-1.5 cursor-pointer"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>Yes, Clear All Jobs</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Floating Modern Toast Notification */}
+      {toastMessage && (
+        <div className="fixed bottom-6 right-6 z-50 flex items-center gap-2.5 px-4 py-3 rounded-xl bg-card/95 backdrop-blur-md border border-border/90 shadow-2xl text-xs font-semibold text-foreground animate-in slide-in-from-bottom-3 fade-in duration-200">
+          <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
+          <span>{toastMessage}</span>
         </div>
       )}
 

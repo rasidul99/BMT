@@ -15,7 +15,7 @@ export interface GroupPostJob {
   postContent: string
   mediaUrl?: string
   linkUrl?: string
-  postFormat: "Text" | "Image" | "Video" | "Link"
+  postFormat: "Text" | "Image" | "Video" | "Reel" | "Story" | "Poll" | "Link"
   status: "Pending" | "Posting" | "Success" | "Failed"
   delaySeconds: number
   error?: string

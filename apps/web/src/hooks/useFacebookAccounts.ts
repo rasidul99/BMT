@@ -236,7 +236,7 @@ export function useFacebookAccounts() {
 
   // 4. Bulk Import Accounts
   // Format supported: UID|TokenOrCookie|ProxyIP:Port[:User:Pass]|Name
-  // Or CSV lines
+  // Also supports Tab-delimited (Excel copy-paste) or CSV lines
   const bulkImportAccounts = (rawText: string) => {
     const lines = rawText.split(/\r?\n/).map((l) => l.trim()).filter(Boolean)
     const newItems: FacebookAccountItem[] = []
@@ -246,13 +246,34 @@ export function useFacebookAccounts() {
         break
       }
 
-      // Check pipe or comma separator
-      const parts = line.includes("|") ? line.split("|") : line.split(",")
+      // Detect separator: Tab (Excel), Pipe (|), or Comma (,)
+      let parts: string[] = []
+      if (line.includes("\t")) {
+        parts = line.split("\t")
+      } else if (line.includes("|")) {
+        parts = line.split("|")
+      } else if (line.includes(",")) {
+        parts = line.split(",")
+      }
+
       if (parts.length >= 2) {
-        const uid = parts[0]?.trim() || `1000${Math.floor(Math.random() * 9000000000)}`
-        const tokenOrCookie = parts[1]?.trim() || "c_user=session_mock"
+        const rawInputUid = parts[0]?.trim() || ""
+        const uid = rawInputUid.replace(/^(https?:\/\/)?(www\.)?facebook\.com\//i, "").replace(/\/$/, "")
+        const tokenOrCookie = parts[1]?.trim() || ""
         const proxyStr = parts[2]?.trim() || "103.145.23.20:8080"
-        const name = parts[3]?.trim() || `FB Marketing Account ${uid.slice(-4)}`
+        const name = parts[3]?.trim() || `FB Account ${uid.slice(-6)}`
+
+        // Validation: UID or Username (alphanumeric, dot, underscore, 3-50 chars)
+        if (!/^[a-zA-Z0-9._]{3,50}$/.test(uid)) {
+          // Reject junk or invalid lines
+          continue
+        }
+
+        // Strict Validation: Token or Cookie must be valid (at least 5 chars)
+        if (!tokenOrCookie || tokenOrCookie.length < 5) {
+          // Reject invalid credentials
+          continue
+        }
 
         let ip = "103.145.23.20"
         let port = 8080
@@ -273,7 +294,7 @@ export function useFacebookAccounts() {
           id: `acc-${Date.now()}-${Math.floor(Math.random() * 10000)}`,
           name,
           uid,
-          avatarUrl: `https://images.unsplash.com/photo-${1534528741775 + newItems.length * 10}?w=120&auto=format&fit=crop&q=80`,
+          avatarUrl: `https://graph.facebook.com/${uid}/picture?type=large`,
           accountType: "Personal Profile",
           authType: tokenOrCookie.startsWith("EAAG") ? "Access Token" : "Cookie Session",
           tokenOrCookie,

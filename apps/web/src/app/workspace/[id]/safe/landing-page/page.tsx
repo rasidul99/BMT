@@ -31,6 +31,10 @@ import {
   ClipboardList,
   Send,
   AlertCircle,
+  ArrowRight,
+  ArrowLeft,
+  Info,
+  ChevronDown,
 } from "lucide-react"
 import { useAssetLibrary } from "../../../../../hooks/useAssetLibrary"
 import { useLandingPages, LandingPageProject, DropdownOption, SectionVisibility } from "../../../../../hooks/useLandingPages"
@@ -98,23 +102,27 @@ export default function SafeLandingPageBuilderPage() {
   const [adEnabled, setAdEnabled] = useState(true)
   const [adType, setAdType] = useState<"Banner Image" | "Custom HTML / AdSense">("Banner Image")
   const [adImageUrl, setAdImageUrl] = useState("https://images.unsplash.com/photo-1607082348824-0a96f2a4b9da?w=800&auto=format&fit=crop")
-  const [adTargetUrl, setAdTargetUrl] = useState("https://bmt.cards/eid-mega-offer")
+  const [adTargetUrl, setAdTargetUrl] = useState("https://www.google.com")
   const [adHtmlSnippet, setAdHtmlSnippet] = useState("<div style='background:#fef3c7;padding:12px;border-radius:8px;font-weight:bold;'>Google AdSense 728x90 Banner Slot</div>")
 
   // Preview & modal states
   const [previewDevice, setPreviewDevice] = useState<"Desktop" | "Mobile">("Desktop")
   const [selectedPreviewOptionIdx, setSelectedPreviewOptionIdx] = useState(0)
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false)
   const [activePublishedPage, setActivePublishedPage] = useState<LandingPageProject | null>(null)
   const [copiedSlug, setCopiedSlug] = useState<string | null>(null)
   const [showAssetPicker, setShowAssetPicker] = useState(false)
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" | "info" } | null>(null)
 
-  // Direct PC Upload ref
+  // Direct PC Upload refs
   const localImageInputRef = React.useRef<HTMLInputElement | null>(null)
+  const localAdImageInputRef = React.useRef<HTMLInputElement | null>(null)
+  const [assetPickerTarget, setAssetPickerTarget] = useState<"hero" | "adBanner">("hero")
+
   const handleDirectImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files || !e.target.files[0]) return
     const file = e.target.files[0]
-    showToast("Uploading hero image...")
+    showToast("Uploading hero image...", "info")
     try {
       const formData = new FormData()
       formData.append("file", file)
@@ -125,22 +133,49 @@ export default function SafeLandingPageBuilderPage() {
       if (res.ok) {
         const data = await res.json()
         setHeroImage(data.url)
-        showToast("Hero image uploaded from PC!")
+        showToast("Hero image uploaded from PC!", "success")
       } else {
         const localPreview = URL.createObjectURL(file)
         setHeroImage(localPreview)
-        showToast("Hero image loaded from PC!")
+        showToast("Hero image loaded from PC!", "success")
       }
     } catch {
       const localPreview = URL.createObjectURL(file)
       setHeroImage(localPreview)
-      showToast("Hero image loaded from PC!")
+      showToast("Hero image loaded from PC!", "success")
     }
   }
 
-  const showToast = (msg: string) => {
-    setToastMsg(msg)
-    setTimeout(() => setToastMsg(null), 3000)
+  const handleDirectAdImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files || !e.target.files[0]) return
+    const file = e.target.files[0]
+    showToast("Uploading ad banner image...", "info")
+    try {
+      const formData = new FormData()
+      formData.append("file", file)
+      const res = await fetch("/api/media/upload", {
+        method: "POST",
+        body: formData,
+      })
+      if (res.ok) {
+        const data = await res.json()
+        setAdImageUrl(data.url)
+        showToast("Ad banner image uploaded from PC!", "success")
+      } else {
+        const localPreview = URL.createObjectURL(file)
+        setAdImageUrl(localPreview)
+        showToast("Ad banner image loaded from PC!", "success")
+      }
+    } catch {
+      const localPreview = URL.createObjectURL(file)
+      setAdImageUrl(localPreview)
+      showToast("Ad banner image loaded from PC!", "success")
+    }
+  }
+
+  const showToast = (message: string, type: "success" | "error" | "info" = "success") => {
+    setToast({ message, type })
+    setTimeout(() => setToast(null), 3000)
   }
 
   // Feature Bullet Points handlers
@@ -235,9 +270,14 @@ export default function SafeLandingPageBuilderPage() {
   // Pick Image from Asset Library
   const handlePickAsset = (url?: string) => {
     if (url) {
-      setHeroImage(url)
+      if (assetPickerTarget === "adBanner") {
+        setAdImageUrl(url)
+        showToast("Ad banner image selected from Asset Library!", "success")
+      } else {
+        setHeroImage(url)
+        showToast("Hero image selected from Asset Library!", "success")
+      }
       setShowAssetPicker(false)
-      showToast("Image selected from Asset Library!", "success")
     }
   }
 
@@ -616,7 +656,10 @@ export default function SafeLandingPageBuilderPage() {
                     </button>
                     <button
                       type="button"
-                      onClick={() => setShowAssetPicker(true)}
+                      onClick={() => {
+                        setAssetPickerTarget("hero")
+                        setShowAssetPicker(true)
+                      }}
                       className="flex-1 sm:flex-none justify-center text-foreground hover:bg-muted px-2.5 py-1 rounded-lg border border-border font-bold text-[11px] flex items-center gap-1 transition"
                     >
                       <FolderOpen className="w-3 h-3 text-amber-500" />
@@ -644,6 +687,22 @@ export default function SafeLandingPageBuilderPage() {
                   />
                   <Globe className="w-4 h-4 text-muted-foreground absolute left-3 top-2.5" />
                 </div>
+
+                {/* Instant Visual Image Thumbnail Box */}
+                {heroImage && (
+                  <div className="mt-2 p-2 rounded-xl border border-border bg-card/80 flex items-center gap-3">
+                    <div className="w-16 h-12 rounded-lg overflow-hidden border border-border bg-black shrink-0">
+                      <img src={heroImage} alt="Hero Preview" className="w-full h-full object-cover" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-1.5 text-[11px] font-bold text-emerald-600 dark:text-emerald-400">
+                        <CheckCircle2 className="w-3.5 h-3.5" />
+                        <span>Active Hero Photo Attached (লাইভ প্রিভিউয়ে দেখাচ্ছে)</span>
+                      </div>
+                      <p className="text-[10px] text-muted-foreground font-mono truncate">{heroImage}</p>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Key Highlights / Feature Bullet Points */}
@@ -941,28 +1000,85 @@ export default function SafeLandingPageBuilderPage() {
                   </div>
 
                   {adType === "Banner Image" ? (
-                    <div className="space-y-2">
+                    <div className="space-y-3">
                       <div>
-                        <label className="text-muted-foreground block text-[11px] mb-1">
-                          Ad Banner Image URL
-                        </label>
+                        <div className="flex items-center justify-between mb-1 flex-wrap gap-2">
+                          <label className="text-foreground block text-[11px] font-bold">
+                            Ad Banner Image (পেজের নিচের বিজ্ঞাপন ব্যানার)
+                          </label>
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => localAdImageInputRef.current?.click()}
+                              className="text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/40 px-2 py-0.5 rounded border border-blue-500/20 font-bold text-[10px] flex items-center gap-1 transition"
+                            >
+                              <Upload className="w-3 h-3" />
+                              <span>Upload from PC</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setAssetPickerTarget("adBanner")
+                                setShowAssetPicker(true)
+                              }}
+                              className="text-foreground hover:bg-muted px-2 py-0.5 rounded border border-border font-bold text-[10px] flex items-center gap-1 transition"
+                            >
+                              <FolderOpen className="w-3 h-3 text-amber-500" />
+                              <span>Pick from Library</span>
+                            </button>
+                          </div>
+                        </div>
+
                         <input
-                          type="url"
-                          value={adImageUrl}
-                          onChange={(e) => setAdImageUrl(e.target.value)}
-                          className="w-full px-3 py-1.5 border border-border rounded-lg bg-background text-foreground text-xs"
+                          ref={localAdImageInputRef}
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={handleDirectAdImageUpload}
                         />
+
+                        <div className="relative">
+                          <input
+                            type="text"
+                            value={adImageUrl}
+                            onChange={(e) => setAdImageUrl(e.target.value)}
+                            placeholder="https://... or /uploads/..."
+                            className="w-full pl-9 pr-3 py-1.5 border border-border rounded-lg bg-background text-foreground text-xs font-mono"
+                          />
+                          <Globe className="w-4 h-4 text-muted-foreground absolute left-3 top-2" />
+                        </div>
+
+                        {/* Instant Visual Ad Banner Thumbnail Box */}
+                        {adImageUrl && (
+                          <div className="mt-2 p-2 rounded-xl border border-border bg-card/80 flex items-center gap-3">
+                            <div className="w-16 h-10 rounded-lg overflow-hidden border border-border bg-black shrink-0">
+                              <img src={adImageUrl} alt="Ad Banner Preview" className="w-full h-full object-cover" />
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-center gap-1.5 text-[11px] font-bold text-emerald-600 dark:text-emerald-400">
+                                <CheckCircle2 className="w-3.5 h-3.5" />
+                                <span>Attached Ad Banner Photo (নিচের বিজ্ঞাপন স্লটে দেখাচ্ছে)</span>
+                              </div>
+                              <p className="text-[10px] text-muted-foreground font-mono truncate">{adImageUrl}</p>
+                            </div>
+                          </div>
+                        )}
                       </div>
+
                       <div>
-                        <label className="text-muted-foreground block text-[11px] mb-1">
-                          Ad Destination / Affiliate Link
+                        <label className="text-foreground block text-[11px] font-bold mb-1">
+                          Ad Destination / Affiliate Link (বিজ্ঞাপনে ক্লিক করলে যে ওয়েবসাইটে যাবে)
                         </label>
-                        <input
-                          type="url"
-                          value={adTargetUrl}
-                          onChange={(e) => setAdTargetUrl(e.target.value)}
-                          className="w-full px-3 py-1.5 border border-border rounded-lg bg-background text-foreground text-xs"
-                        />
+                        <div className="relative">
+                          <input
+                            type="url"
+                            value={adTargetUrl}
+                            onChange={(e) => setAdTargetUrl(e.target.value)}
+                            className="w-full pl-9 pr-3 py-1.5 border border-border rounded-lg bg-background text-foreground text-xs"
+                            placeholder="https://yourwebsite.com/affiliate-offer"
+                          />
+                          <Globe className="w-4 h-4 text-muted-foreground absolute left-3 top-2" />
+                        </div>
                       </div>
                     </div>
                   ) : (
@@ -1187,23 +1303,96 @@ export default function SafeLandingPageBuilderPage() {
                 </div>
               )}
 
-              {/* 7. Interactive Dropdown */}
+              {/* 7. Interactive Custom Styled Package Dropdown (No default OS select) */}
               {visibleSections.variantsDropdown && dropdownOptions.length > 0 && (
-                <div className="space-y-1 bg-muted/40 p-2.5 rounded-lg border border-border">
-                  <span className="text-[10px] font-bold text-foreground block">
-                    {dropdownTitle}
-                  </span>
-                  <select
-                    value={selectedPreviewOptionIdx}
-                    onChange={(e) => setSelectedPreviewOptionIdx(Number(e.target.value))}
-                    className="w-full p-1.5 border border-border rounded bg-background text-foreground text-xs font-semibold cursor-pointer"
-                  >
-                    {dropdownOptions.map((opt, i) => (
-                      <option key={i} value={i}>
-                        {opt.label} ({opt.price})
-                      </option>
-                    ))}
-                  </select>
+                <div className="space-y-1.5 bg-gradient-to-br from-blue-500/5 via-indigo-500/5 to-blue-600/5 p-3 rounded-xl border border-blue-500/20 relative">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-extrabold text-foreground flex items-center gap-1.5">
+                      <ShoppingBag className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+                      <span>{dropdownTitle}</span>
+                    </span>
+                    <span className="text-[9px] bg-blue-600 text-white font-bold px-2 py-0.5 rounded-full shadow-xs">
+                      {dropdownOptions.length} টি ভ্যারিয়েন্ট
+                    </span>
+                  </div>
+
+                  {/* Custom Styled Dropdown Button */}
+                  <div className="relative">
+                    <button
+                      type="button"
+                      onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                      className={`w-full text-left bg-card hover:bg-muted/60 border-2 transition-all duration-200 rounded-xl p-2.5 flex items-center justify-between gap-2 shadow-xs group ${
+                        isDropdownOpen ? "border-blue-500 ring-2 ring-blue-500/20" : "border-border hover:border-blue-500/50"
+                      }`}
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div className="w-5 h-5 rounded-full border-2 border-blue-600 flex items-center justify-center shrink-0 bg-blue-50 dark:bg-blue-950/50">
+                          <div className="w-2 h-2 rounded-full bg-blue-600" />
+                        </div>
+                        <div className="truncate">
+                          <span className="text-xs font-bold text-foreground block truncate">
+                            {dropdownOptions[selectedPreviewOptionIdx]?.label || "Select Package"}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <span className="text-xs font-black text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2.5 py-0.5 rounded-full border border-emerald-500/20 font-mono">
+                          {dropdownOptions[selectedPreviewOptionIdx]?.price}
+                        </span>
+                        <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform duration-200 ${isDropdownOpen ? "rotate-180 text-blue-600" : ""}`} />
+                      </div>
+                    </button>
+
+                    {/* Custom Floating Popover Menu */}
+                    {isDropdownOpen && (
+                      <div className="absolute left-0 right-0 top-full mt-1.5 z-30 bg-card/95 backdrop-blur-md border-2 border-blue-500/40 rounded-xl shadow-2xl p-1.5 space-y-1 animate-in fade-in zoom-in-95 duration-150">
+                        {dropdownOptions.map((opt, i) => {
+                          const isSelected = selectedPreviewOptionIdx === i
+                          const isSpecial = opt.label.includes("Combo") || opt.label.includes("Save") || opt.label.includes("স্পেশাল")
+                          return (
+                            <button
+                              key={i}
+                              type="button"
+                              onClick={() => {
+                                setSelectedPreviewOptionIdx(i)
+                                setIsDropdownOpen(false)
+                              }}
+                              className={`w-full text-left p-2.5 rounded-lg transition-all flex items-center justify-between gap-2 text-xs ${
+                                isSelected
+                                  ? "bg-blue-600 text-white font-bold shadow-md shadow-blue-600/20"
+                                  : "hover:bg-muted text-foreground font-semibold"
+                              }`}
+                            >
+                              <div className="flex items-center gap-2.5 min-w-0">
+                                <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0 ${
+                                  isSelected ? "border-white" : "border-muted-foreground"
+                                }`}>
+                                  {isSelected && <div className="w-2 h-2 rounded-full bg-white" />}
+                                </div>
+                                <div className="truncate">
+                                  <div className="flex items-center gap-1.5 truncate">
+                                    <span className="truncate">{opt.label}</span>
+                                    {isSpecial && (
+                                      <span className={`text-[9px] px-1.5 py-0.2 rounded font-extrabold flex items-center gap-0.5 shrink-0 ${
+                                        isSelected ? "bg-amber-400 text-slate-900" : "bg-amber-500/20 text-amber-600 dark:text-amber-400"
+                                      }`}>
+                                        <Flame className="w-2.5 h-2.5" /> Best Deal
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                              <span className={`text-xs font-extrabold shrink-0 px-2 py-0.5 rounded-md font-mono ${
+                                isSelected ? "bg-white/20 text-white" : "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20"
+                              }`}>
+                                {opt.price}
+                              </span>
+                            </button>
+                          )
+                        })}
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
 

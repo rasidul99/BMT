@@ -90,7 +90,7 @@ export function useLandingPages(workspaceId?: string) {
         enabled: true,
         adType: "Banner Image",
         adImageUrl: "https://images.unsplash.com/photo-1607082348824-0a96f2a4b9da?w=800&auto=format&fit=crop",
-        adTargetUrl: "https://bmt.cards/eid-mega-offer",
+        adTargetUrl: "https://www.google.com",
       },
       viewsCount: 384,
       ordersCount: 42,
@@ -275,7 +275,7 @@ export function useLandingPages(workspaceId?: string) {
         }
       } catch {}
     }
-    return pages.find((p) => p.slug === slugOrId || p.id === slugOrId)
+    return pages.find((p) => p.slug === slugOrId || p.id === slugOrId) || defaultPages.find((p) => p.slug === slugOrId || p.id === slugOrId)
   }
 
   const recordView = (slugOrId: string) => {
