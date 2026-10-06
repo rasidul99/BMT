@@ -6,7 +6,7 @@ import fs from "fs"
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json()
-    const { accountName, cookieString, groups, targets, targetPage, targetPageName, targetUrl, postMessage, mediaUrl, delaySeconds, headless } = body
+    const { accountName, cookieString, groups, targets, targetPage, targetPageName, targetUrl, postMessage, mediaUrl, delaySeconds, headless, ctaPin } = body
 
     // 1. Resolve cookie: use provided or fallback to active-session.json
     let activeCookie = cookieString
@@ -70,6 +70,7 @@ export async function POST(req: NextRequest) {
       mediaUrl: mediaUrl || body.imageUrl || body.image || "",
       delaySeconds: delaySeconds || 30,
       headless: headless !== undefined ? headless : false,
+      ctaPin: ctaPin || body.ctaPinConfig || null,
     }
 
     fs.writeFileSync(configPath, JSON.stringify(botConfig, null, 2), "utf8")

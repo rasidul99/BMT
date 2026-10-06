@@ -495,10 +495,198 @@ async function runFacebookGroupBot(config) {
         // Wait for post upload & dialog close
         await sleep(8000);
 
+        let commentLog = null;
+        // 6. Optional: 1st Comment Pin Automation
+        if (config.ctaPin && config.ctaPin.enabled && config.ctaPin.commentText) {
+          const ctaDelay = Math.max(2, Number(config.ctaPin.delaySeconds) || 5);
+          console.log(`\n💬 [CTA 1st Comment Automation] Active! Waiting ${ctaDelay}s pacing delay...`);
+          await sleep(ctaDelay * 1000);
+
+          try {
+            console.log("🔍 Locating comment box for the newly published post...");
+            let commentInputFound = false;
+
+            // Scroll down gradually to bring the top post and comment area into view
+            for (let scrollAttempt = 0; scrollAttempt < 4; scrollAttempt++) {
+              if (scrollAttempt > 0) {
+                await page.evaluate(() => window.scrollBy({ top: 350, behavior: "smooth" }));
+                await sleep(2000);
+              }
+
+              // Search for comment textbox or comment trigger button
+              const commentBox = await page.evaluate(() => {
+                const isVisible = (el) => {
+                  const rect = el.getBoundingClientRect();
+                  return rect.width > 20 && rect.height > 15 && rect.y >= 30 && rect.y <= window.innerHeight + 50;
+                };
+
+                // Priority 1: Direct editable comment textbox
+                const textboxes = Array.from(document.querySelectorAll('div[role="textbox"][contenteditable="true"]'));
+                for (const tb of textboxes) {
+                  const label = (tb.getAttribute("aria-label") || tb.getAttribute("data-placeholder") || "").toLowerCase();
+                  if (
+                    label.includes("comment") ||
+                    label.includes("মন্তব্য") ||
+                    label.includes("write") ||
+                    label.includes("লিখুন")
+                  ) {
+                    if (isVisible(tb)) {
+                      const r = tb.getBoundingClientRect();
+                      return { x: r.x + r.width / 2, y: r.y + r.height / 2, type: "textbox" };
+                    }
+                  }
+                }
+
+                // Priority 2: "Write a comment..." placeholder or container
+                const allElements = Array.from(document.querySelectorAll('div[aria-label], div[role="button"], span, form'));
+                for (const el of allElements) {
+                  const text = (el.innerText || el.getAttribute("aria-label") || "").trim().toLowerCase();
+                  if (
+                    text === "write a comment..." ||
+                    text === "write a comment" ||
+                    text.includes("একটি মন্তব্য লিখুন") ||
+                    text.includes("মন্তব্য লিখুন")
+                  ) {
+                    if (isVisible(el)) {
+                      const r = el.getBoundingClientRect();
+                      return { x: r.x + r.width / 2, y: r.y + r.height / 2, type: "placeholder" };
+                    }
+                  }
+                }
+
+                // Priority 3: "Comment" action button under the post (which opens the comment field)
+                const buttons = Array.from(document.querySelectorAll('div[role="button"], button'));
+                for (const btn of buttons) {
+                  const text = (btn.innerText || btn.getAttribute("aria-label") || "").trim().toLowerCase();
+                  if (text === "comment" || text === "মন্তব্য" || text.startsWith("leave a comment")) {
+                    if (isVisible(btn)) {
+                      const r = btn.getBoundingClientRect();
+                      return { x: r.x + r.width / 2, y: r.y + r.height / 2, type: "button" };
+                    }
+                  }
+                }
+
+                return null;
+              });
+
+              if (commentBox) {
+                console.log(`🎯 Found comment trigger (${commentBox.type}) at (${Math.round(commentBox.x)}, ${Math.round(commentBox.y)}). Clicking...`);
+                await page.mouse.click(commentBox.x, commentBox.y);
+                await sleep(1500);
+
+                // Check if active element or textbox is now ready
+                const readyTextbox = await page.evaluate(() => {
+                  const active = document.activeElement;
+                  if (active && active.getAttribute("contenteditable") === "true") {
+                    const r = active.getBoundingClientRect();
+                    return { x: r.x + r.width / 2, y: r.y + r.height / 2 };
+                  }
+                  const textboxes = Array.from(document.querySelectorAll('div[role="textbox"][contenteditable="true"]'));
+                  for (const tb of textboxes) {
+                    const r = tb.getBoundingClientRect();
+                    if (r.width > 20 && r.height > 15 && r.y >= 30 && r.y <= window.innerHeight) {
+                      return { x: r.x + r.width / 2, y: r.y + r.height / 2 };
+                    }
+                  }
+                  return null;
+                });
+
+                if (readyTextbox) {
+                  await page.mouse.click(readyTextbox.x, readyTextbox.y);
+                  await sleep(500);
+                }
+
+                // Type the CTA comment text line by line to preserve Shift+Enter formatting
+                const commentText = config.ctaPin.commentText;
+                console.log(`✍️ Typing CTA comment (${commentText.length} characters)...`);
+                const lines = commentText.split("\n");
+                for (let li = 0; li < lines.length; li++) {
+                  if (lines[li].length > 0) {
+                    await page.keyboard.type(lines[li], { delay: 20 });
+                  }
+                  if (li < lines.length - 1) {
+                    await page.keyboard.down("Shift");
+                    await page.keyboard.press("Enter");
+                    await page.keyboard.up("Shift");
+                    await sleep(250);
+                  }
+                }
+
+                await sleep(1200);
+                console.log("📨 Submitting comment (pressing Enter)...");
+                await page.keyboard.press("Enter");
+                await sleep(4000);
+                commentInputFound = true;
+                commentLog = "Comment submitted successfully";
+                console.log("🎉 [CTA] First comment submitted successfully!");
+
+                // Handle Auto-Pin if requested
+                if (config.ctaPin.autoPin) {
+                  console.log("📌 Auto-pin enabled. Locating comment menu options...");
+                  try {
+                    await sleep(2000);
+                    const menuClicked = await page.evaluate(() => {
+                      const menuBtns = Array.from(
+                        document.querySelectorAll(
+                          'div[aria-label*="More" i], div[aria-label*="আরও" i], div[aria-label*="Comment options" i], div[aria-label*="মন্তব্য" i], div[aria-haspopup="menu"]'
+                        )
+                      );
+                      for (const btn of menuBtns) {
+                        const r = btn.getBoundingClientRect();
+                        if (r.y >= 0 && r.y <= window.innerHeight && r.width > 10) {
+                          btn.click();
+                          return true;
+                        }
+                      }
+                      return false;
+                    });
+
+                    if (menuClicked) {
+                      await sleep(1500);
+                      const pinClicked = await page.evaluate(() => {
+                        const menuItems = Array.from(document.querySelectorAll('div[role="menuitem"], span, div'));
+                        const pinItem = menuItems.find((el) => {
+                          const t = (el.innerText || "").toLowerCase();
+                          return t.includes("pin comment") || t.includes("মন্তব্য পিন") || t.includes("pin this comment");
+                        });
+                        if (pinItem) {
+                          pinItem.click();
+                          return true;
+                        }
+                        return false;
+                      });
+
+                      if (pinClicked) {
+                        await sleep(2000);
+                        console.log("📌 [CTA] Comment pinned to top successfully!");
+                        commentLog = "Comment submitted & pinned";
+                      } else {
+                        console.log("ℹ️ Pin option not present in menu (leaving comment unpinned).");
+                      }
+                    }
+                  } catch (pinErr) {
+                    console.warn("⚠️ Pinning comment skipped:", pinErr.message);
+                  }
+                }
+                break;
+              }
+            }
+
+            if (!commentInputFound) {
+              console.warn("⚠️ Could not locate comment box on the timeline.");
+              commentLog = "Could not find comment box";
+            }
+          } catch (ctaErr) {
+            console.error("⚠️ CTA comment automation error:", ctaErr.message);
+            commentLog = `Failed: ${ctaErr.message}`;
+          }
+        }
+
         results.push({
           groupId: grp.groupId,
           groupName: grp.groupName,
           status: "Success",
+          commentStatus: commentLog,
           timestamp: new Date().toISOString(),
         });
 

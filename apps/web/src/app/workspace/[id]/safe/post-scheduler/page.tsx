@@ -908,11 +908,31 @@ export default function SafePostSchedulerPage() {
               mediaUrl: actualMedia,
               delaySeconds: 15,
               headless: false, // Visible Chrome browser window so the user sees the bot working!
+              ctaPin: job.ctaPinConfig,
             }),
           })
 
           const botData = await botRes.json()
           if (botData.success) {
+            if (job.ctaPinConfig?.enabled && job.ctaPinConfig.commentText && typeof window !== "undefined") {
+              try {
+                const curLogsStr = localStorage.getItem("bmt_cta_pin_logs")
+                const curLogs = curLogsStr ? JSON.parse(curLogsStr) : []
+                const newLog = {
+                  id: `log-${Date.now()}`,
+                  postId: `bot-${botData.jobId}`,
+                  pageName: job.accountName,
+                  commentText: job.ctaPinConfig.commentText,
+                  pinnedStatus: job.ctaPinConfig.autoPin ? "Pinned" : "Comment Only",
+                  apiResponse: `Puppeteer Bot Automation — ${botData.commentStatus || "Comment posted via Chrome session"}`,
+                  timestamp: new Date().toISOString(),
+                }
+                localStorage.setItem("bmt_cta_pin_logs", JSON.stringify([newLog, ...curLogs]))
+              } catch (logErr) {
+                console.error("Failed to write CTA pin log", logErr)
+              }
+            }
+
             return {
               success: true,
               postId: `bot-${botData.jobId}`,
