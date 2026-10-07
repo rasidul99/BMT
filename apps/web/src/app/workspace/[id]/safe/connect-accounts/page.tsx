@@ -105,14 +105,28 @@ export default function SafeConnectAccountsPage() {
       return
     }
 
+    const trimmedCred = newPageToken.trim()
     const page = {
       id: `page-${Date.now()}`,
       pageId: newPageId.trim(),
       name: newPageName.trim(),
       category: newPageCategory.trim() || "General Business",
+      accessToken: trimmedCred,
       permissions: ["pages_manage_posts", "pages_read_engagement", "pages_messaging", "read_insights"],
       connectedAt: "Active (Token Linked)",
-      tokenExpiresIn: newPageToken.trim() ? "Long-Lived (Token)" : "Session Active",
+      tokenExpiresIn: trimmedCred ? "Long-Lived (Token)" : "Session Active",
+    }
+
+    if (trimmedCred.includes("c_user=") && trimmedCred.includes("xs=")) {
+      fetch("/api/facebook-bot/launch", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          accountName: newPageName.trim(),
+          cookieString: trimmedCred,
+          syncSessionOnly: true,
+        }),
+      }).catch(() => null)
     }
 
     const updated = [page, ...connectedPages]

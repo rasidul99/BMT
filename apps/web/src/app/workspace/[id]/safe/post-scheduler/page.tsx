@@ -918,16 +918,34 @@ export default function SafePostSchedulerPage() {
       // ENGINE 1: PUPPETEER BOT (DEFAULT - 100% TOKEN FREE BROWSER AUTOMATION)
       // Active for all accounts & pages when publishEngine === "bot" or token is missing
       // =========================================================================
-      if (publishEngineRef.current === "bot" || !pageToken || !pageToken.startsWith("EAAG")) {
+      if (publishEngineRef.current === "bot" || !pageToken || !pageToken.startsWith("EAA")) {
         try {
           const targetId = pageId || job.accountName
           const targetUrl = `https://www.facebook.com/${targetId}`
+
+          // Resolve real cookieString from connected accounts if available (ignore mock demo tokens)
+          let resolvedCookie: string | undefined = undefined
+          if (pageToken && pageToken.includes("c_user=") && pageToken.includes("xs=")) {
+            resolvedCookie = pageToken
+          } else {
+            const matchedAcc = fbMarketAccounts.find(
+              (a) =>
+                (a.name.toLowerCase() === job.accountName.toLowerCase() ||
+                  a.tokenOrCookie.includes("c_user=")) &&
+                a.tokenOrCookie.includes("xs=") &&
+                !a.tokenOrCookie.includes("bmt_session_token_ok")
+            )
+            if (matchedAcc) {
+              resolvedCookie = matchedAcc.tokenOrCookie
+            }
+          }
 
           const botRes = await fetch("/api/facebook-bot/launch", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               accountName: job.accountName,
+              cookieString: resolvedCookie,
               targetPage: targetId,
               targetPageName: job.accountName,
               targetUrl,
@@ -968,7 +986,7 @@ export default function SafePostSchedulerPage() {
           } else {
             return {
               success: false,
-              error: botData.error || "Puppeteer Bot failed to launch",
+              error: botData.error || botData.message || "Puppeteer Bot failed to launch",
             }
           }
         } catch (botErr: any) {

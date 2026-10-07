@@ -215,10 +215,26 @@ async function runFacebookGroupBot(config) {
     await sleep(2500);
 
     const currentUrl = page.url();
-    if (currentUrl.includes("/login") || currentUrl.includes("/checkpoint")) {
-      console.error("❌ Login failed: Facebook redirected to login or checkpoint page.");
+    const isLoggedOutDom = await page.evaluate(() => {
+      const hasPassInput = Boolean(document.querySelector('input[type="password"], input[name="pass"]'));
+      const bodyText = document.body ? document.body.innerText : "";
+      const hasLoggedOutMarkers =
+        bodyText.includes("Remove profiles from this browser") ||
+        (bodyText.includes("Create new account") && bodyText.includes("Forgotten password?"));
+      return hasPassInput || hasLoggedOutMarkers;
+    });
+
+    if (currentUrl.includes("/login") || currentUrl.includes("/checkpoint") || isLoggedOutDom) {
+      const errMsg =
+        "ফেসবুক সেশন কুকি (c_user ও xs) লগআউট বা মেয়াদোত্তীর্ণ হয়ে গেছে। Facebook Market (100 Accounts) থেকে নতুন কুকি আপডেট করুন।";
+      console.error("❌ Login failed: " + errMsg);
       await browser.close();
-      return { success: false, error: "Session expired or checkpoint encountered" };
+      return {
+        success: false,
+        error: errMsg,
+        results: [{ status: "Failed", error: errMsg }],
+        summary: { total: groups.length, success: 0, failed: groups.length },
+      };
     }
 
     console.log("✅ Facebook Session Active and Authenticated!\n");

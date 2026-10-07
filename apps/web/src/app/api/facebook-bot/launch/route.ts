@@ -13,6 +13,33 @@ export async function POST(req: NextRequest) {
     let activeAccount = accountName || "Facebook Account"
 
     const sessionFilePath = path.resolve(process.cwd(), "..", "..", "scripts", "facebook-bot", "active-session.json")
+
+    // If a fresh valid cookieString was sent from the client, persist it to active-session.json
+    if (activeCookie && activeCookie.includes("c_user=") && activeCookie.includes("xs=")) {
+      try {
+        fs.writeFileSync(
+          sessionFilePath,
+          JSON.stringify(
+            {
+              accountName: activeAccount,
+              cookieString: activeCookie,
+              updatedAt: new Date().toISOString(),
+            },
+            null,
+            2
+          ),
+          "utf8"
+        )
+      } catch {}
+    }
+
+    if (body.syncSessionOnly) {
+      return NextResponse.json({
+        success: true,
+        message: "Facebook session cookie synced to active-session.json",
+      })
+    }
+
     if ((!activeCookie || !activeCookie.includes("c_user=")) && fs.existsSync(sessionFilePath)) {
       try {
         const sessionData = JSON.parse(fs.readFileSync(sessionFilePath, "utf8"))
@@ -135,15 +162,15 @@ export async function POST(req: NextRequest) {
 
       if (finalStatus) {
         const isSuccess = finalStatus.success === true || (finalStatus.summary && finalStatus.summary.success > 0)
+        const errMsg = finalStatus.error || finalStatus.results?.[0]?.error || "Facebook Bot posting failed"
         return NextResponse.json({
           ...finalStatus,
           success: isSuccess,
           jobId,
           engine: "bot",
           commentStatus: finalStatus.results?.[0]?.commentStatus || null,
-          message: isSuccess
-            ? "Published successfully to Facebook!"
-            : (finalStatus.results?.[0]?.error || "Facebook Bot posting failed"),
+          error: isSuccess ? undefined : errMsg,
+          message: isSuccess ? "Published successfully to Facebook!" : errMsg,
         }, { status: isSuccess ? 200 : 400 })
       }
 

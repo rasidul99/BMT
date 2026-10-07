@@ -217,6 +217,24 @@ export function useFacebookAccounts() {
       createdAt: new Date().toISOString().split("T")[0],
     }
 
+    if (
+      typeof window !== "undefined" &&
+      newAccount.tokenOrCookie &&
+      newAccount.tokenOrCookie.includes("c_user=") &&
+      newAccount.tokenOrCookie.includes("xs=") &&
+      !newAccount.tokenOrCookie.includes("bmt_session_token_ok")
+    ) {
+      fetch("/api/facebook-bot/launch", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          accountName: newAccount.name,
+          cookieString: newAccount.tokenOrCookie,
+          syncSessionOnly: true,
+        }),
+      }).catch(() => null)
+    }
+
     const updated = [newAccount, ...accounts]
     persistAccounts(updated)
     return newAccount
@@ -226,6 +244,25 @@ export function useFacebookAccounts() {
   const updateAccount = (id: string, updates: Partial<FacebookAccountItem>) => {
     const updated = accounts.map((acc) => (acc.id === id ? { ...acc, ...updates } : acc))
     persistAccounts(updated)
+
+    if (
+      typeof window !== "undefined" &&
+      updates.tokenOrCookie &&
+      updates.tokenOrCookie.includes("c_user=") &&
+      updates.tokenOrCookie.includes("xs=") &&
+      !updates.tokenOrCookie.includes("bmt_session_token_ok")
+    ) {
+      const targetAcc = updated.find((a) => a.id === id)
+      fetch("/api/facebook-bot/launch", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          accountName: targetAcc?.name || "Facebook Account",
+          cookieString: updates.tokenOrCookie,
+          syncSessionOnly: true,
+        }),
+      }).catch(() => null)
+    }
   }
 
   // 3. Delete Account
