@@ -756,7 +756,7 @@ export default function SafeCommentAssistantPage() {
     setWatcherReplies([])
     setWatcherLogs("")
     setWatcherStatus("STARTING")
-    setActiveTab("liveTest")
+    setPostSavedToast(`Launching Live Facebook Watcher Bot for "${post.postTitle}" (${post.targetName})...`)
 
     try {
       const res = await fetch("/api/facebook-bot/comment-watcher", {
@@ -781,6 +781,7 @@ export default function SafeCommentAssistantPage() {
         setWatcherJobId(data.jobId)
         setWatcherStatus("WATCHING")
         updateMonitoredPost(post.id, { watcherJobId: data.jobId, watcherStatus: "WATCHING" })
+        setPostSavedToast(`Live Watcher Bot active on "${post.postTitle}" (Job: ${data.jobId})`)
       } else {
         setWatcherStatus("ERROR")
       }
@@ -788,6 +789,7 @@ export default function SafeCommentAssistantPage() {
       setWatcherStatus("ERROR")
     } finally {
       setWatcherLoading(false)
+      setTimeout(() => setPostSavedToast(null), 5000)
     }
   }
 
@@ -1287,7 +1289,7 @@ export default function SafeCommentAssistantPage() {
               type="button"
               data-testid="tab-monitored-posts"
               onClick={() => setActiveTab("posts")}
-              className={`px-2.5 py-1 rounded-lg text-xs font-semibold whitespace-nowrap transition flex items-center gap-1.5 shrink-0 cursor-pointer ${
+              className={`px-3 py-1 rounded-lg text-xs font-semibold whitespace-nowrap transition flex items-center gap-1.5 shrink-0 cursor-pointer ${
                 activeTab === "posts"
                   ? "bg-background shadow-xs text-foreground font-bold"
                   : "text-muted-foreground hover:text-foreground"
@@ -1295,45 +1297,6 @@ export default function SafeCommentAssistantPage() {
             >
               <Layers className="w-3.5 h-3.5 text-emerald-500" />
               <span>Posts ({monitoredPosts.length}/{MAX_MONITORED_POSTS})</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setActiveTab("library")}
-              className={`px-2.5 py-1 rounded-lg text-xs font-semibold whitespace-nowrap transition flex items-center gap-1.5 shrink-0 cursor-pointer ${
-                activeTab === "library"
-                  ? "bg-background shadow-xs text-foreground font-bold"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              <BookOpen className="w-3.5 h-3.5 text-blue-500" />
-              <span>AI Rules ({library.length})</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setActiveTab("logs")}
-              className={`px-2.5 py-1 rounded-lg text-xs font-semibold whitespace-nowrap transition flex items-center gap-1.5 shrink-0 cursor-pointer ${
-                activeTab === "logs"
-                  ? "bg-background shadow-xs text-foreground font-bold"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              <Clock className="w-3.5 h-3.5 text-amber-500" />
-              <span>Logs ({logs.length})</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setActiveTab("liveTest")}
-              className={`px-2.5 py-1 rounded-lg text-xs font-semibold whitespace-nowrap transition flex items-center gap-1.5 shrink-0 cursor-pointer ${
-                activeTab === "liveTest"
-                  ? "bg-rose-600 text-white shadow-xs font-bold"
-                  : "text-rose-500 hover:bg-rose-500/10 font-semibold"
-              }`}
-            >
-              <Radio className="w-3.5 h-3.5 animate-pulse text-current" />
-              <span>Live Test</span>
             </button>
           </div>
 
