@@ -250,6 +250,15 @@ async function runWatcher(configPath) {
     const currentUrl = page.url();
     console.log(`📍 Current Facebook URL settled at: ${currentUrl}`);
 
+    // If redirected from share/p to permalink, ensure direct full post load
+    if (currentUrl.includes("permalink.php") && postUrl.includes("/share/")) {
+      console.log(`🔄 Reloading canonical permalink directly: ${currentUrl}`);
+      try {
+        await page.goto(currentUrl, { waitUntil: "networkidle2", timeout: 45000 });
+        await sleep(4000);
+      } catch (_) {}
+    }
+
     // Close any blocking popup/dialog if present
     try {
       await safeEvaluate(page, () => {
@@ -260,7 +269,7 @@ async function runWatcher(configPath) {
     } catch (_) {}
 
     // Scroll slightly down to load comments section
-    await safeEvaluate(page, () => window.scrollBy({ top: 300, behavior: "smooth" }));
+    await safeEvaluate(page, () => window.scrollBy({ top: 400, behavior: "smooth" }));
     await sleep(2500);
 
     for (let check = 1; check <= maxChecks; check++) {
@@ -284,14 +293,18 @@ async function runWatcher(configPath) {
             // Check for buttons under this comment
             const buttons = Array.from(art.querySelectorAll('div[role="button"], span[role="button"], a[role="button"]'));
             const hasReplyBtn = buttons.some((b) => {
-              const bt = (b.innerText || b.getAttribute("aria-label") || "").toLowerCase();
-              return bt.includes("reply") || bt.includes("উত্তর দিন") || bt.includes("উত্তর");
+              const bt = (b.innerText || b.getAttribute("aria-label") || "").trim().toLowerCase();
+              return bt === "reply" || bt === "উত্তর দিন" || bt.includes("reply") || bt.includes("উত্তর");
             });
 
             const hasMessageBtn = buttons.some((b) => {
-              const bt = (b.innerText || b.getAttribute("aria-label") || "").toLowerCase();
-              return bt.includes("send message") || bt.includes("বার্তা পাঠান");
+              const bt = (b.innerText || b.getAttribute("aria-label") || "").trim().toLowerCase();
+              return bt === "send message" || bt === "বার্তা পাঠান" || bt.includes("send message") || bt.includes("বার্তা পাঠান");
             });
+
+            // STRICT FILTER: A real comment MUST have a Reply button!
+            // Sidebars like 'INFINITY BANGLADESH', 'People you may know', 'Reels' do NOT have a Reply button.
+            if (!hasReplyBtn) return;
 
             // Extract commenter name and comment text
             const lines = text.split("\n").map((l) => l.trim()).filter(Boolean);
