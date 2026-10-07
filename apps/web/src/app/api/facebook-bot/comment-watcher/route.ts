@@ -20,6 +20,11 @@ export async function POST(req: NextRequest) {
     const botConfig = {
       jobId,
       postUrl: postUrl.trim(),
+      postTitle: typeof body.postTitle === "string" ? body.postTitle.trim() : undefined,
+      sourceType: typeof body.sourceType === "string" ? body.sourceType.trim() : undefined,
+      targetName: typeof body.targetName === "string" ? body.targetName.trim() : undefined,
+      customPublicReply: typeof body.customPublicReply === "string" ? body.customPublicReply.trim() : undefined,
+      customInboxMessage: typeof body.customInboxMessage === "string" ? body.customInboxMessage.trim() : undefined,
       checkIntervalSeconds: Number(checkIntervalSeconds) || 15,
       maxChecks: Number(maxChecks) || 30,
       autoReply: Boolean(autoReply),

@@ -42,6 +42,9 @@ import {
   BookOpen,
   Sliders,
   AlertTriangle,
+  Link2,
+  Pause,
+  FileText,
 } from "lucide-react"
 import {
   useCommentAssistant,
@@ -49,23 +52,32 @@ import {
   CommentLibraryTemplate,
   CommentSourceType,
   CommentIntentType,
+  MonitoredPostItem,
+  MAX_MONITORED_POSTS,
+  doesCommentMatchMonitoredPost,
 } from "../../../../../hooks/useCommentAssistant"
 import { useFacebookAccounts } from "../../../../../hooks/useFacebookAccounts"
 import { env } from "../../../../../lib/env"
-import { getPublishToken } from "../../../../../lib/fb-page-registry"
+import { getPublishToken, getPageRegistry } from "../../../../../lib/fb-page-registry"
 
 export default function SafeCommentAssistantPage() {
   const {
     comments,
     library,
     logs,
+    monitoredPosts,
     detectIntent,
     findMatchingTemplate,
+    findMonitoredPostForComment,
     incrementTemplateUsage,
     addIncomingComment,
     markReplied,
     retryFailedComment,
     dismissComment,
+    addMonitoredPost,
+    updateMonitoredPost,
+    toggleMonitoredPostStatus,
+    deleteMonitoredPost,
     addLibraryTemplate,
     updateLibraryTemplate,
     deleteLibraryTemplate,
@@ -75,8 +87,8 @@ export default function SafeCommentAssistantPage() {
 
   const { accounts: fleetAccounts, metrics: fleetMetrics } = useFacebookAccounts()
 
-  // Clean 4-Tab Navigation (Webhook Simulator tucked into collapsible drawer/modal)
-  const [activeTab, setActiveTab] = useState<"incoming" | "library" | "logs" | "liveTest">("incoming")
+  // Navigation Tabs (Live Stream, Monitored Posts 100-Manager, AI Knowledgebase, Audit Ledger, Live Test)
+  const [activeTab, setActiveTab] = useState<"incoming" | "posts" | "library" | "logs" | "liveTest">("incoming")
 
   // Stream View Mode: High-Density Compact Table (default for 100 accounts) vs Detailed Cards
   const [streamViewMode, setStreamViewMode] = useState<"compact" | "cards">("compact")
@@ -84,12 +96,37 @@ export default function SafeCommentAssistantPage() {
   // Expanded Row IDs for inline editing in Compact Table View
   const [expandedCommentIds, setExpandedCommentIds] = useState<Record<string, boolean>>({})
 
-  // Multi-Account & Source Filter State
+  // Multi-Account, Source & Monitored Post Filter State
   const [selectedAccountFilter, setSelectedAccountFilter] = useState<string>("ALL")
   const [selectedSourceFilter, setSelectedSourceFilter] = useState<"ALL" | CommentSourceType>("ALL")
+  const [selectedPostFilter, setSelectedPostFilter] = useState<string>("ALL")
   const [selectedStatusFilter, setSelectedStatusFilter] = useState<"ALL" | "Replied" | "Pending" | "Failed">("ALL")
   const [selectedIntentFilter, setSelectedIntentFilter] = useState<string>("ALL")
   const [streamSearchQuery, setStreamSearchQuery] = useState<string>("")
+
+  // Monitored Posts Tab Filter State
+  const [postsSourceFilter, setPostsSourceFilter] = useState<"ALL" | CommentSourceType>("ALL")
+  const [postsSearchQuery, setPostsSearchQuery] = useState<string>("")
+
+  // "+ Add Post" / Edit Monitored Post Modal State (Step-by-Step User Journey)
+  const [showAddPostModal, setShowAddPostModal] = useState(false)
+  const [editingPostId, setEditingPostId] = useState<string | null>(null)
+  const [postSourceTab, setPostSourceTab] = useState<CommentSourceType>("Personal ID")
+  const [selectedTargetId, setSelectedTargetId] = useState<string>("acc-rasidul")
+  const [selectedTargetName, setSelectedTargetName] = useState<string>("Rasidul (Personal ID)")
+  const [selectedPostAccountName, setSelectedPostAccountName] = useState<string>("Rasidul (Personal ID)")
+  const [postLinkInput, setPostLinkInput] = useState<string>("")
+  const [postTitleInput, setPostTitleInput] = useState<string>("")
+  const [postReplyMode, setPostReplyMode] = useState<"template" | "custom">("template")
+  const [selectedPostTemplateId, setSelectedPostTemplateId] = useState<string>("tmpl-price-1")
+  const [postCustomPublicReply, setPostCustomPublicReply] = useState<string>(
+    "ধন্যবাদ ভাইয়া! প্রিমিয়াম কালেকশনের স্পেশাল অফার প্রাইজ আপনার ইনবক্সে পাঠানো হয়েছে। দয়া করে মেসেঞ্জার চেক করুন।"
+  )
+  const [postCustomInboxMessage, setPostCustomInboxMessage] = useState<string>(
+    "আসসালামু আলাইকুম! আমাদের প্রিমিয়াম ওয়াচটির রেগুলার মূল্য ৩,৯৯০ টাকা, তবে ঈদ ধামাকা অফারে পাচ্ছেন মাত্র ২,৪৯০ টাকায় (সারাদেশে ফ্রি ক্যাশ অন ডেলিভারি)! অর্ডার করতে এখনই আপনার নাম, পূর্ণ ঠিকানা ও মোবাইল নম্বর দিন।"
+  )
+  const [postSendPrivateInbox, setPostSendPrivateInbox] = useState<boolean>(true)
+  const [postSavedToast, setPostSavedToast] = useState<string | null>(null)
 
   // Primary Operational Mode: Default to Full Auto-Pilot ("Auto") for 100-Account scale
   const [mode, setMode] = useState<"Auto" | "Manual">("Auto")
@@ -225,16 +262,194 @@ export default function SafeCommentAssistantPage() {
     [comments]
   )
 
+  // Dynamic Connected Lists for Step 2 of "+ Add Post" (Personal IDs, Facebook Pages, Facebook Groups)
+  const connectedPersonalIds = useMemo(() => {
+    const list: Array<{ id: string; name: string; uid: string; status: string }> = [
+      { id: "acc-rasidul", name: "Rasidul (Personal ID)", uid: "100099128374", status: "Active" },
+    ]
+    fleetAccounts.forEach((acc) => {
+      if (!list.some((item) => item.name === acc.name)) {
+        list.push({
+          id: acc.id,
+          name: acc.name,
+          uid: acc.uid,
+          status: acc.status,
+        })
+      }
+    })
+    return list
+  }, [fleetAccounts])
+
+  const [clientConnectedPages, setClientConnectedPages] = useState<
+    Array<{ id: string; name: string; category: string }>
+  >([])
+
+  useEffect(() => {
+    const loaded: Array<{ id: string; name: string; category: string }> = []
+    try {
+      const regPages = getPageRegistry()
+      regPages.forEach((p) => {
+        if (p?.pageName && !loaded.some((item) => item.name.toLowerCase() === p.pageName.toLowerCase())) {
+          loaded.push({
+            id: String(p.pageId || p.pageName),
+            name: String(p.pageName),
+            category: p.category || "Connected Page",
+          })
+        }
+      })
+    } catch {}
+
+    try {
+      const rawConn = localStorage.getItem("bmt_connected_pages")
+      if (rawConn) {
+        const parsedConn = JSON.parse(rawConn)
+        if (Array.isArray(parsedConn)) {
+          parsedConn.forEach((cp: any) => {
+            const pName = String(cp?.name || cp?.pageName || "").trim()
+            const pId = String(cp?.pageId || cp?.id || pName).trim()
+            if (pName && !loaded.some((item) => item.name.toLowerCase() === pName.toLowerCase())) {
+              loaded.push({
+                id: pId,
+                name: pName,
+                category: cp?.category || "Connected Client Page",
+              })
+            }
+          })
+        }
+      }
+    } catch {}
+
+    setClientConnectedPages(loaded)
+  }, [showAddPostModal])
+
+  const connectedPages = useMemo(() => {
+    const list: Array<{ id: string; name: string; category: string; accountName: string }> = [
+      {
+        id: "892168940637389",
+        name: "CARE HUB BD",
+        category: "Official Brand Page",
+        accountName: "CARE HUB BD",
+      },
+    ]
+
+    clientConnectedPages.forEach((p) => {
+      if (!list.some((item) => item.name.toLowerCase() === p.name.toLowerCase())) {
+        list.push({
+          id: p.id,
+          name: p.name,
+          category: p.category,
+          accountName: p.name,
+        })
+      }
+    })
+
+    fleetAccounts
+      .filter((acc) => acc.accountType === "Page Admin")
+      .forEach((acc) => {
+        if (!list.some((item) => item.name.toLowerCase() === acc.name.toLowerCase())) {
+          list.push({
+            id: acc.id,
+            name: acc.name,
+            category: "Page Admin Account",
+            accountName: acc.name,
+          })
+        }
+      })
+
+    const extraDefaultPages = [
+      { id: "page-gadget-hub-bd", name: "Gadget Hub Official BD", category: "Electronics & Smart Watch Page" },
+      { id: "page-organic-food-bd", name: "Pure Organic Food BD Page", category: "Organic Grocery Page" },
+      { id: "page-dhaka-fashion", name: "Dhaka Fashion & Lifestyle Store", category: "Apparel & Boutique Page" },
+    ]
+    extraDefaultPages.forEach((ep) => {
+      if (!list.some((item) => item.name.toLowerCase() === ep.name.toLowerCase())) {
+        list.push({ ...ep, accountName: ep.name })
+      }
+    })
+
+    return list
+  }, [fleetAccounts, clientConnectedPages])
+
+  const connectedGroups = useMemo(() => {
+    const list: Array<{
+      id: string
+      name: string
+      memberCount: number
+      privacy: string
+      accountName: string
+      accountId: string
+    }> = []
+
+    fleetAccounts.forEach((acc) => {
+      ;(acc.assignedGroups || []).forEach((grp) => {
+        if (!list.some((g) => g.name.toLowerCase() === grp.groupName.toLowerCase())) {
+          list.push({
+            id: grp.groupId,
+            name: grp.groupName,
+            memberCount: grp.memberCount,
+            privacy: grp.privacy,
+            accountName: acc.name,
+            accountId: acc.id,
+          })
+        }
+      })
+    })
+
+    if (list.length === 0) {
+      list.push(
+        {
+          id: "grp-1",
+          name: "Dhaka Buy and Sell Official",
+          memberCount: 185000,
+          privacy: "Public",
+          accountName: "Tariqul Islam (Dhaka Marketplace Lead)",
+          accountId: "acc-101",
+        },
+        {
+          id: "grp-4",
+          name: "BD Smart Gadget & Electronics Hub",
+          memberCount: 140000,
+          privacy: "Public",
+          accountName: "Kamrul Hasan (Gadgets & Tech Poster)",
+          accountId: "acc-102",
+        }
+      )
+    }
+
+    return list
+  }, [fleetAccounts])
+
   // All selectable accounts across the 100-account fleet + active pages
   const selectableAccounts = useMemo(() => {
     const names = new Set<string>(["CARE HUB BD", "Rasidul (Personal ID)"])
     fleetAccounts.forEach((acc) => names.add(acc.name))
+    monitoredPosts.forEach((p) => {
+      if (p.accountName) names.add(p.accountName)
+      if (p.targetName && p.sourceType !== "Group") names.add(p.targetName)
+    })
     comments.forEach((c) => {
       if (c.accountName) names.add(c.accountName)
       else if (c.pageName) names.add(c.pageName)
     })
     return Array.from(names)
-  }, [fleetAccounts, comments])
+  }, [fleetAccounts, monitoredPosts, comments])
+
+  // Filtered Monitored Posts (Up to 100 Posts under IDs, Pages, or Groups)
+  const filteredMonitoredPosts = useMemo(() => {
+    return monitoredPosts.filter((p) => {
+      if (postsSourceFilter !== "ALL" && p.sourceType !== postsSourceFilter) return false
+      if (postsSearchQuery.trim()) {
+        const q = postsSearchQuery.toLowerCase()
+        const matchTitle = p.postTitle.toLowerCase().includes(q)
+        const matchTarget = p.targetName.toLowerCase().includes(q)
+        const matchAccount = p.accountName.toLowerCase().includes(q)
+        const matchUrl = p.postUrl.toLowerCase().includes(q)
+        const matchReply = p.customPublicReply.toLowerCase().includes(q)
+        if (!matchTitle && !matchTarget && !matchAccount && !matchUrl && !matchReply) return false
+      }
+      return true
+    })
+  }, [monitoredPosts, postsSourceFilter, postsSearchQuery])
 
   // Filtered Live Activity Stream
   const filteredComments = useMemo(() => {
@@ -249,6 +464,14 @@ export default function SafeCommentAssistantPage() {
       }
       if (selectedSourceFilter !== "ALL" && itemSource !== selectedSourceFilter) {
         return false
+      }
+      if (selectedPostFilter !== "ALL") {
+        const targetPost = monitoredPosts.find((p) => p.id === selectedPostFilter || p.postId === selectedPostFilter)
+        if (targetPost) {
+          if (!doesCommentMatchMonitoredPost(c, targetPost)) return false
+        } else if (c.postId !== selectedPostFilter) {
+          return false
+        }
       }
       if (selectedStatusFilter !== "ALL") {
         if (selectedStatusFilter === "Failed" && !isItemFailed) return false
@@ -273,8 +496,10 @@ export default function SafeCommentAssistantPage() {
     })
   }, [
     comments,
+    monitoredPosts,
     selectedAccountFilter,
     selectedSourceFilter,
+    selectedPostFilter,
     selectedStatusFilter,
     selectedIntentFilter,
     streamSearchQuery,
@@ -297,27 +522,273 @@ export default function SafeCommentAssistantPage() {
     })
   }, [library, libraryCategoryFilter, librarySearchQuery])
 
-  // Get or initialize editable draft for a comment
+  // Get or initialize editable draft for a comment (Prioritizes Monitored Post's Configured Reply & DM)
   const getDraftForComment = (comment: CommentItem) => {
     if (editingReplies[comment.id]) {
       return editingReplies[comment.id]
     }
+    const matchedPost = findMonitoredPostForComment(comment.postId, comment.postUrl, comment.postTitle)
     const matchingTmpl = findMatchingTemplate(
       comment.intent,
       comment.userComment,
       comment.accountName || comment.pageName
     )
-    const basePublic =
+    const basePublic = (
       comment.publicReply ||
+      matchedPost?.customPublicReply ||
       comment.suggestions[0] ||
       matchingTmpl?.publicReply ||
       "ধন্যবাদ ভাইয়া! বিস্তারিত তথ্য ইনবক্সে পাঠানো হয়েছে।"
-    const baseInbox =
+    ).replace(/\{\{name\}\}/gi, comment.userName || "ভাইয়া")
+    const baseInbox = (
       comment.privateInboxMessage ||
+      matchedPost?.customInboxMessage ||
       matchingTmpl?.privateInboxReply ||
       "আসসালামু আলাইকুম! আমাদের প্রডাক্টটির অফার মূল্য মাত্র ২,৪৯০ টাকা। বিস্তারিত জানতে আমাদের মেসেজ করুন।"
+    ).replace(/\{\{name\}\}/gi, comment.userName || "সম্মানিত গ্রাহক")
 
     return applyGlobalAiRules(basePublic, baseInbox)
+  }
+
+  // Step-by-Step "+ Add Post" Modal Helpers
+  const handleSwitchPostSourceTab = (nextTab: CommentSourceType) => {
+    setPostSourceTab(nextTab)
+    if (nextTab === "Personal ID" && connectedPersonalIds.length > 0) {
+      const first = connectedPersonalIds[0]
+      setSelectedTargetId(first.id)
+      setSelectedTargetName(first.name)
+      setSelectedPostAccountName(first.name)
+    } else if (nextTab === "Page" && connectedPages.length > 0) {
+      const first = connectedPages[0]
+      setSelectedTargetId(first.id)
+      setSelectedTargetName(first.name)
+      setSelectedPostAccountName(first.accountName)
+    } else if (nextTab === "Group" && connectedGroups.length > 0) {
+      const first = connectedGroups[0]
+      setSelectedTargetId(first.id)
+      setSelectedTargetName(first.name)
+      setSelectedPostAccountName(first.accountName)
+    }
+  }
+
+  const handleSelectTargetFromDropdown = (targetId: string) => {
+    setSelectedTargetId(targetId)
+    if (postSourceTab === "Personal ID") {
+      const found = connectedPersonalIds.find((item) => item.id === targetId)
+      if (found) {
+        setSelectedTargetName(found.name)
+        setSelectedPostAccountName(found.name)
+      }
+    } else if (postSourceTab === "Page") {
+      const found = connectedPages.find((item) => item.id === targetId)
+      if (found) {
+        setSelectedTargetName(found.name)
+        setSelectedPostAccountName(found.accountName)
+      }
+    } else if (postSourceTab === "Group") {
+      const found = connectedGroups.find((item) => item.id === targetId)
+      if (found) {
+        setSelectedTargetName(found.name)
+        setSelectedPostAccountName(found.accountName)
+      }
+    }
+  }
+
+  const handleSelectPostTemplate = (templateId: string) => {
+    setSelectedPostTemplateId(templateId)
+    setPostReplyMode("template")
+    const found = library.find((t) => t.id === templateId)
+    if (found) {
+      setPostCustomPublicReply(found.publicReply)
+      setPostCustomInboxMessage(found.privateInboxReply)
+    }
+  }
+
+  const openAddPostModal = (defaultSource: CommentSourceType = "Personal ID") => {
+    setEditingPostId(null)
+    setPostLinkInput("")
+    setPostTitleInput("")
+    setPostReplyMode("template")
+    setPostSendPrivateInbox(true)
+    const defaultTmpl = library[0]
+    if (defaultTmpl) {
+      setSelectedPostTemplateId(defaultTmpl.id)
+      setPostCustomPublicReply(defaultTmpl.publicReply)
+      setPostCustomInboxMessage(defaultTmpl.privateInboxReply)
+    }
+    handleSwitchPostSourceTab(defaultSource)
+    setShowAddPostModal(true)
+  }
+
+  const startEditMonitoredPost = (post: MonitoredPostItem) => {
+    setEditingPostId(post.id)
+    setPostSourceTab(post.sourceType)
+    setSelectedTargetId(post.targetId)
+    setSelectedTargetName(post.targetName)
+    setSelectedPostAccountName(post.accountName)
+    setPostLinkInput(post.postUrl)
+    setPostTitleInput(post.postTitle)
+    setPostReplyMode(post.replyConfigMode)
+    setSelectedPostTemplateId(post.templateId || library[0]?.id || "")
+    setPostCustomPublicReply(post.customPublicReply)
+    setPostCustomInboxMessage(post.customInboxMessage)
+    setPostSendPrivateInbox(post.sendPrivateInbox)
+    setShowAddPostModal(true)
+  }
+
+  const handleSaveMonitoredPostSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    const cleanUrl = postLinkInput.trim()
+    if (!cleanUrl) return alert("Please paste the Facebook Post Link (URL).")
+    if (!postCustomPublicReply.trim()) return alert("Please enter or select a Comment Reply.")
+
+    const chosenTmpl = postReplyMode === "template" ? library.find((t) => t.id === selectedPostTemplateId) : undefined
+    const resolvedTitle =
+      postTitleInput.trim() ||
+      chosenTmpl?.productName ||
+      `${selectedTargetName} — Facebook ${postSourceTab} Post`
+
+    try {
+      if (editingPostId) {
+        updateMonitoredPost(editingPostId, {
+          postUrl: cleanUrl,
+          postTitle: resolvedTitle,
+          sourceType: postSourceTab,
+          targetId: selectedTargetId,
+          targetName: selectedTargetName,
+          accountName: selectedPostAccountName || selectedTargetName,
+          groupName: postSourceTab === "Group" ? selectedTargetName : undefined,
+          replyConfigMode: postReplyMode,
+          templateId: postReplyMode === "template" ? selectedPostTemplateId : undefined,
+          templateTitle: chosenTmpl?.title,
+          customPublicReply: postCustomPublicReply.trim(),
+          customInboxMessage: postCustomInboxMessage.trim(),
+          sendPrivateInbox: postSendPrivateInbox,
+        })
+        setPostSavedToast(`Updated monitored post under ${selectedTargetName}`)
+      } else {
+        addMonitoredPost({
+          postUrl: cleanUrl,
+          postTitle: resolvedTitle,
+          sourceType: postSourceTab,
+          targetId: selectedTargetId,
+          targetName: selectedTargetName,
+          accountName: selectedPostAccountName || selectedTargetName,
+          groupName: postSourceTab === "Group" ? selectedTargetName : undefined,
+          replyConfigMode: postReplyMode,
+          templateId: postReplyMode === "template" ? selectedPostTemplateId : undefined,
+          templateTitle: chosenTmpl?.title,
+          customPublicReply: postCustomPublicReply.trim(),
+          customInboxMessage: postCustomInboxMessage.trim(),
+          sendPrivateInbox: postSendPrivateInbox,
+        })
+        setPostSavedToast(`Added post under ${selectedTargetName} (${postSourceTab}) — Active Monitoring!`)
+      }
+      setShowAddPostModal(false)
+      setEditingPostId(null)
+      setActiveTab("posts")
+      setTimeout(() => setPostSavedToast(null), 4000)
+    } catch (err: any) {
+      alert(err.message || "Could not save monitored post.")
+    }
+  }
+
+  // 1-Click Test: Simulate an incoming customer comment specifically on a Monitored Post
+  const handleSimulateCommentOnPost = (post: MonitoredPostItem) => {
+    const sampleCustomers = ["Ariful Islam", "Sadia Afrin", "Rakibul Hasan", "Nabila Chowdhury", "Imran Hossain"]
+    const randomCustomer = sampleCustomers[Math.floor(Math.random() * sampleCustomers.length)]
+    const sampleComment = "ভাইয়া প্রোডাক্টটির দাম কত? কিভাবে অর্ডার করব?"
+
+    const personalizedPublic = post.customPublicReply.replace(/\{\{name\}\}/gi, randomCustomer)
+    const personalizedInbox = post.customInboxMessage.replace(/\{\{name\}\}/gi, randomCustomer)
+    const shaped = applyGlobalAiRules(personalizedPublic, personalizedInbox)
+    const shouldAuto = post.status === "Active" && mode === "Auto"
+
+    const created = addIncomingComment({
+      commentId: `cmt_${post.id}_${Date.now().toString().slice(-4)}`,
+      postId: post.postId,
+      postTitle: post.postTitle,
+      postUrl: post.postUrl,
+      postThumbnail: post.postThumbnail,
+      pageName: post.accountName,
+      accountId: post.targetId,
+      accountName: post.accountName,
+      sourceType: post.sourceType,
+      groupName: post.groupName,
+      userName: randomCustomer,
+      userComment: sampleComment,
+      autoReplyNow: shouldAuto,
+      sendInbox: post.sendPrivateInbox,
+      customPublicReply: shaped.publicReply,
+      customInboxReply: shaped.inboxReply,
+    })
+
+    if (shouldAuto) {
+      addAuditLog({
+        commentId: created.commentId,
+        customerName: randomCustomer,
+        postTitle: post.postTitle,
+        pageName: post.accountName,
+        sourceType: post.sourceType,
+        groupName: post.groupName,
+        customerQuery: sampleComment,
+        publicReply: shaped.publicReply,
+        privateInboxReply: post.sendPrivateInbox ? shaped.inboxReply : undefined,
+        status: "Success",
+        graphApiResponse: `Auto-Replied via Post Rule (${post.targetName}) — Nested Reply + ${
+          post.sendPrivateInbox ? "Private Inbox DM Sent" : "Nested Only"
+        }`,
+      })
+    }
+
+    setPostSavedToast(
+      `New comment from ${randomCustomer} on "${post.postTitle}" ${
+        shouldAuto ? "auto-replied & DM sent!" : "added to pending queue!"
+      }`
+    )
+    setTimeout(() => setPostSavedToast(null), 4000)
+  }
+
+  // Launch Live Real-World Browser Watcher Bot for a specific Monitored Post
+  const handleStartWatcherForPost = async (post: MonitoredPostItem) => {
+    setWatcherPostUrl(post.postUrl)
+    setWatcherLoading(true)
+    setWatcherReplies([])
+    setWatcherLogs("")
+    setWatcherStatus("STARTING")
+    setActiveTab("liveTest")
+
+    try {
+      const res = await fetch("/api/facebook-bot/comment-watcher", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          postUrl: post.postUrl,
+          postTitle: post.postTitle,
+          sourceType: post.sourceType,
+          targetName: post.targetName,
+          customPublicReply: post.customPublicReply,
+          customInboxMessage: post.customInboxMessage,
+          autoReply: true,
+          sendInbox: post.sendPrivateInbox,
+          headless: !watcherHeaded,
+          checkIntervalSeconds: 15,
+          maxChecks: 40,
+        }),
+      })
+      const data = await res.json()
+      if (data.success && data.jobId) {
+        setWatcherJobId(data.jobId)
+        setWatcherStatus("WATCHING")
+        updateMonitoredPost(post.id, { watcherJobId: data.jobId, watcherStatus: "WATCHING" })
+      } else {
+        setWatcherStatus("ERROR")
+      }
+    } catch {
+      setWatcherStatus("ERROR")
+    } finally {
+      setWatcherLoading(false)
+    }
   }
 
   const updateDraft = (commentId: string, field: "publicReply" | "inboxReply", value: string) => {
@@ -545,17 +1016,29 @@ export default function SafeCommentAssistantPage() {
     await new Promise((r) => setTimeout(r, 450))
 
     const detected = detectIntent(simCommentText)
+    const matchedPost = findMonitoredPostForComment(undefined, undefined, simPostTitle)
     const matchingTmpl = findMatchingTemplate(detected, simCommentText, simPageName)
-    const shouldAutoReply = !simSimulateFailure && mode === "Auto" && detected !== "Needs Review"
+    const isPostActive = matchedPost ? matchedPost.status === "Active" : true
+    const shouldAutoReply = !simSimulateFailure && isPostActive && mode === "Auto" && detected !== "Needs Review"
+    const shouldSendInbox = matchedPost ? matchedPost.sendPrivateInbox && enablePrivateInboxReply : enablePrivateInboxReply
 
-    const shapedReplies = applyGlobalAiRules(
-      matchingTmpl?.publicReply || "ধন্যবাদ ভাইয়া! বিস্তারিত তথ্য আপনার ইনবক্সে পাঠানো হয়েছে।",
-      matchingTmpl?.privateInboxReply || "আসসালামু আলাইকুম! অফার প্রাইজ ২,৪৯০ টাকা।"
-    )
+    const basePub = (
+      matchedPost?.customPublicReply ||
+      matchingTmpl?.publicReply ||
+      "ধন্যবাদ ভাইয়া! বিস্তারিত তথ্য আপনার ইনবক্সে পাঠানো হয়েছে।"
+    ).replace(/\{\{name\}\}/gi, simCustomerName || "ভাইয়া")
+    const baseInb = (
+      matchedPost?.customInboxMessage ||
+      matchingTmpl?.privateInboxReply ||
+      "আসসালামু আলাইকুম! অফার প্রাইজ ২,৪৯০ টাকা।"
+    ).replace(/\{\{name\}\}/gi, simCustomerName || "সম্মানিত গ্রাহক")
+
+    const shapedReplies = applyGlobalAiRules(basePub, baseInb)
 
     const newComment = addIncomingComment({
       commentId: `cmt_sim_${Date.now()}`,
-      postId: `post_sim_${Date.now()}`,
+      postId: matchedPost?.postId || `post_sim_${Date.now()}`,
+      postUrl: matchedPost?.postUrl,
       postTitle: simPostTitle,
       pageName: simPageName,
       accountName: simPageName,
@@ -565,7 +1048,7 @@ export default function SafeCommentAssistantPage() {
       userComment: simCommentText,
       autoReplyNow: shouldAutoReply,
       simulateFailure: simSimulateFailure,
-      sendInbox: enablePrivateInboxReply,
+      sendInbox: shouldSendInbox,
       customPublicReply: shapedReplies.publicReply,
       customInboxReply: shapedReplies.inboxReply,
     })
@@ -594,10 +1077,10 @@ export default function SafeCommentAssistantPage() {
         groupName: simSourceType === "Group" ? simGroupName : undefined,
         customerQuery: simCommentText,
         publicReply: shapedReplies.publicReply,
-        privateInboxReply: enablePrivateInboxReply ? shapedReplies.inboxReply : undefined,
+        privateInboxReply: shouldSendInbox ? shapedReplies.inboxReply : undefined,
         status: "Success",
         graphApiResponse: `Auto-Pilot Instant Nested Reply${
-          enablePrivateInboxReply
+          shouldSendInbox
             ? ` + ${simSourceType === "Page" ? "Page Send Message Modal" : "Direct Messenger Bot"}`
             : " (DM Skipped per Toggle)"
         }`,
@@ -616,9 +1099,11 @@ export default function SafeCommentAssistantPage() {
       customer: simCustomerName,
       user_comment: simCommentText,
       detected_intent: detected,
-      matched_knowledge_rule: matchingTmpl?.title || "Default AI Prompt Rule",
+      matched_knowledge_rule:
+        matchedPost?.templateTitle ||
+        (matchedPost ? "Post Custom Reply Rule" : matchingTmpl?.title || "Default AI Prompt Rule"),
       nested_comment_reply: shapedReplies.publicReply,
-      private_messenger_dm: enablePrivateInboxReply
+      private_messenger_dm: shouldSendInbox
         ? shapedReplies.inboxReply
         : "SKIPPED (Auto-Send Private Messenger DM Disabled)",
       delivery_mechanism:
@@ -678,7 +1163,10 @@ export default function SafeCommentAssistantPage() {
 
   const handleStartWatcher = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!watcherPostUrl.trim()) return alert("Please enter a valid Facebook post URL.")
+    const cleanWatchUrl = watcherPostUrl.trim()
+    if (!cleanWatchUrl) return alert("Please enter a valid Facebook post URL.")
+
+    const matchedPost = findMonitoredPostForComment(undefined, cleanWatchUrl)
 
     setWatcherLoading(true)
     setWatcherReplies([])
@@ -690,9 +1178,14 @@ export default function SafeCommentAssistantPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          postUrl: watcherPostUrl.trim(),
+          postUrl: cleanWatchUrl,
+          postTitle: matchedPost?.postTitle,
+          sourceType: matchedPost?.sourceType,
+          targetName: matchedPost?.targetName,
+          customPublicReply: matchedPost?.customPublicReply,
+          customInboxMessage: matchedPost?.customInboxMessage,
           autoReply: watcherAutoReply,
-          sendInbox: enablePrivateInboxReply,
+          sendInbox: matchedPost ? matchedPost.sendPrivateInbox : enablePrivateInboxReply,
           headless: !watcherHeaded,
           checkIntervalSeconds: 15,
           maxChecks: 40,
@@ -703,6 +1196,9 @@ export default function SafeCommentAssistantPage() {
       if (data.success && data.jobId) {
         setWatcherJobId(data.jobId)
         setWatcherStatus("WATCHING")
+        if (matchedPost) {
+          updateMonitoredPost(matchedPost.id, { watcherJobId: data.jobId, watcherStatus: "WATCHING" })
+        }
       } else {
         alert(data.error || "Failed to launch watcher bot.")
         setWatcherStatus("ERROR")
@@ -766,79 +1262,141 @@ export default function SafeCommentAssistantPage() {
             Smart Comment &amp; Inbox Assistant
           </h1>
           <p className="text-xs md:text-sm text-muted-foreground mt-1 max-w-3xl">
-            Monitors posts across <strong>100 Accounts, Pages &amp; Groups</strong> in real time — enters every customer comment&apos;s reply thread with an instant AI response and dispatches a private Messenger DM automatically.
+            Monitors up to <strong>100 Posts across Personal IDs, Facebook Pages &amp; Groups</strong> in real time — enters every customer comment&apos;s reply thread with an instant AI response and dispatches a private Messenger DM automatically.
           </p>
         </div>
 
-        {/* Clean 4-Tab Navigation + Tucked Test Trigger */}
-        <div className="flex items-center bg-muted/60 p-1 rounded-xl border flex-wrap gap-1 shrink-0 self-start lg:self-auto">
+        {/* Primary "+ Add Post" Button + Clean Navigation Tabs */}
+        <div className="flex flex-wrap items-center gap-2 shrink-0 self-start lg:self-auto">
           <button
-            onClick={() => setActiveTab("incoming")}
-            className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition flex items-center gap-1.5 shrink-0 ${
-              activeTab === "incoming"
-                ? "bg-background shadow-xs text-foreground font-bold"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
+            type="button"
+            data-testid="open-add-post-modal-btn"
+            onClick={() => openAddPostModal("Personal ID")}
+            className="px-4 py-2 rounded-xl text-xs font-black bg-blue-600 hover:bg-blue-700 text-white shadow-sm transition flex items-center gap-1.5 shrink-0 cursor-pointer"
           >
-            <Activity className="w-3.5 h-3.5 text-blue-600" />
-            Live Activity Stream ({comments.length})
-            {failedComments.length > 0 && (
-              <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-rose-600 text-white font-bold">
-                {failedComments.length}
-              </span>
-            )}
+            <Plus className="w-4 h-4 stroke-[2.5]" />
+            + Add Post (ID / Page / Group)
           </button>
 
-          <button
-            onClick={() => setActiveTab("library")}
-            className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition flex items-center gap-1.5 shrink-0 ${
-              activeTab === "library"
-                ? "bg-background shadow-xs text-foreground font-bold"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            <BookOpen className="w-3.5 h-3.5 text-blue-600" />
-            AI Knowledgebase &amp; Rules ({library.length})
-          </button>
+          <div className="flex items-center bg-muted/60 p-1 rounded-xl border flex-wrap gap-1">
+            <button
+              type="button"
+              data-testid="tab-incoming-stream"
+              onClick={() => setActiveTab("incoming")}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition flex items-center gap-1.5 shrink-0 ${
+                activeTab === "incoming"
+                  ? "bg-background shadow-xs text-foreground font-bold"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <Activity className="w-3.5 h-3.5 text-blue-600" />
+              Live Activity Stream ({comments.length})
+              {failedComments.length > 0 && (
+                <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-rose-600 text-white font-bold">
+                  {failedComments.length}
+                </span>
+              )}
+            </button>
 
-          <button
-            onClick={() => setActiveTab("logs")}
-            className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition flex items-center gap-1.5 shrink-0 ${
-              activeTab === "logs"
-                ? "bg-background shadow-xs text-foreground font-bold"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            <Clock className="w-3.5 h-3.5 text-amber-500" />
-            Audit Ledger ({logs.length})
-          </button>
+            <button
+              type="button"
+              data-testid="tab-monitored-posts"
+              onClick={() => setActiveTab("posts")}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition flex items-center gap-1.5 shrink-0 ${
+                activeTab === "posts"
+                  ? "bg-background shadow-xs text-foreground font-bold"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <Layers className="w-3.5 h-3.5 text-emerald-600" />
+              Monitored Posts ({monitoredPosts.length}/{MAX_MONITORED_POSTS})
+            </button>
 
-          <button
-            onClick={() => setActiveTab("liveTest")}
-            className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition flex items-center gap-1.5 shrink-0 ${
-              activeTab === "liveTest"
-                ? "bg-rose-600 text-white shadow-xs font-bold"
-                : "text-rose-600 hover:bg-rose-500/10 font-semibold"
-            }`}
-          >
-            <Radio className="w-3.5 h-3.5 animate-pulse text-current" />
-            Live Real-World Test (ID &amp; Page)
-          </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab("library")}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition flex items-center gap-1.5 shrink-0 ${
+                activeTab === "library"
+                  ? "bg-background shadow-xs text-foreground font-bold"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <BookOpen className="w-3.5 h-3.5 text-blue-600" />
+              AI Knowledgebase &amp; Rules ({library.length})
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setActiveTab("logs")}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition flex items-center gap-1.5 shrink-0 ${
+                activeTab === "logs"
+                  ? "bg-background shadow-xs text-foreground font-bold"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <Clock className="w-3.5 h-3.5 text-amber-500" />
+              Audit Ledger ({logs.length})
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setActiveTab("liveTest")}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition flex items-center gap-1.5 shrink-0 ${
+                activeTab === "liveTest"
+                  ? "bg-rose-600 text-white shadow-xs font-bold"
+                  : "text-rose-600 hover:bg-rose-500/10 font-semibold"
+              }`}
+            >
+              <Radio className="w-3.5 h-3.5 animate-pulse text-current" />
+              Live Real-World Test (ID &amp; Page)
+            </button>
+          </div>
         </div>
       </div>
 
+      {/* Confirmation Toast Banner */}
+      {postSavedToast && (
+        <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-between gap-3 text-xs text-emerald-700 dark:text-emerald-300 animate-in fade-in duration-150">
+          <div className="flex items-center gap-2 font-semibold">
+            <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+            <span>{postSavedToast}</span>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            {activeTab !== "incoming" && (
+              <button
+                type="button"
+                onClick={() => setActiveTab("incoming")}
+                className="px-2.5 py-1 rounded-lg bg-emerald-600 text-white font-bold hover:bg-emerald-700 transition"
+              >
+                View Live Stream
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => setPostSavedToast(null)}
+              className="text-muted-foreground hover:text-foreground p-1"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Executive Command Center Metrics Row */}
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
-        <div className="border bg-card p-3.5 rounded-xl shadow-xs space-y-1">
+        <div
+          onClick={() => setActiveTab("posts")}
+          className="border bg-card p-3.5 rounded-xl shadow-xs space-y-1 cursor-pointer hover:border-blue-500/40 transition"
+        >
           <div className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider flex items-center justify-between">
-            100-Account Fleet Active
-            <Users className="w-3.5 h-3.5 text-emerald-600" />
+            Monitored Posts &amp; Fleet
+            <Layers className="w-3.5 h-3.5 text-emerald-600" />
           </div>
           <div className="text-xl font-black text-foreground flex items-baseline gap-1.5">
-            {fleetMetrics.activeCount + 1} <span className="text-xs font-semibold text-muted-foreground">/ 100 Slots</span>
+            {monitoredPosts.length} <span className="text-xs font-semibold text-muted-foreground">/ {MAX_MONITORED_POSTS} Posts</span>
           </div>
           <div className="text-[10px] text-emerald-600 dark:text-emerald-400 font-medium">
-            Pages, Groups &amp; Personal IDs online
+            {fleetMetrics.activeCount + 1}/100 IDs, Pages &amp; Groups online
           </div>
         </div>
 
@@ -904,6 +1462,86 @@ export default function SafeCommentAssistantPage() {
       {/* TAB 1: LIVE ACTIVITY STREAM (COMPACT TABLE + CARDS + MULTI-ACCOUNT FILTER BAR) */}
       {activeTab === "incoming" && (
         <div className="space-y-4 animate-in fade-in duration-200">
+          {/* Step-by-Step Monitored Posts Quick Bar (100 Posts under ID, Page, or Group) */}
+          <div className="border bg-card p-3.5 rounded-xl shadow-xs space-y-2.5 text-xs">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="font-bold text-foreground flex items-center gap-1.5">
+                  <Layers className="w-3.5 h-3.5 text-blue-600" />
+                  Active Monitored Posts ({monitoredPosts.length}/{MAX_MONITORED_POSTS}):
+                </span>
+                <span className="text-[11px] text-muted-foreground">
+                  1. Click <strong>+ Add Post</strong> &rarr; 2. Select <strong>ID / Page / Group</strong> &rarr; 3. Paste <strong>Post Link</strong> &rarr; 4. Pick <strong>Template or Custom Reply + DM</strong>
+                </span>
+              </div>
+
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setActiveTab("posts")}
+                  className="px-2.5 py-1 rounded-lg border bg-muted/40 hover:bg-muted text-foreground font-semibold transition flex items-center gap-1 text-[11px]"
+                >
+                  Manage All Posts ({monitoredPosts.length}/{MAX_MONITORED_POSTS})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => openAddPostModal("Personal ID")}
+                  className="px-3 py-1 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-bold transition flex items-center gap-1 text-[11px] shadow-xs"
+                >
+                  <Plus className="w-3.5 h-3.5" /> + Add Post
+                </button>
+              </div>
+            </div>
+
+            {/* Horizontal Filter Pills for Monitored Posts */}
+            <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-0.5">
+              <button
+                type="button"
+                onClick={() => setSelectedPostFilter("ALL")}
+                className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold whitespace-nowrap transition border shrink-0 ${
+                  selectedPostFilter === "ALL"
+                    ? "bg-blue-600 text-white border-blue-600 shadow-xs"
+                    : "bg-muted/40 text-muted-foreground hover:bg-muted"
+                }`}
+              >
+                All Monitored Posts ({monitoredPosts.length})
+              </button>
+              {monitoredPosts.map((mp) => {
+                const postCommentCount = comments.filter((c) => doesCommentMatchMonitoredPost(c, mp)).length
+                const isSelected = selectedPostFilter === mp.id || selectedPostFilter === mp.postId
+
+                return (
+                  <button
+                    key={mp.id}
+                    type="button"
+                    onClick={() => setSelectedPostFilter(isSelected ? "ALL" : mp.id)}
+                    className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold whitespace-nowrap transition border flex items-center gap-1.5 shrink-0 ${
+                      isSelected
+                        ? "bg-blue-600 text-white border-blue-600 shadow-xs"
+                        : "bg-background hover:bg-muted text-foreground"
+                    }`}
+                    title={`${mp.sourceType}: ${mp.targetName} — ${mp.postTitle}`}
+                  >
+                    <span
+                      className={`w-1.5 h-1.5 rounded-full ${
+                        mp.status === "Active" ? "bg-emerald-500" : "bg-amber-500"
+                      }`}
+                    />
+                    <span className="opacity-75 text-[10px]">[{mp.sourceType}]</span>
+                    <span className="truncate max-w-[160px]">{mp.postTitle}</span>
+                    <span
+                      className={`px-1.5 py-0.2 rounded-full text-[10px] ${
+                        isSelected ? "bg-white/20 text-white" : "bg-muted text-muted-foreground"
+                      }`}
+                    >
+                      {postCommentCount}
+                    </span>
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+
           {/* Primary Auto-Pilot & Anti-Ban System Health Bar */}
           <div className="border bg-card p-3.5 rounded-xl shadow-xs flex flex-col lg:flex-row lg:items-center justify-between gap-3 text-xs">
             <div className="flex flex-wrap items-center gap-2.5">
@@ -1159,6 +1797,7 @@ export default function SafeCommentAssistantPage() {
 
                 {(selectedAccountFilter !== "ALL" ||
                   selectedSourceFilter !== "ALL" ||
+                  selectedPostFilter !== "ALL" ||
                   selectedStatusFilter !== "ALL" ||
                   selectedIntentFilter !== "ALL" ||
                   streamSearchQuery.trim() !== "") && (
@@ -1167,6 +1806,7 @@ export default function SafeCommentAssistantPage() {
                     onClick={() => {
                       setSelectedAccountFilter("ALL")
                       setSelectedSourceFilter("ALL")
+                      setSelectedPostFilter("ALL")
                       setSelectedStatusFilter("ALL")
                       setSelectedIntentFilter("ALL")
                       setStreamSearchQuery("")
@@ -1714,6 +2354,292 @@ export default function SafeCommentAssistantPage() {
               )}
             </div>
           )}
+        </div>
+      )}
+
+      {/* TAB 1.5: MONITORED POSTS (UP TO 100 POSTS UNDER PERSONAL ID, PAGE, OR GROUP) */}
+      {activeTab === "posts" && (
+        <div className="space-y-4 animate-in fade-in duration-200">
+          {/* Step-by-Step User Journey Banner & Capacity Overview */}
+          <div className="border bg-card rounded-xl shadow-xs p-4 flex flex-col lg:flex-row lg:items-center justify-between gap-4 text-xs">
+            <div className="space-y-1">
+              <div className="font-bold text-sm text-foreground flex items-center gap-2">
+                <Layers className="w-4 h-4 text-emerald-600" />
+                100-Post Multi-Channel Campaign Manager (Personal IDs, Pages &amp; Groups)
+              </div>
+              <p className="text-muted-foreground text-[11px]">
+                Add up to <strong>{MAX_MONITORED_POSTS} Facebook posts</strong> across your connected IDs, Pages, and Groups. Each post uses its own configured Template or Custom Nested Comment Reply + Private Inbox DM.
+              </p>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2.5 shrink-0">
+              <div className="px-3 py-1.5 rounded-lg bg-muted/50 border text-[11px] font-semibold">
+                Capacity:{" "}
+                <strong className="text-foreground">
+                  {monitoredPosts.length} / {MAX_MONITORED_POSTS}
+                </strong>{" "}
+                Posts Active
+              </div>
+
+              <button
+                type="button"
+                onClick={() => openAddPostModal("Personal ID")}
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-lg shadow-xs transition flex items-center gap-1.5 cursor-pointer"
+              >
+                <Plus className="w-4 h-4" /> + Add Post (ID / Page / Group)
+              </button>
+            </div>
+          </div>
+
+          {/* Source Filter Tabs & Search Bar */}
+          <div className="border bg-card rounded-xl shadow-xs p-4 space-y-4 text-xs">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+              {/* Source Filter Pills */}
+              <div className="flex items-center gap-1.5 flex-wrap">
+                {(
+                  [
+                    { label: `All Posts (${monitoredPosts.length}/${MAX_MONITORED_POSTS})`, value: "ALL" },
+                    {
+                      label: `Personal IDs (${monitoredPosts.filter((p) => p.sourceType === "Personal ID").length})`,
+                      value: "Personal ID",
+                    },
+                    {
+                      label: `Facebook Pages (${monitoredPosts.filter((p) => p.sourceType === "Page").length})`,
+                      value: "Page",
+                    },
+                    {
+                      label: `Facebook Groups (${monitoredPosts.filter((p) => p.sourceType === "Group").length})`,
+                      value: "Group",
+                    },
+                  ] as const
+                ).map((tab) => (
+                  <button
+                    key={tab.value}
+                    type="button"
+                    onClick={() => setPostsSourceFilter(tab.value)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition border ${
+                      postsSourceFilter === tab.value
+                        ? "bg-blue-600 text-white border-blue-600 shadow-xs"
+                        : "bg-muted/40 text-muted-foreground hover:bg-muted"
+                    }`}
+                  >
+                    {tab.label}
+                  </button>
+                ))}
+              </div>
+
+              {/* Search Monitored Posts */}
+              <div className="relative w-full md:w-80">
+                <Search className="w-3.5 h-3.5 text-muted-foreground absolute left-3 top-2.5" />
+                <input
+                  type="text"
+                  placeholder="Search post title, URL, ID, page, or group..."
+                  value={postsSearchQuery}
+                  onChange={(e) => setPostsSearchQuery(e.target.value)}
+                  className="w-full pl-8 pr-3 py-1.5 border rounded-lg bg-background text-xs focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none"
+                />
+              </div>
+            </div>
+
+            {/* Monitored Posts Grid */}
+            {filteredMonitoredPosts.length === 0 ? (
+              <div className="p-10 text-center space-y-3 border rounded-xl bg-muted/10">
+                <div className="text-sm font-bold text-foreground">No monitored posts found</div>
+                <p className="text-xs text-muted-foreground max-w-md mx-auto">
+                  Click <strong>&ldquo;+ Add Post&rdquo;</strong> to select a Personal ID, Facebook Page, or Group, paste your post link, and configure its comment reply and private inbox message.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => openAddPostModal("Personal ID")}
+                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-lg shadow-xs transition inline-flex items-center gap-1.5"
+                >
+                  <Plus className="w-4 h-4" /> + Add First Post
+                </button>
+              </div>
+            ) : (
+              <div className="grid gap-4 md:grid-cols-2">
+                {filteredMonitoredPosts.map((post) => {
+                  const postComments = comments.filter((c) => doesCommentMatchMonitoredPost(c, post))
+                  const postRepliedCount = postComments.filter((c) => c.status === "Replied").length
+                  const postInboxCount = postComments.filter((c) => c.inboxStatus === "Sent").length
+                  const isActive = post.status === "Active"
+
+                  return (
+                    <div
+                      key={post.id}
+                      className={`p-4 rounded-xl border space-y-3 text-xs transition shadow-xs ${
+                        isActive
+                          ? "bg-card hover:border-blue-500/40"
+                          : "bg-muted/20 border-dashed opacity-80"
+                      }`}
+                    >
+                      {/* Post Header: Thumbnail, Source Badge, Target Name, Status Toggle */}
+                      <div className="flex items-start justify-between gap-2.5">
+                        <div className="flex items-start gap-2.5 min-w-0">
+                          {post.postThumbnail && (
+                            <img
+                              src={post.postThumbnail}
+                              alt={post.postTitle}
+                              className="w-11 h-11 rounded-lg object-cover border shrink-0"
+                            />
+                          )}
+                          <div className="min-w-0 space-y-1">
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              {getSourceBadge(post.sourceType)}
+                              <span className="font-bold text-foreground text-xs truncate">
+                                {post.targetName}
+                              </span>
+                              <span
+                                className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${
+                                  isActive
+                                    ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/20"
+                                    : "bg-amber-500/10 text-amber-600 border-amber-500/20"
+                                }`}
+                              >
+                                {isActive ? "● Active Monitoring" : "Paused"}
+                              </span>
+                            </div>
+
+                            {post.sourceType === "Group" && post.accountName && (
+                              <div className="text-[10px] text-muted-foreground">
+                                Operating ID: <strong className="text-foreground">{post.accountName}</strong>
+                              </div>
+                            )}
+
+                            <div className="font-bold text-sm text-foreground leading-snug line-clamp-1">
+                              {post.postTitle}
+                            </div>
+
+                            <a
+                              href={post.postUrl}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="inline-flex items-center gap-1 text-[11px] text-blue-600 hover:underline font-mono truncate max-w-xs"
+                            >
+                              <Link2 className="w-3 h-3 shrink-0" />
+                              <span className="truncate">{post.postUrl}</span>
+                              <ExternalLink className="w-2.5 h-2.5 shrink-0" />
+                            </a>
+                          </div>
+                        </div>
+
+                        {/* Edit / Pause / Delete Controls */}
+                        <div className="flex items-center gap-1 shrink-0">
+                          <button
+                            type="button"
+                            data-testid={`toggle-post-status-${post.id}`}
+                            onClick={() => toggleMonitoredPostStatus(post.id)}
+                            className="p-1.5 rounded-lg border bg-background hover:bg-muted text-muted-foreground hover:text-foreground transition"
+                            title={isActive ? "Pause Auto-Reply on this Post" : "Resume Auto-Reply on this Post"}
+                          >
+                            {isActive ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5 text-emerald-600" />}
+                          </button>
+                          <button
+                            type="button"
+                            data-testid={`edit-post-${post.id}`}
+                            onClick={() => startEditMonitoredPost(post)}
+                            className="p-1.5 rounded-lg border bg-background hover:bg-muted text-muted-foreground hover:text-foreground transition"
+                            title="Edit Post Link, Reply or Inbox Message"
+                          >
+                            <Edit3 className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            type="button"
+                            data-testid={`delete-post-${post.id}`}
+                            onClick={() => deleteMonitoredPost(post.id)}
+                            className="p-1.5 rounded-lg border bg-background hover:bg-rose-50 hover:text-rose-600 text-muted-foreground transition"
+                            title="Remove Monitored Post"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Reply Configuration Mode & Live Post Stats */}
+                      <div className="flex items-center justify-between gap-2 flex-wrap px-2.5 py-1.5 rounded-lg bg-muted/40 border text-[11px]">
+                        <div className="flex items-center gap-1.5">
+                          <FileText className="w-3.5 h-3.5 text-blue-600" />
+                          <span className="text-muted-foreground">Config:</span>
+                          <span className="font-semibold text-foreground">
+                            {post.replyConfigMode === "template"
+                              ? `Template (${post.templateTitle || "AI Rule"})`
+                              : "Custom Written Reply & DM"}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2 font-semibold">
+                          <span>{postComments.length} Comments</span>
+                          <span className="text-emerald-600">• {postRepliedCount} Replied</span>
+                          <span className="text-blue-600">• {postInboxCount} DMs</span>
+                        </div>
+                      </div>
+
+                      {/* Configured Nested Comment Reply Preview */}
+                      <div className="p-2.5 rounded-lg bg-background border space-y-1">
+                        <span className="text-[10px] font-semibold text-blue-600 block uppercase">
+                          1. Configured Nested Comment Reply
+                        </span>
+                        <p className="text-muted-foreground text-[11px] leading-relaxed line-clamp-2">
+                          {post.customPublicReply}
+                        </p>
+                      </div>
+
+                      {/* Configured Private Inbox Message Preview */}
+                      <div className="p-2.5 rounded-lg bg-background border space-y-1">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] font-semibold text-blue-600 uppercase">
+                            2. Configured Private Inbox Message (DM)
+                          </span>
+                          <span className="text-[10px] font-semibold text-emerald-600">
+                            {post.sendPrivateInbox ? "Auto-DM Enabled" : "DM Disabled"}
+                          </span>
+                        </div>
+                        <p className="text-muted-foreground text-[11px] leading-relaxed line-clamp-2">
+                          {post.customInboxMessage}
+                        </p>
+                      </div>
+
+                      {/* Post Action Footer: Test Comment, Watch Live Bot, Filter Stream */}
+                      <div className="flex items-center justify-between gap-2 pt-1 flex-wrap">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <button
+                            type="button"
+                            data-testid={`test-post-comment-${post.id}`}
+                            onClick={() => handleSimulateCommentOnPost(post)}
+                            className="px-2.5 py-1.5 rounded-lg bg-blue-600/10 hover:bg-blue-600/20 text-blue-600 dark:text-blue-400 border border-blue-500/20 font-semibold text-[11px] transition flex items-center gap-1"
+                            title="Simulate a customer comment on this post to test its configured reply and DM"
+                          >
+                            <Zap className="w-3 h-3" /> Test Comment + DM
+                          </button>
+
+                          <button
+                            type="button"
+                            data-testid={`watch-live-post-${post.id}`}
+                            onClick={() => handleStartWatcherForPost(post)}
+                            className="px-2.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-[11px] transition flex items-center gap-1 shadow-xs"
+                            title="Launch real browser Comment Watcher Bot for this post URL"
+                          >
+                            <Play className="w-3 h-3 fill-current" /> Watch Live on FB
+                          </button>
+                        </div>
+
+                        <button
+                          type="button"
+                          data-testid={`view-post-stream-${post.id}`}
+                          onClick={() => {
+                            setSelectedPostFilter(post.id)
+                            setActiveTab("incoming")
+                          }}
+                          className="px-2.5 py-1.5 rounded-lg border bg-background hover:bg-muted text-foreground font-semibold text-[11px] transition flex items-center gap-1"
+                        >
+                          View Stream ({postComments.length}) <ArrowRight className="w-3 h-3" />
+                        </button>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </div>
         </div>
       )}
 
@@ -2293,6 +3219,373 @@ export default function SafeCommentAssistantPage() {
                 </div>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL 0: STEP-BY-STEP "+ ADD POST" USER JOURNEY MODAL (ID / PAGE / GROUP -> DROPDOWN -> POST LINK -> TEMPLATE OR CUSTOM REPLY + DM) */}
+      {showAddPostModal && (
+        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-card border border-border rounded-2xl max-w-2xl w-full p-5 space-y-4 shadow-2xl animate-in zoom-in-95 duration-200 my-8">
+            <div className="flex items-center justify-between border-b pb-3">
+              <div>
+                <h3 className="font-bold text-sm text-foreground flex items-center gap-2">
+                  <Plus className="w-4 h-4 text-blue-600" />
+                  {editingPostId
+                    ? "Edit Monitored Post Configuration"
+                    : "Add Post to AI Comment & Inbox Assistant"}
+                </h3>
+                <p className="text-[11px] text-muted-foreground mt-0.5">
+                  Select Personal ID, Facebook Page, or Group &rarr; Pick from Dropdown &rarr; Paste Post Link &rarr; Choose Template or Write Custom Reply &amp; DM ({monitoredPosts.length}/{MAX_MONITORED_POSTS} Posts)
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowAddPostModal(false)}
+                className="text-muted-foreground hover:text-foreground p-1 rounded-lg transition"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveMonitoredPostSubmit} className="space-y-4 text-xs">
+              {/* STEP 1: SELECT SOURCE TYPE TAB (PERSONAL ID | FACEBOOK PAGE | FACEBOOK GROUP) */}
+              <div className="space-y-1.5">
+                <label className="font-bold text-foreground uppercase text-[10px] tracking-wider flex items-center gap-1.5">
+                  <span className="w-4 h-4 rounded-full bg-blue-600 text-white inline-flex items-center justify-center text-[10px] font-black">
+                    1
+                  </span>
+                  Select Target Channel Tab (Personal ID, Facebook Page, or Facebook Group) *
+                </label>
+
+                <div className="grid grid-cols-3 gap-2 p-1 bg-muted/60 rounded-xl border">
+                  <button
+                    type="button"
+                    data-testid="source-tab-id"
+                    onClick={() => handleSwitchPostSourceTab("Personal ID")}
+                    className={`py-2 px-3 rounded-lg font-bold text-xs transition flex items-center justify-center gap-1.5 ${
+                      postSourceTab === "Personal ID"
+                        ? "bg-emerald-600 text-white shadow-xs"
+                        : "text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    <UserCheck className="w-3.5 h-3.5" />
+                    Personal ID ({connectedPersonalIds.length})
+                  </button>
+
+                  <button
+                    type="button"
+                    data-testid="source-tab-page"
+                    onClick={() => handleSwitchPostSourceTab("Page")}
+                    className={`py-2 px-3 rounded-lg font-bold text-xs transition flex items-center justify-center gap-1.5 ${
+                      postSourceTab === "Page"
+                        ? "bg-blue-600 text-white shadow-xs"
+                        : "text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    <Globe className="w-3.5 h-3.5" />
+                    Facebook Page ({connectedPages.length})
+                  </button>
+
+                  <button
+                    type="button"
+                    data-testid="source-tab-group"
+                    onClick={() => handleSwitchPostSourceTab("Group")}
+                    className={`py-2 px-3 rounded-lg font-bold text-xs transition flex items-center justify-center gap-1.5 ${
+                      postSourceTab === "Group"
+                        ? "bg-violet-600 text-white shadow-xs"
+                        : "text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    <Users className="w-3.5 h-3.5" />
+                    Facebook Group ({connectedGroups.length})
+                  </button>
+                </div>
+              </div>
+
+              {/* STEP 2: DYNAMIC DROPDOWN FOR ALL CONNECTED IDs, PAGES, OR GROUPS */}
+              <div className="space-y-2">
+                <label className="font-bold text-foreground uppercase text-[10px] tracking-wider flex items-center gap-1.5">
+                  <span className="w-4 h-4 rounded-full bg-blue-600 text-white inline-flex items-center justify-center text-[10px] font-black">
+                    2
+                  </span>
+                  {postSourceTab === "Personal ID"
+                    ? "Select Personal ID from Connected Fleet Dropdown *"
+                    : postSourceTab === "Page"
+                    ? "Select Facebook Page from Connected Pages Dropdown *"
+                    : "Select Facebook Group from Connected Groups Dropdown *"}
+                </label>
+
+                {postSourceTab === "Personal ID" && (
+                  <select
+                    data-testid="target-entity-select"
+                    value={selectedTargetId}
+                    onChange={(e) => handleSelectTargetFromDropdown(e.target.value)}
+                    aria-label="Select Connected Personal ID"
+                    className="w-full px-3 py-2.5 border rounded-lg bg-background font-semibold text-xs focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none"
+                  >
+                    {connectedPersonalIds.map((item) => (
+                      <option key={item.id} value={item.id}>
+                        {item.name} — UID: {item.uid} ({item.status})
+                      </option>
+                    ))}
+                  </select>
+                )}
+
+                {postSourceTab === "Page" && (
+                  <select
+                    data-testid="target-entity-select"
+                    value={selectedTargetId}
+                    onChange={(e) => handleSelectTargetFromDropdown(e.target.value)}
+                    aria-label="Select Connected Facebook Page"
+                    className="w-full px-3 py-2.5 border rounded-lg bg-background font-semibold text-xs focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none"
+                  >
+                    {connectedPages.map((item) => (
+                      <option key={item.id} value={item.id}>
+                        {item.name} — {item.category} (ID: {item.id})
+                      </option>
+                    ))}
+                  </select>
+                )}
+
+                {postSourceTab === "Group" && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                    <div>
+                      <span className="text-[10px] font-semibold text-muted-foreground block mb-1">
+                        Target Facebook Group:
+                      </span>
+                      <select
+                        data-testid="target-entity-select"
+                        value={selectedTargetId}
+                        onChange={(e) => handleSelectTargetFromDropdown(e.target.value)}
+                        aria-label="Select Connected Facebook Group"
+                        className="w-full px-3 py-2 border rounded-lg bg-background font-semibold text-xs focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none"
+                      >
+                        {connectedGroups.map((grp) => (
+                          <option key={grp.id} value={grp.id}>
+                            {grp.name} ({(grp.memberCount / 1000).toFixed(0)}k members)
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <span className="text-[10px] font-semibold text-muted-foreground block mb-1">
+                        Operating Account ID for Group Reply &amp; DM:
+                      </span>
+                      <select
+                        data-testid="operating-account-select"
+                        value={selectedPostAccountName}
+                        onChange={(e) => setSelectedPostAccountName(e.target.value)}
+                        aria-label="Select Operating Account for Group"
+                        className="w-full px-3 py-2 border rounded-lg bg-background font-semibold text-xs focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none"
+                      >
+                        {connectedPersonalIds.map((acc) => (
+                          <option key={acc.id} value={acc.name}>
+                            {acc.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* STEP 3: PASTE FACEBOOK POST LINK (URL) & OPTIONAL POST TITLE */}
+              <div className="space-y-2">
+                <label className="font-bold text-foreground uppercase text-[10px] tracking-wider flex items-center gap-1.5">
+                  <span className="w-4 h-4 rounded-full bg-blue-600 text-white inline-flex items-center justify-center text-[10px] font-black">
+                    3
+                  </span>
+                  Paste Facebook Post Link (URL) &amp; Optional Campaign Title *
+                </label>
+
+                <div className="grid grid-cols-1 sm:grid-cols-12 gap-2.5">
+                  <div className="sm:col-span-7">
+                    <span className="text-[10px] font-semibold text-muted-foreground block mb-1">
+                      Facebook Post Link (URL) *
+                    </span>
+                    <input
+                      type="url"
+                      required
+                      data-testid="post-url-input"
+                      placeholder="https://www.facebook.com/.../posts/..."
+                      value={postLinkInput}
+                      onChange={(e) => setPostLinkInput(e.target.value)}
+                      className="w-full px-3 py-2 border rounded-lg bg-background font-mono text-xs focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none"
+                    />
+                  </div>
+
+                  <div className="sm:col-span-5">
+                    <span className="text-[10px] font-semibold text-muted-foreground block mb-1">
+                      Post / Product Campaign Label (Optional)
+                    </span>
+                    <input
+                      type="text"
+                      data-testid="post-title-input"
+                      placeholder={`e.g. ${selectedTargetName} Offer Post`}
+                      value={postTitleInput}
+                      onChange={(e) => setPostTitleInput(e.target.value)}
+                      className="w-full px-3 py-2 border rounded-lg bg-background text-xs focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* STEP 4: CONFIGURE COMMENT REPLY & PRIVATE INBOX MESSAGE (SELECT TEMPLATE OR WRITE CUSTOM) */}
+              <div className="space-y-3 pt-1 border-t">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-2">
+                  <label className="font-bold text-foreground uppercase text-[10px] tracking-wider flex items-center gap-1.5">
+                    <span className="w-4 h-4 rounded-full bg-blue-600 text-white inline-flex items-center justify-center text-[10px] font-black">
+                      4
+                    </span>
+                    Configure Nested Comment Reply &amp; Private Inbox Message *
+                  </label>
+
+                  {/* Mode Switcher: Select from Template vs Write Custom */}
+                  <div className="flex items-center bg-muted p-0.5 rounded-lg border">
+                    <button
+                      type="button"
+                      data-testid="reply-mode-template"
+                      onClick={() => handleSelectPostTemplate(selectedPostTemplateId || library[0]?.id || "")}
+                      className={`px-2.5 py-1 rounded-md text-[11px] font-semibold transition flex items-center gap-1 ${
+                        postReplyMode === "template"
+                          ? "bg-blue-600 text-white shadow-xs font-bold"
+                          : "text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      <BookOpen className="w-3 h-3" /> Select from Template ({library.length})
+                    </button>
+                    <button
+                      type="button"
+                      data-testid="reply-mode-custom"
+                      onClick={() => setPostReplyMode("custom")}
+                      className={`px-2.5 py-1 rounded-md text-[11px] font-semibold transition flex items-center gap-1 ${
+                        postReplyMode === "custom"
+                          ? "bg-blue-600 text-white shadow-xs font-bold"
+                          : "text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      <Edit3 className="w-3.5 h-3.5" /> Write Custom Reply &amp; DM
+                    </button>
+                  </div>
+                </div>
+
+                {/* Template Picker Dropdown (shown when "Select from Template" is active) */}
+                {postReplyMode === "template" && (
+                  <div className="p-3 rounded-xl bg-blue-500/5 border border-blue-500/20 space-y-1.5">
+                    <label className="text-[11px] font-bold text-blue-600 dark:text-blue-400 block">
+                      Choose Saved Template / AI Knowledgebase Rule (Pre-fills Reply &amp; Message below):
+                    </label>
+                    <select
+                      data-testid="template-select"
+                      value={selectedPostTemplateId}
+                      onChange={(e) => handleSelectPostTemplate(e.target.value)}
+                      aria-label="Select Reply and Inbox Template"
+                      className="w-full px-3 py-2 border rounded-lg bg-background font-semibold text-xs outline-none"
+                    >
+                      {library.map((tmpl) => (
+                        <option key={tmpl.id} value={tmpl.id}>
+                          [{tmpl.category}] {tmpl.title} — {tmpl.priceInfo || "Standard"}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <label className="font-semibold text-foreground text-[11px] flex items-center gap-1.5">
+                      <MessageSquare className="w-3.5 h-3.5 text-blue-600" />
+                      1. Comment Reply (Nested Inside Comment) *
+                    </label>
+                    <textarea
+                      rows={3}
+                      required
+                      data-testid="custom-public-reply-input"
+                      placeholder="Write the reply that the AI bot will post directly inside the customer's comment..."
+                      value={postCustomPublicReply}
+                      onChange={(e) => {
+                        const val = e.target.value
+                        setPostCustomPublicReply(val)
+                        const activeTmpl = library.find((t) => t.id === selectedPostTemplateId)
+                        if (postReplyMode === "template" && activeTmpl && val.trim() !== activeTmpl.publicReply.trim()) {
+                          setPostReplyMode("custom")
+                        }
+                      }}
+                      className="w-full p-2.5 border rounded-lg bg-background text-xs leading-relaxed focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="font-semibold text-foreground text-[11px] flex items-center gap-1.5">
+                      <Inbox className="w-3.5 h-3.5 text-blue-600" />
+                      2. Private Inbox Message (Messenger DM) *
+                    </label>
+                    <textarea
+                      rows={3}
+                      required
+                      data-testid="custom-inbox-msg-input"
+                      placeholder="Write the private message that the AI bot will send to the customer's Messenger inbox..."
+                      value={postCustomInboxMessage}
+                      onChange={(e) => {
+                        const val = e.target.value
+                        setPostCustomInboxMessage(val)
+                        const activeTmpl = library.find((t) => t.id === selectedPostTemplateId)
+                        if (
+                          postReplyMode === "template" &&
+                          activeTmpl &&
+                          val.trim() !== activeTmpl.privateInboxReply.trim()
+                        ) {
+                          setPostReplyMode("custom")
+                        }
+                      }}
+                      className="w-full p-2.5 border rounded-lg bg-background text-xs leading-relaxed focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none"
+                    />
+                  </div>
+                </div>
+
+                <label className="flex items-center gap-2 font-semibold text-foreground cursor-pointer select-none pt-1">
+                  <input
+                    type="checkbox"
+                    data-testid="send-private-inbox-checkbox"
+                    checked={postSendPrivateInbox}
+                    onChange={(e) => setPostSendPrivateInbox(e.target.checked)}
+                    className="w-4 h-4 rounded text-blue-600"
+                  />
+                  <span>
+                    Automatically send Private Messenger Inbox DM alongside every Nested Comment Reply
+                  </span>
+                </label>
+              </div>
+
+              {/* STEP 5: SAVE & ACTIVATE MONITORING */}
+              <div className="flex items-center justify-between gap-3 pt-2 border-t">
+                <span className="text-[11px] text-muted-foreground">
+                  Target: <strong className="text-foreground">{selectedTargetName}</strong> ({postSourceTab})
+                </span>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowAddPostModal(false)}
+                    className="px-3.5 py-2 border rounded-lg text-xs font-semibold text-muted-foreground hover:text-foreground"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    data-testid="save-monitored-post-btn"
+                    className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-lg shadow-xs transition flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <CheckCircle2 className="w-4 h-4" />
+                    {editingPostId
+                      ? "Save Post Changes"
+                      : `Add Post to Active Monitoring (${Math.min(monitoredPosts.length + 1, MAX_MONITORED_POSTS)}/${MAX_MONITORED_POSTS})`}
+                  </button>
+                </div>
+              </div>
+            </form>
           </div>
         </div>
       )}

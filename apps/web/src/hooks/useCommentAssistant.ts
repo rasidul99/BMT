@@ -77,9 +77,35 @@ export interface CommentReplyLog {
   timestamp: string
 }
 
+export interface MonitoredPostItem {
+  id: string
+  postId: string
+  postUrl: string
+  postTitle: string
+  postThumbnail?: string
+  sourceType: CommentSourceType
+  targetId: string
+  targetName: string
+  accountName: string
+  groupName?: string
+  replyConfigMode: "template" | "custom"
+  templateId?: string
+  templateTitle?: string
+  customPublicReply: string
+  customInboxMessage: string
+  sendPrivateInbox: boolean
+  status: "Active" | "Paused"
+  watcherJobId?: string
+  watcherStatus?: "IDLE" | "WATCHING" | "COMPLETED" | "ERROR"
+  createdAt: string
+}
+
+export const MAX_MONITORED_POSTS = 100
+
 const STORAGE_KEY_COMMENTS = "bmt_webhook_comments"
 const STORAGE_KEY_LIBRARY = "bmt_comment_library"
 const STORAGE_KEY_LOGS = "bmt_comment_reply_logs"
+const STORAGE_KEY_POSTS = "bmt_monitored_posts_100"
 const STORAGE_KEY_SCHEMA_VERSION = "bmt_comment_assistant_schema_v2"
 
 const sanitizeText = (text: string): string => {
@@ -480,6 +506,118 @@ export const INITIAL_REPLY_LOGS: CommentReplyLog[] = [
   },
 ]
 
+export const DEFAULT_MONITORED_POSTS: MonitoredPostItem[] = [
+  {
+    id: "mp-101",
+    postId: "post_892168940637389_1020304050",
+    postUrl: "https://www.facebook.com/892168940637389/posts/1020304050",
+    postTitle: "Eid Special Premium Watch Collection Offer 2026",
+    postThumbnail: "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=120&auto=format&fit=crop&q=80",
+    sourceType: "Page",
+    targetId: "892168940637389",
+    targetName: "CARE HUB BD",
+    accountName: "CARE HUB BD",
+    replyConfigMode: "template",
+    templateId: "tmpl-price-1",
+    templateTitle: "Eid Special Watch — Dynamic Price & Order Prompt",
+    customPublicReply:
+      "ধন্যবাদ ভাইয়া! প্রিমিয়াম কালেকশনের স্পেশাল অফার প্রাইজ আপনার ইনবক্সে পাঠানো হয়েছে। দয়া করে মেসেঞ্জার চেক করুন।",
+    customInboxMessage:
+      "আসসালামু আলাইকুম! আমাদের প্রিমিয়াম ওয়াচটির রেগুলার মূল্য ৩,৯৯০ টাকা, তবে ঈদ ধামাকা অফারে পাচ্ছেন মাত্র ২,৪৯০ টাকায় (সারাদেশে ফ্রি ক্যাশ অন ডেলিভারি)! অর্ডার করতে এখনই আপনার নাম, পূর্ণ ঠিকানা ও মোবাইল নম্বর দিন।",
+    sendPrivateInbox: true,
+    status: "Active",
+    watcherStatus: "IDLE",
+    createdAt: new Date(Date.now() - 3600 * 1000).toISOString(),
+  },
+  {
+    id: "mp-102",
+    postId: "post_grp_dhaka_buy_sell_8821",
+    postUrl: "https://www.facebook.com/groups/dhakabuyandsell/posts/88210391",
+    postTitle: "অরিজিনাল স্টেইনলেস স্টিল প্রিমিয়াম ঘড়ি — ঈদ কালেকশন",
+    postThumbnail: "https://images.unsplash.com/photo-1524805444758-089113d48a6d?w=120&auto=format&fit=crop&q=80",
+    sourceType: "Group",
+    targetId: "grp-1",
+    targetName: "Dhaka Buy and Sell Official",
+    accountName: "Tariqul Islam (Dhaka Marketplace Lead)",
+    groupName: "Dhaka Buy and Sell Official",
+    replyConfigMode: "template",
+    templateId: "tmpl-del-2",
+    templateTitle: "Nationwide Cash on Delivery & Inspection Rule",
+    customPublicReply:
+      "জি ভাইয়া, আমরা সারাদেশে ক্যাশ অন ডেলিভারি দিচ্ছি। ডেলিভারি সংক্রান্ত বিস্তারিত তথ্য আপনার ইনবক্সে পাঠানো হয়েছে।",
+    customInboxMessage:
+      "জি সম্মানিত গ্রাহক! ঢাকা সিটিতে ২৪ ঘণ্টার মধ্যে এবং ঢাকার বাইরে ৪৮ ঘণ্টার মধ্যে ক্যাশ অন ডেলিভারি পাবেন। ডেলিভারি ম্যানের সামনে প্রোডাক্ট দেখে চেক করে মূল্য পরিশোধ করতে পারবেন।",
+    sendPrivateInbox: true,
+    status: "Active",
+    watcherStatus: "IDLE",
+    createdAt: new Date(Date.now() - 7200 * 1000).toISOString(),
+  },
+  {
+    id: "mp-103",
+    postId: "post_id_rasidul_9912",
+    postUrl: "https://www.facebook.com/rasidul/posts/99128374",
+    postTitle: "আজকের স্পেশাল ঘড়ির লাইভ রিভিউ ও আনবক্সিং",
+    postThumbnail: "https://images.unsplash.com/photo-1522335789203-aabd1fc54bc9?w=120&auto=format&fit=crop&q=80",
+    sourceType: "Personal ID",
+    targetId: "acc-rasidul",
+    targetName: "Rasidul (Personal ID)",
+    accountName: "Rasidul (Personal ID)",
+    replyConfigMode: "custom",
+    customPublicReply:
+      "জি ভাইয়া, অরিজিনাল প্রিমিয়াম বক্স ও ওয়ারেন্টি কার্ড সাথে থাকবে! অফার প্রাইজ ইনবক্সে পাঠানো হয়েছে।",
+    customInboxMessage:
+      "আসসালামু আলাইকুম! অরিজিনাল বক্স ও ১ বছরের ওয়ারেন্টি কার্ডসহ স্পেশাল প্রাইজ মাত্র ২,৪৯০ টাকা। অর্ডার করতে নাম, ঠিকানা ও ফোন নম্বর দিন।",
+    sendPrivateInbox: true,
+    status: "Active",
+    watcherStatus: "IDLE",
+    createdAt: new Date(Date.now() - 10800 * 1000).toISOString(),
+  },
+  {
+    id: "mp-104",
+    postId: "post_grp_gadget_hub_7712",
+    postUrl: "https://www.facebook.com/groups/bdsmartgadget/posts/77129384",
+    postTitle: "Smart Watch Ultra Series — 1 Year Replacement Guarantee",
+    postThumbnail: "https://images.unsplash.com/photo-1546868871-7041f2a55e12?w=120&auto=format&fit=crop&q=80",
+    sourceType: "Group",
+    targetId: "grp-4",
+    targetName: "BD Smart Gadget & Electronics Hub",
+    accountName: "Kamrul Hasan (Gadgets & Tech Poster)",
+    groupName: "BD Smart Gadget & Electronics Hub",
+    replyConfigMode: "template",
+    templateId: "tmpl-stock-3",
+    templateTitle: "Color Variants & Live Stock Urgency Rule",
+    customPublicReply:
+      "প্রোডাক্টটির সবগুলো কালার বর্তমানে সীমিত স্টকে এভেইলেবল আছে ভাইয়া! স্টক শেষ হওয়ার আগেই বুকিং করতে ইনবক্স চেক করুন।",
+    customInboxMessage:
+      "জি প্রোডাক্টটি এই মুহূর্তে আমাদের স্টকে আছে (ব্ল্যাক, সিলভার ও রোজ গোল্ড কালার), তবে মাত্র ১২টি পিস অবশিষ্ট রয়েছে। এখনই বুকিং কনফার্ম করতে আপনার নাম, ঠিকানা ও ফোন নম্বর দিন।",
+    sendPrivateInbox: true,
+    status: "Active",
+    watcherStatus: "IDLE",
+    createdAt: new Date(Date.now() - 14400 * 1000).toISOString(),
+  },
+  {
+    id: "mp-105",
+    postId: "post_grp_organic_food_6610",
+    postUrl: "https://www.facebook.com/groups/pureorganicfoodbd/posts/66102938",
+    postTitle: "খাঁটি সুন্দরবনের প্রাকৃতিক চাকের মধু — ১০০% গ্যারান্টি",
+    postThumbnail: "https://images.unsplash.com/photo-1587049352847-4a222e784d38?w=120&auto=format&fit=crop&q=80",
+    sourceType: "Group",
+    targetId: "grp-6",
+    targetName: "Pure & Organic Food BD",
+    accountName: "Farhana Akter (Organic Food & Boutique)",
+    groupName: "Pure & Organic Food BD",
+    replyConfigMode: "custom",
+    customPublicReply:
+      "ধন্যবাদ আপু! ১ কেজি খাঁটি মধুর অফার প্রাইজ এবং মিরপুরে ২৪ ঘণ্টায় ডেলিভারির বিস্তারিত ইনবক্সে পাঠিয়েছি।",
+    customInboxMessage:
+      "আসসালামু আলাইকুম আপু! ১০০% খাঁটি সুন্দরবনের চাকের মধু ১ কেজি ১,২৫০ টাকা (সারাদেশে ক্যাশ অন ডেলিভারি)। অর্ডার করতে আপনার নাম, ঠিকানা ও মোবাইল নম্বর দিন।",
+    sendPrivateInbox: true,
+    status: "Active",
+    watcherStatus: "IDLE",
+    createdAt: new Date(Date.now() - 18000 * 1000).toISOString(),
+  },
+]
+
 const MAX_STORED_COMMENTS = 200
 const MAX_STORED_LOGS = 500
 const DEFAULT_POST_THUMBNAIL = "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=120&auto=format&fit=crop&q=80"
@@ -521,10 +659,113 @@ function normalizeCommentItem(c: CommentItem): CommentItem {
   }
 }
 
+export function normalizeFacebookPostUrl(rawUrl?: string): string {
+  if (!rawUrl) return ""
+  const trimmed = rawUrl.trim()
+  if (!trimmed) return ""
+  try {
+    const withProto = /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`
+    const u = new URL(withProto)
+    const host = u.hostname.toLowerCase().replace(/^(m|web|mbasic|touch|business)\./, "www.")
+    const normHost = host === "facebook.com" ? "www.facebook.com" : host
+    const pathClean = u.pathname.replace(/\/+$/, "").toLowerCase()
+    const keepParams = ["story_fbid", "id", "fbid", "v", "multi_permalinks"]
+    const kept: string[] = []
+    keepParams.forEach((k) => {
+      const val = u.searchParams.get(k)
+      if (val) kept.push(`${k}=${val.toLowerCase()}`)
+    })
+    return `${normHost}${pathClean}${kept.length ? "?" + kept.join("&") : ""}`
+  } catch {
+    return trimmed.replace(/\/+$/, "").toLowerCase()
+  }
+}
+
+export function extractFacebookPostTokens(postId?: string, postUrl?: string): string[] {
+  const tokens = new Set<string>()
+  const addToken = (val?: string | null) => {
+    const clean = (val || "").trim().toLowerCase()
+    if (clean && clean.length >= 4) tokens.add(clean)
+  }
+
+  if (postId) {
+    const rawId = postId.trim().toLowerCase()
+    addToken(rawId)
+    const stripped = rawId.replace(/^post_/, "")
+    addToken(stripped)
+    const graphMatch = stripped.match(/^(\d+)_(\d+)$/)
+    if (graphMatch) {
+      addToken(`${graphMatch[1]}_${graphMatch[2]}`)
+      addToken(graphMatch[2])
+    }
+  }
+
+  if (postUrl) {
+    const rawUrl = postUrl.trim()
+    const pagePostMatch = rawUrl.match(/facebook\.com\/(\d+)\/posts\/([a-zA-Z0-9._-]+)/i)
+    if (pagePostMatch) {
+      addToken(`${pagePostMatch[1]}_${pagePostMatch[2]}`)
+      addToken(pagePostMatch[2])
+    }
+    const genericPostMatch = rawUrl.match(/\/(?:posts|permalink|videos|reel)\/([a-zA-Z0-9._-]+)/i)
+    if (genericPostMatch) {
+      addToken(genericPostMatch[1])
+    }
+    const shareMatch = rawUrl.match(/\/share\/[pvr]\/([a-zA-Z0-9._-]+)/i)
+    if (shareMatch) {
+      addToken(`share_${shareMatch[1]}`)
+    }
+    const fbWatchMatch = rawUrl.match(/fb\.watch\/([a-zA-Z0-9._-]+)/i)
+    if (fbWatchMatch) {
+      addToken(`fbwatch_${fbWatchMatch[1]}`)
+    }
+    try {
+      const withProto = /^https?:\/\//i.test(rawUrl) ? rawUrl : `https://${rawUrl}`
+      const u = new URL(withProto)
+      const storyFbid = u.searchParams.get("story_fbid")
+      const pageId = u.searchParams.get("id")
+      const fbid = u.searchParams.get("fbid")
+      const vParam = u.searchParams.get("v")
+      if (storyFbid) {
+        addToken(storyFbid)
+        if (pageId) addToken(`${pageId}_${storyFbid}`)
+      }
+      if (fbid) addToken(fbid)
+      if (vParam) addToken(vParam)
+    } catch {}
+  }
+
+  return Array.from(tokens)
+}
+
+export function doesCommentMatchMonitoredPost(
+  comment: { postId?: string; postUrl?: string; postTitle?: string },
+  post: MonitoredPostItem
+): boolean {
+  if (comment.postId && post.postId && comment.postId === post.postId) return true
+
+  const normCommentUrl = normalizeFacebookPostUrl(comment.postUrl)
+  const normPostUrl = normalizeFacebookPostUrl(post.postUrl)
+  if (normCommentUrl && normPostUrl && normCommentUrl === normPostUrl) return true
+
+  const commentTokens = extractFacebookPostTokens(comment.postId, comment.postUrl)
+  if (commentTokens.length > 0) {
+    const postTokens = extractFacebookPostTokens(post.postId, post.postUrl)
+    if (commentTokens.some((t) => postTokens.includes(t))) return true
+  }
+
+  const cleanCommentTitle = (comment.postTitle || "").trim().toLowerCase()
+  const cleanPostTitle = (post.postTitle || "").trim().toLowerCase()
+  if (cleanCommentTitle && cleanPostTitle && cleanCommentTitle === cleanPostTitle) return true
+
+  return false
+}
+
 export function useCommentAssistant() {
   const [comments, setComments] = useState<CommentItem[]>(DEFAULT_WEBHOOK_COMMENTS)
   const [library, setLibrary] = useState<CommentLibraryTemplate[]>(DEFAULT_LIBRARY_TEMPLATES)
   const [logs, setLogs] = useState<CommentReplyLog[]>(INITIAL_REPLY_LOGS)
+  const [monitoredPosts, setMonitoredPosts] = useState<MonitoredPostItem[]>(DEFAULT_MONITORED_POSTS)
   const [isLoaded, setIsLoaded] = useState(false)
 
   const loadFromStorage = useCallback(() => {
@@ -571,12 +812,33 @@ export function useCommentAssistant() {
         safeSetLocalStorage(STORAGE_KEY_LOGS, INITIAL_REPLY_LOGS)
       }
 
+      const storedPosts = localStorage.getItem(STORAGE_KEY_POSTS)
+      if (storedPosts !== null && isUpgraded) {
+        const parsed = JSON.parse(storedPosts) as MonitoredPostItem[]
+        if (Array.isArray(parsed)) {
+          const sanitized = parsed.slice(0, MAX_MONITORED_POSTS).map((p) => ({
+            ...p,
+            postThumbnail: p.postThumbnail || DEFAULT_POST_THUMBNAIL,
+            customPublicReply: sanitizeText(p.customPublicReply || ""),
+            customInboxMessage: sanitizeText(p.customInboxMessage || ""),
+          }))
+          setMonitoredPosts(sanitized)
+        } else {
+          setMonitoredPosts(DEFAULT_MONITORED_POSTS)
+          safeSetLocalStorage(STORAGE_KEY_POSTS, DEFAULT_MONITORED_POSTS)
+        }
+      } else {
+        setMonitoredPosts(DEFAULT_MONITORED_POSTS)
+        safeSetLocalStorage(STORAGE_KEY_POSTS, DEFAULT_MONITORED_POSTS)
+      }
+
       localStorage.setItem(STORAGE_KEY_SCHEMA_VERSION, "2.0")
     } catch (e) {
       console.error("Error loading comment assistant data", e)
       setComments(DEFAULT_WEBHOOK_COMMENTS)
       setLibrary(DEFAULT_LIBRARY_TEMPLATES)
       setLogs(INITIAL_REPLY_LOGS)
+      setMonitoredPosts(DEFAULT_MONITORED_POSTS)
     } finally {
       setIsLoaded(true)
     }
@@ -591,7 +853,8 @@ export function useCommentAssistant() {
         !e.key ||
         e.key === STORAGE_KEY_COMMENTS ||
         e.key === STORAGE_KEY_LIBRARY ||
-        e.key === STORAGE_KEY_LOGS
+        e.key === STORAGE_KEY_LOGS ||
+        e.key === STORAGE_KEY_POSTS
       ) {
         loadFromStorage()
       }
@@ -635,6 +898,104 @@ export function useCommentAssistant() {
       })
     },
     []
+  )
+
+  const saveMonitoredPosts = useCallback(
+    (updater: MonitoredPostItem[] | ((prev: MonitoredPostItem[]) => MonitoredPostItem[])) => {
+      setMonitoredPosts((prev) => {
+        const rawNext = typeof updater === "function" ? updater(prev) : updater
+        const next = rawNext.slice(0, MAX_MONITORED_POSTS)
+        safeSetLocalStorage(STORAGE_KEY_POSTS, next)
+        return next
+      })
+    },
+    []
+  )
+
+  // Lookup if a comment belongs to a Monitored Post (by postId, normalized postUrl, post tokens, or postTitle)
+  const findMonitoredPostForComment = useCallback(
+    (postId?: string, postUrl?: string, postTitle?: string): MonitoredPostItem | undefined => {
+      return monitoredPosts.find((p) =>
+        doesCommentMatchMonitoredPost({ postId, postUrl, postTitle }, p)
+      )
+    },
+    [monitoredPosts]
+  )
+
+  // Monitored Posts CRUD (Up to 100 Posts under Personal IDs, Pages, or Groups)
+  const addMonitoredPost = useCallback(
+    (
+      postData: Omit<MonitoredPostItem, "id" | "postId" | "createdAt" | "status" | "watcherStatus"> & {
+        postId?: string
+        status?: "Active" | "Paused"
+      }
+    ) => {
+      if (monitoredPosts.length >= MAX_MONITORED_POSTS) {
+        throw new Error(`Maximum capacity reached: ${MAX_MONITORED_POSTS} Monitored Posts limit.`)
+      }
+
+      const derivedTokens = extractFacebookPostTokens(postData.postId, postData.postUrl)
+      const resolvedPostId =
+        postData.postId ||
+        (derivedTokens.length > 0 ? `post_${derivedTokens[0]}` : `post_${Date.now()}`)
+
+      const newPost: MonitoredPostItem = {
+        ...postData,
+        id: `mp-${Date.now()}-${Math.random().toString(36).slice(2, 5)}`,
+        postId: resolvedPostId,
+        postUrl: postData.postUrl.trim(),
+        postTitle: postData.postTitle.trim() || `${postData.targetName} — Monitored Post`,
+        postThumbnail: postData.postThumbnail || DEFAULT_POST_THUMBNAIL,
+        customPublicReply: sanitizeText(postData.customPublicReply),
+        customInboxMessage: sanitizeText(postData.customInboxMessage),
+        status: postData.status || "Active",
+        watcherStatus: "IDLE",
+        createdAt: new Date().toISOString(),
+      }
+
+      saveMonitoredPosts((prev) => [newPost, ...prev])
+      return newPost
+    },
+    [monitoredPosts.length, saveMonitoredPosts]
+  )
+
+  const updateMonitoredPost = useCallback(
+    (id: string, updates: Partial<MonitoredPostItem>) => {
+      saveMonitoredPosts((prev) =>
+        prev.map((p) => {
+          if (p.id !== id) return p
+          return {
+            ...p,
+            ...updates,
+            customPublicReply:
+              updates.customPublicReply !== undefined
+                ? sanitizeText(updates.customPublicReply)
+                : p.customPublicReply,
+            customInboxMessage:
+              updates.customInboxMessage !== undefined
+                ? sanitizeText(updates.customInboxMessage)
+                : p.customInboxMessage,
+          }
+        })
+      )
+    },
+    [saveMonitoredPosts]
+  )
+
+  const toggleMonitoredPostStatus = useCallback(
+    (id: string) => {
+      saveMonitoredPosts((prev) =>
+        prev.map((p) => (p.id === id ? { ...p, status: p.status === "Active" ? "Paused" : "Active" } : p))
+      )
+    },
+    [saveMonitoredPosts]
+  )
+
+  const deleteMonitoredPost = useCallback(
+    (id: string) => {
+      saveMonitoredPosts((prev) => prev.filter((p) => p.id !== id))
+    },
+    [saveMonitoredPosts]
   )
 
   // Intent Classifier Helper based on custom library keywords + built-in rules
@@ -776,6 +1137,7 @@ export function useCommentAssistant() {
       }
     ) => {
       const detectedIntent = detectIntent(comment.userComment)
+      const matchedPost = findMonitoredPostForComment(comment.postId, comment.postUrl, comment.postTitle)
       const bestTemplate = findMatchingTemplate(
         detectedIntent,
         comment.userComment,
@@ -783,18 +1145,23 @@ export function useCommentAssistant() {
       )
       const matchingTemplates = library.filter((t) => t.category === detectedIntent)
 
-      const defaultPublic =
+      const rawPublic =
         comment.customPublicReply ||
+        matchedPost?.customPublicReply ||
         bestTemplate?.publicReply ||
         "ধন্যবাদ ভাইয়া! বিস্তারিত তথ্য আপনার ইনবক্সে পাঠানো হয়েছে।"
-      const defaultInbox =
+      const rawInbox =
         comment.customInboxReply ||
+        matchedPost?.customInboxMessage ||
         bestTemplate?.privateInboxReply ||
         "আসসালামু আলাইকুম! প্রোডাক্টটির স্পেশাল অফার প্রাইজ ২,৪৯০ টাকা। অর্ডার করতে আপনার নাম, ঠিকানা ও মোবাইল নম্বর দিন।"
 
+      const defaultPublic = rawPublic.replace(/\{\{name\}\}/gi, comment.userName || "ভাইয়া")
+      const defaultInbox = rawInbox.replace(/\{\{name\}\}/gi, comment.userName || "সম্মানিত গ্রাহক")
+
       const suggestions =
         matchingTemplates.length > 0
-          ? matchingTemplates.map((t) => t.publicReply)
+          ? Array.from(new Set([defaultPublic, ...matchingTemplates.map((t) => t.publicReply)]))
           : [
               defaultPublic,
               "আসসালামু আলাইকুম! বিস্তারিত জানতে ইনবক্স মেসেজ চেক করুন।",
@@ -802,23 +1169,36 @@ export function useCommentAssistant() {
 
       const sourceType: CommentSourceType =
         comment.sourceType ||
+        matchedPost?.sourceType ||
         (comment.groupName ? "Group" : comment.pageName.includes("ID") ? "Personal ID" : "Page")
 
       const isSimulatedFail = Boolean(comment.simulateFailure)
-      const shouldAuto = Boolean(!isSimulatedFail && comment.autoReplyNow && detectedIntent !== "Needs Review")
-      const shouldSendInbox = comment.sendInbox !== undefined ? Boolean(comment.sendInbox) : true
+      const isPostActive = matchedPost ? matchedPost.status === "Active" : true
+      const shouldAuto = Boolean(
+        !isSimulatedFail && isPostActive && comment.autoReplyNow && detectedIntent !== "Needs Review"
+      )
+      const shouldSendInbox =
+        comment.sendInbox !== undefined
+          ? Boolean(comment.sendInbox)
+          : matchedPost
+          ? matchedPost.sendPrivateInbox
+          : true
 
-      if ((shouldAuto || isSimulatedFail) && bestTemplate?.id) {
-        incrementTemplateUsage(bestTemplate.id)
+      const templateIdToCredit = matchedPost?.templateId || bestTemplate?.id
+      if ((shouldAuto || isSimulatedFail) && templateIdToCredit) {
+        incrementTemplateUsage(templateIdToCredit)
       }
 
       const newComment: CommentItem = {
         ...comment,
         id: `cm-${Date.now()}-${Math.random().toString(36).slice(2, 5)}`,
-        postThumbnail: comment.postThumbnail || DEFAULT_POST_THUMBNAIL,
+        postId: comment.postId || matchedPost?.postId || `post_${Date.now()}`,
+        postUrl: comment.postUrl || matchedPost?.postUrl,
+        postThumbnail: comment.postThumbnail || matchedPost?.postThumbnail || DEFAULT_POST_THUMBNAIL,
         sourceType,
-        accountName: comment.accountName || comment.pageName,
-        accountId: comment.accountId || "page-care-hub",
+        accountName: comment.accountName || matchedPost?.accountName || comment.pageName,
+        accountId: comment.accountId || matchedPost?.targetId || "page-care-hub",
+        groupName: comment.groupName || matchedPost?.groupName,
         intent: detectedIntent,
         receivedAt: "Just now",
         status: isSimulatedFail ? "Failed" : shouldAuto ? "Replied" : "Pending",
@@ -848,7 +1228,14 @@ export function useCommentAssistant() {
       saveComments((prev) => [newComment, ...prev])
       return newComment
     },
-    [detectIntent, findMatchingTemplate, incrementTemplateUsage, library, saveComments]
+    [
+      detectIntent,
+      findMatchingTemplate,
+      findMonitoredPostForComment,
+      incrementTemplateUsage,
+      library,
+      saveComments,
+    ]
   )
 
   // Mark Comment as Replied
@@ -1001,14 +1388,20 @@ export function useCommentAssistant() {
     comments,
     library,
     logs,
+    monitoredPosts,
     isLoaded,
     detectIntent,
     findMatchingTemplate,
+    findMonitoredPostForComment,
     incrementTemplateUsage,
     addIncomingComment,
     markReplied,
     retryFailedComment,
     dismissComment,
+    addMonitoredPost,
+    updateMonitoredPost,
+    toggleMonitoredPostStatus,
+    deleteMonitoredPost,
     addLibraryTemplate,
     updateLibraryTemplate,
     deleteLibraryTemplate,

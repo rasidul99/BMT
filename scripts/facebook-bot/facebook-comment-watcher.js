@@ -89,9 +89,15 @@ async function safeEvaluate(page, fn, ...args) {
   }
 }
 
-// AI Intent Classifier (Bengali + Banglish + English)
-function getAiReply(commentText) {
+// AI Intent Classifier (Bengali + Banglish + English) with Post-Specific Custom Reply / Template Support
+function getAiReply(commentText, customConfig = {}) {
   const lower = (commentText || "").toLowerCase().trim();
+  const authorName = (customConfig.authorName || "").trim();
+  const personalizeReply = (txt, fallbackName) =>
+    (txt || "").trim().replace(/\{\{name\}\}/gi, authorName || fallbackName);
+
+  const customPub = personalizeReply(customConfig.customPublicReply, "ভাইয়া");
+  const customInb = personalizeReply(customConfig.customInboxMessage, "সম্মানিত গ্রাহক");
 
   // Price queries: দাম, price, koto, কত, cost, taka, টাকা, rate
   if (
@@ -107,8 +113,8 @@ function getAiReply(commentText) {
   ) {
     return {
       intent: "Price Query",
-      reply: "ধন্যবাদ ভাইয়া! প্রিমিয়াম কালেকশনের স্পেশাল অফার প্রাইজ ইনবক্সে পাঠানো হয়েছে। দয়া করে ইনবক্স চেক করুন।",
-      inbox: "আসসালামু আলাইকুম! ওয়াচটির ঈদ স্পেশাল অফার প্রাইজ মাত্র ২,৪৯০ টাকা (সারাদেশে ফ্রি হোম ডেলিভারি)। অর্ডার করতে নাম, পূর্ণ ঠিকানা ও মোবাইল নম্বর দিন।"
+      reply: customPub || "ধন্যবাদ ভাইয়া! প্রিমিয়াম কালেকশনের স্পেশাল অফার প্রাইজ ইনবক্সে পাঠানো হয়েছে। দয়া করে ইনবক্স চেক করুন।",
+      inbox: customInb || "আসসালামু আলাইকুম! ওয়াচটির ঈদ স্পেশাল অফার প্রাইজ মাত্র ২,৪৯০ টাকা (সারাদেশে ফ্রি হোম ডেলিভারি)। অর্ডার করতে নাম, পূর্ণ ঠিকানা ও মোবাইল নম্বর দিন।"
     };
   }
 
@@ -124,8 +130,8 @@ function getAiReply(commentText) {
   ) {
     return {
       intent: "Delivery Query",
-      reply: "জি ভাইয়া, আমরা সারাদেশে ফ্রি ক্যাশ অন ডেলিভারি দিচ্ছি। ডেলিভারি সংক্রান্ত বিস্তারিত ইনবক্সে চেক করুন।",
-      inbox: "জি সম্মানিত গ্রাহক! ঢাকা সিটিতে ২৪ ঘণ্টার মধ্যে এবং ঢাকার বাইরে ৪৮ ঘণ্টার মধ্যে ক্যাশ অন ডেলিভারি পাবেন। ডেলিভারি ম্যানের সামনে প্রোডাক্ট দেখে মূল্য পরিশোধ করতে পারবেন।"
+      reply: customPub || "জি ভাইয়া, আমরা সারাদেশে ফ্রি ক্যাশ অন ডেলিভারি দিচ্ছি। ডেলিভারি সংক্রান্ত বিস্তারিত ইনবক্সে চেক করুন।",
+      inbox: customInb || "জি সম্মানিত গ্রাহক! ঢাকা সিটিতে ২৪ ঘণ্টার মধ্যে এবং ঢাকার বাইরে ৪৮ ঘণ্টার মধ্যে ক্যাশ অন ডেলিভারি পাবেন। ডেলিভারি ম্যানের সামনে প্রোডাক্ট দেখে মূল্য পরিশোধ করতে পারবেন।"
     };
   }
 
@@ -142,8 +148,8 @@ function getAiReply(commentText) {
   ) {
     return {
       intent: "Stock Query",
-      reply: "প্রোডাক্টটির সীমিত স্টক এভেইলেবল আছে ভাইয়া! দ্রুত ইনবক্স চেক করে আপনার বুকিং কনফার্ম করুন।",
-      inbox: "জি প্রোডাক্টটি এই মুহূর্তে আমাদের স্টকে এভেইলেবল আছে। এখনই বুকিং কনফার্ম করতে আমাদের মেসেজে জানিয়ে দিন।"
+      reply: customPub || "প্রোডাক্টটির সীমিত স্টক এভেইলেবল আছে ভাইয়া! দ্রুত ইনবক্স চেক করে আপনার বুকিং কনফার্ম করুন।",
+      inbox: customInb || "জি প্রোডাক্টটি এই মুহূর্তে আমাদের স্টকে এভেইলেবল আছে। এখনই বুকিং কনফার্ম করতে আমাদের মেসেজে জানিয়ে দিন।"
     };
   }
 
@@ -151,15 +157,15 @@ function getAiReply(commentText) {
   if (lower.includes("ওয়ারেন্টি") || lower.includes("warranty") || lower.includes("গ্যারান্টি") || lower.includes("guarantee")) {
     return {
       intent: "Warranty Query",
-      reply: "জি সম্মানিত কাস্টমার, প্রতিটি প্রডাক্টে পাচ্ছেন ১ বছরের অফিসিয়াল রিপ্লেসমেন্ট ওয়ারেন্টি! বিস্তারিত ইনবক্সে দেওয়া হলো।",
-      inbox: "আমাদের প্রতিটি অথেনটিক প্রডাক্টের সাথে পাবেন অফিসিয়াল ১ বছরের রিপ্লেসমেন্ট কার্ড।"
+      reply: customPub || "জি সম্মানিত কাস্টমার, প্রতিটি প্রডাক্টে পাচ্ছেন ১ বছরের অফিসিয়াল রিপ্লেসমেন্ট ওয়ারেন্টি! বিস্তারিত ইনবক্সে দেওয়া হলো।",
+      inbox: customInb || "আমাদের প্রতিটি অথেনটিক প্রডাক্টের সাথে পাবেন অফিসিয়াল ১ বছরের রিপ্লেসমেন্ট কার্ড।"
     };
   }
 
   return {
     intent: "General Greeting",
-    reply: "আসসালামু আলাইকুম! বিস্তারিত তথ্য আপনার ইনবক্সে মেসেজ করা হয়েছে, দয়া করে মেসেঞ্জার চেক করুন।",
-    inbox: "স্বাগতম! আপনি আমাদের পণ্যটি সম্পর্কে জানতে চাওয়ায় ধন্যবাদ। যেকোনো তথ্য বা অর্ডারের জন্য আমাদের জানাতে পারেন।"
+    reply: customPub || "আসসালামু আলাইকুম! বিস্তারিত তথ্য আপনার ইনবক্সে মেসেজ করা হয়েছে, দয়া করে মেসেঞ্জার চেক করুন।",
+    inbox: customInb || "স্বাগতম! আপনি আমাদের পণ্যটি সম্পর্কে জানতে চাওয়ায় ধন্যবাদ। যেকোনো তথ্য বা অর্ডারের জন্য আমাদের জানাতে পারেন।"
   };
 }
 
@@ -175,6 +181,11 @@ async function runWatcher(configPath) {
   const {
     jobId = `watcher-${Date.now()}`,
     postUrl,
+    postTitle,
+    sourceType,
+    targetName,
+    customPublicReply,
+    customInboxMessage,
     checkIntervalSeconds = 12,
     maxChecks = 40,
     autoReply = true,
@@ -203,9 +214,13 @@ async function runWatcher(configPath) {
   console.log("==========================================================");
   console.log("👀 BMT Live Facebook Comment Watcher & Dual-Reply Bot");
   console.log(`🔗 Target Post: ${postUrl}`);
+  if (sourceType || targetName) console.log(`📌 Source: ${sourceType || "Post"} — ${targetName || ""}`);
+  if (postTitle) console.log(`🏷️ Campaign: ${postTitle}`);
   console.log(`⏱️ Check Interval: ${checkIntervalSeconds}s | Max Checks: ${maxChecks}`);
   console.log(`🤖 AI Auto-Reply: ${autoReply ? "ENABLED" : "DISABLED"}`);
   console.log(`💬 Private Messenger Inbox: ${sendInbox ? "ENABLED" : "DISABLED"}`);
+  if (customPublicReply) console.log(`📝 Custom Nested Reply Configured: "${customPublicReply}"`);
+  if (customInboxMessage) console.log(`📩 Custom Private Inbox Configured: "${customInboxMessage}"`);
   console.log(`👁️ Headless: ${headless}`);
   console.log("==========================================================\n");
 
@@ -416,7 +431,11 @@ async function runWatcher(configPath) {
         console.log(`   👤 Customer Name: ${item.author}`);
         console.log(`   💬 Customer Query: "${item.text}"`);
 
-        const ai = getAiReply(item.text);
+        const ai = getAiReply(item.text, {
+          customPublicReply,
+          customInboxMessage,
+          authorName: item.author,
+        });
         console.log(`   🤖 AI Intent Detected: ${ai.intent}`);
         console.log(`   📝 AI Public Comment Reply: "${ai.reply}"`);
         console.log(`   📩 AI Private Inbox Message: "${ai.inbox}"`);
@@ -636,4 +655,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { runWatcher };
+module.exports = { runWatcher, getAiReply };
