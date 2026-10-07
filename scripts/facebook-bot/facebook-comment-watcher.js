@@ -354,19 +354,31 @@ async function runWatcher(configPath) {
             // Sidebars like 'INFINITY BANGLADESH', 'People you may know', 'Reels' do NOT have a Reply button.
             if (!hasReplyBtn) return;
 
-            // Extract commenter name and comment text
+            // Extract commenter name and comment text cleanly
+            const nameEl = art.querySelector('a[role="link"] span, h3 span, strong span, a span');
+            let author = nameEl ? (nameEl.innerText || nameEl.textContent || '').trim() : '';
+
             const lines = text.split("\n").map((l) => l.trim()).filter(Boolean);
-            const author = lines[0] || "Facebook User";
-            const body = lines.slice(1).filter((l) => {
+            if (!author) {
+              author = lines[0] || "Facebook User";
+            }
+
+            // Filter out button labels and metadata from body text
+            const bodyLines = lines.filter((l) => {
               const low = l.toLowerCase();
-              return !low.includes("like") && !low.includes("reply") && !low.includes("send message") && !low.includes("share") && !low.includes("পছন্দ") && !low.includes("উত্তর") && !low.includes("author") && !low.includes("see translation");
-            }).join(" ");
+              if (l === author) return false;
+              if (low === "like" || low === "reply" || low === "send message" || low === "see translation" || low === "author") return false;
+              if (low.includes("·") || low.endsWith("m") || low.endsWith("h") || low.endsWith("d") || low.includes("ago")) return false;
+              if (low.includes("পছন্দ") || low.includes("উত্তর") || low.includes("বার্তা পাঠান")) return false;
+              return true;
+            });
+            const body = bodyLines.join(" ").trim() || (lines[lines.length - 1] || text);
 
             list.push({
               index: idx,
               author,
               isAuthor,
-              text: body || text,
+              text: body,
               fullText: text,
               hasReplyBtn,
               hasMessageBtn,
@@ -434,7 +446,6 @@ async function runWatcher(configPath) {
 
               // Check for message popup modal
               const msgSent = await safeEvaluate(page, async (msgText) => {
-                // Find dialog titled "Message ..."
                 const dialogs = Array.from(document.querySelectorAll('div[role="dialog"]'));
                 const msgDialog = dialogs.find(d => {
                   const t = (d.innerText || '');
@@ -444,14 +455,15 @@ async function runWatcher(configPath) {
                 if (!msgDialog) return { success: false, reason: "No message dialog found" };
 
                 // Find textbox in the message dialog
-                const tb = msgDialog.querySelector('div[role="textbox"][contenteditable="true"]');
+                const tb = msgDialog.querySelector('div[role="textbox"]');
                 if (!tb) return { success: false, reason: "No textbox in message dialog" };
 
                 tb.focus();
-                // Paste/type text
                 document.execCommand('insertText', false, msgText);
 
-                // Wait slightly and find "Send Message" button
+                await new Promise(r => setTimeout(r, 800));
+
+                // Find and click "Send Message" button
                 const sendBtns = Array.from(msgDialog.querySelectorAll('div[role="button"], div[aria-label*="Send" i]'));
                 const sendBtn = sendBtns.find(b => (b.innerText || b.getAttribute('aria-label') || '').trim().toLowerCase() === 'send message');
                 if (sendBtn) {
@@ -463,10 +475,23 @@ async function runWatcher(configPath) {
 
               console.log("   Private message modal dispatch:", msgSent);
               if (msgSent.success) {
-                await sleep(2500);
+                await sleep(3500);
                 inboxSuccess = true;
                 console.log(`   ✅ [SUCCESS] Private message sent to ${item.author}'s Messenger!`);
               }
+
+              // Close message modal if still visible to unblock the comment thread
+              try {
+                await safeEvaluate(page, () => {
+                  const dialogs = Array.from(document.querySelectorAll('div[role="dialog"]'));
+                  const msgDialog = dialogs.find(d => (d.innerText || '').includes("Message "));
+                  if (msgDialog) {
+                    const closeBtn = msgDialog.querySelector('div[aria-label="Close"], div[role="button"][aria-label*="Close" i]');
+                    if (closeBtn) closeBtn.click();
+                  }
+                });
+                await sleep(1500);
+              } catch (_) {}
             }
           } catch (mErr) {
             console.warn(`   ⚠️ Private message dispatch notice: ${mErr.message}`);
@@ -549,12 +574,15 @@ async function runWatcher(configPath) {
         console.log(`⏳ Waiting ${checkIntervalSeconds}s for new incoming comments...`);
         await sleep(checkIntervalSeconds * 1000);
 
-        // Gentle jitter scroll to trigger real-time Facebook socket updates
+        // Gentle jitter scroll using mouse wheel to trigger real-time Facebook updates
         try {
+          await page.mouse.move(640, 450);
+          await page.mouse.wheel({ deltaY: 300 });
+          await sleep(800);
+          await page.mouse.wheel({ deltaY: -300 });
+        } catch (_) {
           await safeEvaluate(page, () => window.scrollBy({ top: 120, behavior: "smooth" }));
-          await sleep(1000);
-          await safeEvaluate(page, () => window.scrollBy({ top: -120, behavior: "smooth" }));
-        } catch (_) {}
+        }
       }
     }
 
