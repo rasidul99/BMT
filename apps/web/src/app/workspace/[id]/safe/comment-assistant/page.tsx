@@ -1530,85 +1530,49 @@ export default function SafeCommentAssistantPage() {
             </div>
           )}
 
-          {/* Multi-Account, Source Type, Status & Intent Filter Bar */}
-          <div className="border bg-card p-3.5 rounded-xl shadow-xs space-y-3 text-xs">
-            <div className="grid grid-cols-1 md:grid-cols-12 gap-2.5 items-center">
-              {/* Search Box (4 cols) */}
-              <div className="md:col-span-4 relative">
+          {/* Search, Source Type & Status Filter Bar */}
+          <div className="border bg-card p-3 rounded-xl shadow-xs space-y-2.5 text-xs">
+            <div className="flex items-center justify-between gap-2.5">
+              {/* Search Box */}
+              <div className="relative flex-1">
                 <Search className="w-3.5 h-3.5 text-muted-foreground absolute left-3 top-2.5" />
                 <input
                   type="text"
-                  placeholder="Search customer, comment, post, group, or account..."
+                  placeholder="Search customer, comment, or post..."
                   value={streamSearchQuery}
                   onChange={(e) => setStreamSearchQuery(e.target.value)}
                   className="w-full pl-8 pr-3 py-1.5 border rounded-lg bg-background text-xs focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none"
                 />
               </div>
 
-              {/* 100-Account Selector (3 cols) */}
-              <div className="md:col-span-3">
-                <select
-                  value={selectedAccountFilter}
-                  onChange={(e) => setSelectedAccountFilter(e.target.value)}
-                  aria-label="Filter by Account or Page"
-                  className="w-full px-2.5 py-1.5 border rounded-lg bg-background text-xs font-semibold focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none"
+              {/* View Mode Toggle: Icon-Only (Table vs Cards) */}
+              <div className="flex items-center bg-muted p-0.5 rounded-lg border shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setStreamViewMode("compact")}
+                  aria-label="Table View"
+                  title="Table View"
+                  className={`p-1.5 rounded-md transition flex items-center justify-center cursor-pointer ${
+                    streamViewMode === "compact"
+                      ? "bg-background text-blue-600 shadow-xs"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
                 >
-                  <option value="ALL">All 100 Fleet Accounts &amp; Pages ({selectableAccounts.length})</option>
-                  {selectableAccounts.map((accName) => (
-                    <option key={accName} value={accName}>
-                      {accName}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Intent Filter (3 cols) */}
-              <div className="md:col-span-3">
-                <select
-                  value={selectedIntentFilter}
-                  onChange={(e) => setSelectedIntentFilter(e.target.value)}
-                  aria-label="Filter by Customer Intent"
-                  className="w-full px-2.5 py-1.5 border rounded-lg bg-background text-xs font-semibold focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none"
+                  <LayoutList className="w-4 h-4" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setStreamViewMode("cards")}
+                  aria-label="Cards View"
+                  title="Cards View"
+                  className={`p-1.5 rounded-md transition flex items-center justify-center cursor-pointer ${
+                    streamViewMode === "cards"
+                      ? "bg-background text-blue-600 shadow-xs"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
                 >
-                  <option value="ALL">All AI Intents (Price, Stock, Delivery...)</option>
-                  <option value="Price Query">Price Query (দাম কত)</option>
-                  <option value="Delivery Query">Delivery Query (ডেলিভারি)</option>
-                  <option value="Stock Query">Stock Query (স্টক / কালার)</option>
-                  <option value="Warranty Query">Warranty Query (ওয়ারেন্টি)</option>
-                  <option value="Location Query">Location Query (ঠিকানা / শোরুম)</option>
-                  <option value="Needs Review">Needs Human Review (অভিযোগ/জটিল)</option>
-                  <option value="General Greeting">General Greeting</option>
-                </select>
-              </div>
-
-              {/* View Mode Toggle: Compact Table vs Card View (2 cols) */}
-              <div className="md:col-span-2 flex items-center justify-end gap-1">
-                <div className="flex items-center bg-muted p-0.5 rounded-lg border w-full sm:w-auto justify-center">
-                  <button
-                    type="button"
-                    onClick={() => setStreamViewMode("compact")}
-                    className={`px-2.5 py-1 rounded-md text-[11px] font-semibold transition flex items-center gap-1 ${
-                      streamViewMode === "compact"
-                        ? "bg-background text-foreground shadow-xs font-bold"
-                        : "text-muted-foreground hover:text-foreground"
-                    }`}
-                    title="High-density table stream (10-15+ rows on screen)"
-                  >
-                    <LayoutList className="w-3.5 h-3.5 text-blue-600" /> Slim Table
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setStreamViewMode("cards")}
-                    className={`px-2.5 py-1 rounded-md text-[11px] font-semibold transition flex items-center gap-1 ${
-                      streamViewMode === "cards"
-                        ? "bg-background text-foreground shadow-xs font-bold"
-                        : "text-muted-foreground hover:text-foreground"
-                    }`}
-                    title="Expanded card view"
-                  >
-                    <LayoutGrid className="w-3.5 h-3.5 text-blue-600" /> Cards
-                  </button>
-                </div>
+                  <LayoutGrid className="w-4 h-4" />
+                </button>
               </div>
             </div>
 
