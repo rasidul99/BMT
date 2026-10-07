@@ -234,6 +234,44 @@ async function runWatcher(configPath) {
   const allReplies = [];
 
   try {
+    // Ensure acting as Page if Page ID is present in URL
+    const pageIdMatch = postUrl.match(/id=(\d+)/) || postUrl.match(/facebook\.com\/(\d+)/);
+    if (pageIdMatch && pageIdMatch[1]) {
+      const pageId = pageIdMatch[1];
+      console.log(`🏢 Checking profile switch for Page ID ${pageId}...`);
+      try {
+        await page.goto(`https://www.facebook.com/${pageId}`, { waitUntil: "networkidle2", timeout: 45000 });
+        await sleep(3000);
+        const switched = await safeEvaluate(page, () => {
+          const buttons = Array.from(document.querySelectorAll('div[role="button"]'));
+          const target = buttons.find(b => (b.innerText || '').trim() === 'Switch Now' || (b.innerText || '').trim() === 'Switch');
+          if (target) {
+            target.click();
+            return true;
+          }
+          return false;
+        });
+        if (switched) {
+          console.log("   🔄 Switch button clicked, confirming modal switch...");
+          await sleep(2500);
+          await safeEvaluate(page, () => {
+            const all = Array.from(document.querySelectorAll('div[aria-label="Switch"], div[role="button"]'));
+            for (const el of all) {
+              const txt = (el.innerText || el.getAttribute('aria-label') || '').trim();
+              if (txt === 'Switch' && el.closest('div[role="dialog"]')) {
+                el.click();
+                break;
+              }
+            }
+          });
+          await sleep(8000);
+          console.log("   ✅ Profile switched to Page.");
+        }
+      } catch (swErr) {
+        console.warn("   ⚠️ Profile switch notice:", swErr.message);
+      }
+    }
+
     console.log(`🌐 Navigating to Post URL: ${postUrl}...`);
 
     // Safe navigation with client-side redirect tolerance
@@ -263,14 +301,24 @@ async function runWatcher(configPath) {
     try {
       await safeEvaluate(page, () => {
         const closeBtns = Array.from(document.querySelectorAll('div[aria-label="Close"], div[aria-label="বন্ধ করুন"], div[role="button"][aria-label*="Close" i]'));
-        if (closeBtns.length > 0) closeBtns[0].click();
+        if (closeBtns.length > 0 && !closeBtns[0].closest('div[role="dialog"][aria-label*="post" i]')) {
+          closeBtns[0].click();
+        }
       });
       await sleep(1000);
     } catch (_) {}
 
-    // Scroll slightly down to load comments section
-    await safeEvaluate(page, () => window.scrollBy({ top: 400, behavior: "smooth" }));
-    await sleep(2500);
+    // Scroll post / modal to ensure comments are visible
+    try {
+      await page.mouse.move(640, 450);
+      await page.mouse.wheel({ deltaY: 800 });
+      await sleep(1500);
+      await page.mouse.wheel({ deltaY: 800 });
+      await sleep(2000);
+    } catch (_) {
+      await safeEvaluate(page, () => window.scrollBy({ top: 500, behavior: "smooth" }));
+      await sleep(2000);
+    }
 
     for (let check = 1; check <= maxChecks; check++) {
       console.log(`\n🔍 [Check ${check}/${maxChecks}] Scanning comment section...`);
@@ -371,8 +419,8 @@ async function runWatcher(configPath) {
               if (!targetArt) return false;
               const buttons = Array.from(targetArt.querySelectorAll('div[role="button"], span[role="button"], a[role="button"]'));
               const msgBtn = buttons.find((b) => {
-                const bt = (b.innerText || b.getAttribute("aria-label") || "").toLowerCase();
-                return bt === "send message" || bt === "বার্তা পাঠান" || bt.includes("send message") || bt.includes("বার্তা পাঠান");
+                const bt = (b.innerText || b.getAttribute("aria-label") || "").trim().toLowerCase();
+                return bt === "send message" || bt === "বার্তা পাঠান";
               });
               if (msgBtn) {
                 msgBtn.click();
@@ -382,32 +430,42 @@ async function runWatcher(configPath) {
             }, item.index);
 
             if (clickedMsg) {
-              await sleep(2500);
+              await sleep(3000);
 
-              // Find messenger input textbox in the popup dialog
-              const msgInputSelector = 'div[role="textbox"][contenteditable="true"], div[aria-label*="Message" i][role="textbox"]';
-              const msgBox = await page.$(msgInputSelector);
-              if (msgBox) {
-                await msgBox.click();
-                await sleep(500);
-                console.log(`   ⌨️ Typing private inbox message...`);
-                for (const char of ai.inbox) {
-                  await page.keyboard.type(char, { delay: Math.floor(Math.random() * 30) + 15 });
+              // Check for message popup modal
+              const msgSent = await safeEvaluate(page, async (msgText) => {
+                // Find dialog titled "Message ..."
+                const dialogs = Array.from(document.querySelectorAll('div[role="dialog"]'));
+                const msgDialog = dialogs.find(d => {
+                  const t = (d.innerText || '');
+                  return t.includes("Message ") || t.includes("Send a message as") || t.includes("Send Message");
+                }) || dialogs[dialogs.length - 1];
+
+                if (!msgDialog) return { success: false, reason: "No message dialog found" };
+
+                // Find textbox in the message dialog
+                const tb = msgDialog.querySelector('div[role="textbox"][contenteditable="true"]');
+                if (!tb) return { success: false, reason: "No textbox in message dialog" };
+
+                tb.focus();
+                // Paste/type text
+                document.execCommand('insertText', false, msgText);
+
+                // Wait slightly and find "Send Message" button
+                const sendBtns = Array.from(msgDialog.querySelectorAll('div[role="button"], div[aria-label*="Send" i]'));
+                const sendBtn = sendBtns.find(b => (b.innerText || b.getAttribute('aria-label') || '').trim().toLowerCase() === 'send message');
+                if (sendBtn) {
+                  sendBtn.click();
+                  return { success: true, method: "send button clicked" };
                 }
-                await sleep(800);
-                await page.keyboard.press("Enter");
-                await sleep(2500);
-                console.log(`   ✅ [SUCCESS] Private message sent to ${item.author}'s Messenger!`);
-                inboxSuccess = true;
+                return { success: true, method: "text inserted into dialog" };
+              }, ai.inbox);
 
-                // Close message modal if open
-                try {
-                  await safeEvaluate(page, () => {
-                    const closeMsg = document.querySelector('div[aria-label="Close chat" i], div[aria-label="Close" i]');
-                    if (closeMsg) closeMsg.click();
-                  });
-                } catch (_) {}
-                await sleep(1000);
+              console.log("   Private message modal dispatch:", msgSent);
+              if (msgSent.success) {
+                await sleep(2500);
+                inboxSuccess = true;
+                console.log(`   ✅ [SUCCESS] Private message sent to ${item.author}'s Messenger!`);
               }
             }
           } catch (mErr) {
@@ -415,7 +473,7 @@ async function runWatcher(configPath) {
           }
         }
 
-        // 2. Post Public Comment Reply
+        // 2. Post Public Comment Reply (Strictly Nested)
         if (autoReply) {
           console.log(`   ⏳ Locating and clicking "Reply" button for ${item.author}...`);
           try {
@@ -426,8 +484,8 @@ async function runWatcher(configPath) {
 
               const buttons = Array.from(targetArt.querySelectorAll('div[role="button"], span[role="button"], a[role="button"]'));
               const replyBtn = buttons.find((b) => {
-                const bt = (b.innerText || b.getAttribute("aria-label") || "").toLowerCase();
-                return bt === "reply" || bt === "উত্তর দিন" || bt.includes("reply") || bt.includes("উত্তর");
+                const bt = (b.innerText || b.getAttribute("aria-label") || "").trim().toLowerCase();
+                return bt === "reply" || bt === "উত্তর দিন";
               });
 
               if (replyBtn) {
@@ -440,27 +498,25 @@ async function runWatcher(configPath) {
             if (clickedReply) {
               await sleep(2000);
 
-              // Locate active nested reply textbox
-              const replyBoxSelector = 'div[role="textbox"][contenteditable="true"]';
-              await page.waitForSelector(replyBoxSelector, { timeout: 8000 });
-              const textboxes = await page.$$(replyBoxSelector);
-              const activeBox = textboxes[textboxes.length - 1];
+              // The active nested reply textbox will have aria-label starting with "Reply to ..."
+              const nestedBox = await page.$('div[role="textbox"][aria-label^="Reply to" i], div[role="textbox"][aria-label^="উত্তর দিন" i]');
+              const boxToUse = nestedBox || (await page.$$('div[role="textbox"][contenteditable="true"]')).pop();
 
-              if (activeBox) {
-                await activeBox.click();
+              if (boxToUse) {
+                await boxToUse.click();
                 await sleep(500);
 
-                console.log(`   ⌨️ Typing AI public reply into comment box...`);
+                console.log(`   ⌨️ Typing AI nested public reply into comment box...`);
                 for (const char of ai.reply) {
                   await page.keyboard.type(char, { delay: Math.floor(Math.random() * 35) + 15 });
                 }
 
                 await sleep(800);
-                console.log(`   🚀 Submitting comment reply (pressing Enter)...`);
+                console.log(`   🚀 Submitting nested comment reply (pressing Enter)...`);
                 await page.keyboard.press("Enter");
                 await sleep(4000);
 
-                console.log(`   ✅ [SUCCESS] AI Public Reply successfully posted on Facebook!`);
+                console.log(`   ✅ [SUCCESS] AI Nested Reply successfully posted on Facebook!`);
                 publicSuccess = true;
               }
             } else {
