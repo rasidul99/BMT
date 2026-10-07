@@ -1250,63 +1250,32 @@ export default function SafeCommentAssistantPage() {
   }
 
   return (
-    <div className="max-w-7xl mx-auto space-y-5 pb-20">
-      {/* Executive 2-Row Header: Row 1 (Title + Primary CTA), Row 2 (Full-Width Navigation Bar) */}
-      <div className="border-b pb-4 space-y-4">
-        {/* Row 1: Title Block + Primary Action Button */}
-        <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
-          <div className="min-w-0 flex-1 space-y-1.5">
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold tracking-wide bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20">
-              <Bot className="w-3.5 h-3.5 text-blue-500 shrink-0" />
-              <span>100-ACCOUNT MULTI-CHANNEL COMMAND CENTER • NESTED AI REPLY + DIRECT INBOX</span>
-            </div>
-            <h1 className="text-2xl md:text-3xl font-black tracking-tight text-foreground">
-              Smart Comment &amp; Inbox Assistant
-            </h1>
-            <p className="text-xs md:text-sm text-muted-foreground max-w-3xl leading-relaxed">
-              Monitors up to <strong className="text-foreground font-semibold">100 Posts across Personal IDs, Facebook Pages &amp; Groups</strong> in real time — enters every customer comment&apos;s reply thread with an instant AI response and dispatches a private Messenger DM automatically.
-            </p>
-          </div>
-
-          <div className="flex items-center gap-2.5 shrink-0 sm:pt-1">
-            <div className="hidden xl:inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-muted/50 border text-xs font-semibold text-muted-foreground">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-              <span>
-                Active:{" "}
-                <strong className="text-foreground">
-                  {monitoredPosts.filter((p) => p.status === "Active").length}/{MAX_MONITORED_POSTS}
-                </strong>{" "}
-                Posts
-              </span>
-            </div>
-
-            <button
-              type="button"
-              data-testid="open-add-post-modal-btn"
-              onClick={() => openAddPostModal("Personal ID")}
-              className="px-4 py-2.5 rounded-xl text-xs font-bold bg-blue-600 hover:bg-blue-500 text-white shadow-sm transition flex items-center gap-2 shrink-0 cursor-pointer"
-            >
-              <Plus className="w-4 h-4 stroke-[2.5]" />
-              <span>Add Post (ID / Page / Group)</span>
-            </button>
-          </div>
+    <div className="max-w-7xl mx-auto space-y-3.5 pb-16">
+      {/* Compact Header: No Eyebrow, Smaller Headline & Sub-headline, Sleek Tabs + CTA */}
+      <div className="border-b pb-3 flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+        <div className="min-w-0">
+          <h1 className="text-lg font-bold tracking-tight text-foreground leading-tight">
+            Smart Comment &amp; Inbox Assistant
+          </h1>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Auto-reply to comments &amp; send DMs across 100 IDs, Pages &amp; Groups.
+          </p>
         </div>
 
-        {/* Row 2: Dedicated Full-Width Navigation Tabs */}
-        <div className="pt-3 border-t border-border/60 flex items-center justify-between gap-3 overflow-x-auto no-scrollbar">
-          <div className="inline-flex items-center bg-muted/60 p-1 rounded-xl border gap-1 min-w-max">
+        <div className="flex items-center gap-2 flex-wrap shrink-0">
+          <div className="inline-flex items-center bg-muted/60 p-1 rounded-xl border gap-1 overflow-x-auto no-scrollbar">
             <button
               type="button"
               data-testid="tab-incoming-stream"
               onClick={() => setActiveTab("incoming")}
-              className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition flex items-center gap-1.5 shrink-0 cursor-pointer ${
+              className={`px-2.5 py-1 rounded-lg text-xs font-semibold whitespace-nowrap transition flex items-center gap-1.5 shrink-0 cursor-pointer ${
                 activeTab === "incoming"
                   ? "bg-background shadow-xs text-foreground font-bold"
                   : "text-muted-foreground hover:text-foreground"
               }`}
             >
               <Activity className="w-3.5 h-3.5 text-blue-500" />
-              <span>Live Activity Stream ({comments.length})</span>
+              <span>Live Stream ({comments.length})</span>
               {failedComments.length > 0 && (
                 <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-rose-600 text-white font-bold">
                   {failedComments.length}
@@ -1318,61 +1287,71 @@ export default function SafeCommentAssistantPage() {
               type="button"
               data-testid="tab-monitored-posts"
               onClick={() => setActiveTab("posts")}
-              className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition flex items-center gap-1.5 shrink-0 cursor-pointer ${
+              className={`px-2.5 py-1 rounded-lg text-xs font-semibold whitespace-nowrap transition flex items-center gap-1.5 shrink-0 cursor-pointer ${
                 activeTab === "posts"
                   ? "bg-background shadow-xs text-foreground font-bold"
                   : "text-muted-foreground hover:text-foreground"
               }`}
             >
               <Layers className="w-3.5 h-3.5 text-emerald-500" />
-              <span>Monitored Posts ({monitoredPosts.length}/{MAX_MONITORED_POSTS})</span>
+              <span>Posts ({monitoredPosts.length}/{MAX_MONITORED_POSTS})</span>
             </button>
 
             <button
               type="button"
               onClick={() => setActiveTab("library")}
-              className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition flex items-center gap-1.5 shrink-0 cursor-pointer ${
+              className={`px-2.5 py-1 rounded-lg text-xs font-semibold whitespace-nowrap transition flex items-center gap-1.5 shrink-0 cursor-pointer ${
                 activeTab === "library"
                   ? "bg-background shadow-xs text-foreground font-bold"
                   : "text-muted-foreground hover:text-foreground"
               }`}
             >
               <BookOpen className="w-3.5 h-3.5 text-blue-500" />
-              <span>AI Knowledgebase &amp; Rules ({library.length})</span>
+              <span>AI Rules ({library.length})</span>
             </button>
 
             <button
               type="button"
               onClick={() => setActiveTab("logs")}
-              className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition flex items-center gap-1.5 shrink-0 cursor-pointer ${
+              className={`px-2.5 py-1 rounded-lg text-xs font-semibold whitespace-nowrap transition flex items-center gap-1.5 shrink-0 cursor-pointer ${
                 activeTab === "logs"
                   ? "bg-background shadow-xs text-foreground font-bold"
                   : "text-muted-foreground hover:text-foreground"
               }`}
             >
               <Clock className="w-3.5 h-3.5 text-amber-500" />
-              <span>Audit Ledger ({logs.length})</span>
+              <span>Logs ({logs.length})</span>
             </button>
 
             <button
               type="button"
               onClick={() => setActiveTab("liveTest")}
-              className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition flex items-center gap-1.5 shrink-0 cursor-pointer ${
+              className={`px-2.5 py-1 rounded-lg text-xs font-semibold whitespace-nowrap transition flex items-center gap-1.5 shrink-0 cursor-pointer ${
                 activeTab === "liveTest"
                   ? "bg-rose-600 text-white shadow-xs font-bold"
                   : "text-rose-500 hover:bg-rose-500/10 font-semibold"
               }`}
             >
               <Radio className="w-3.5 h-3.5 animate-pulse text-current" />
-              <span>Live Real-World Test (ID &amp; Page)</span>
+              <span>Live Test</span>
             </button>
           </div>
+
+          <button
+            type="button"
+            data-testid="open-add-post-modal-btn"
+            onClick={() => openAddPostModal("Personal ID")}
+            className="px-3.5 py-1.5 rounded-xl text-xs font-bold bg-blue-600 hover:bg-blue-500 text-white shadow-sm transition flex items-center gap-1.5 shrink-0 cursor-pointer"
+          >
+            <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
+            <span>Add Post</span>
+          </button>
         </div>
       </div>
 
       {/* Confirmation Toast Banner */}
       {postSavedToast && (
-        <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-between gap-3 text-xs text-emerald-700 dark:text-emerald-300 animate-in fade-in duration-150">
+        <div className="p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-between gap-3 text-xs text-emerald-700 dark:text-emerald-300 animate-in fade-in duration-150">
           <div className="flex items-center gap-2 font-semibold">
             <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
             <span>{postSavedToast}</span>
@@ -1384,7 +1363,7 @@ export default function SafeCommentAssistantPage() {
                 onClick={() => setActiveTab("incoming")}
                 className="px-2.5 py-1 rounded-lg bg-emerald-600 text-white font-bold hover:bg-emerald-700 transition"
               >
-                View Live Stream
+                View Stream
               </button>
             )}
             <button
@@ -1398,119 +1377,87 @@ export default function SafeCommentAssistantPage() {
         </div>
       )}
 
-      {/* Executive Command Center Metrics Row */}
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
+      {/* Compact Metrics Row */}
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-2.5">
         <div
           onClick={() => setActiveTab("posts")}
-          className="border bg-card p-3.5 rounded-xl shadow-xs space-y-1 cursor-pointer hover:border-blue-500/40 transition"
+          className="border bg-card p-3 rounded-xl shadow-xs space-y-0.5 cursor-pointer hover:border-blue-500/40 transition"
         >
-          <div className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider flex items-center justify-between">
-            Monitored Posts &amp; Fleet
+          <div className="text-[10px] font-semibold text-muted-foreground uppercase flex items-center justify-between">
+            Monitored Posts
             <Layers className="w-3.5 h-3.5 text-emerald-600" />
           </div>
-          <div className="text-xl font-black text-foreground flex items-baseline gap-1.5">
-            {monitoredPosts.length} <span className="text-xs font-semibold text-muted-foreground">/ {MAX_MONITORED_POSTS} Posts</span>
+          <div className="text-lg font-black text-foreground flex items-baseline gap-1">
+            {monitoredPosts.length} <span className="text-[11px] font-normal text-muted-foreground">/ {MAX_MONITORED_POSTS}</span>
           </div>
           <div className="text-[10px] text-emerald-600 dark:text-emerald-400 font-medium">
-            {fleetMetrics.activeCount + 1}/100 IDs, Pages &amp; Groups online
+            {fleetMetrics.activeCount + 1}/100 accounts active
           </div>
         </div>
 
-        <div className="border bg-card p-3.5 rounded-xl shadow-xs space-y-1">
-          <div className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider flex items-center justify-between">
-            Nested Replies Sent
+        <div className="border bg-card p-3 rounded-xl shadow-xs space-y-0.5">
+          <div className="text-[10px] font-semibold text-muted-foreground uppercase flex items-center justify-between">
+            Comment Replies
             <MessageSquare className="w-3.5 h-3.5 text-blue-600" />
           </div>
-          <div className="text-xl font-black text-blue-600 dark:text-blue-400">
-            {repliedComments.length} <span className="text-xs font-normal text-muted-foreground">/ {comments.length}</span>
+          <div className="text-lg font-black text-blue-600 dark:text-blue-400">
+            {repliedComments.length} <span className="text-[11px] font-normal text-muted-foreground">/ {comments.length}</span>
           </div>
           <div className="text-[10px] text-muted-foreground">
-            {pendingComments.length} pending in queue
+            {pendingComments.length} pending
           </div>
         </div>
 
-        <div className="border bg-card p-3.5 rounded-xl shadow-xs space-y-1">
-          <div className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider flex items-center justify-between">
-            Private Inboxes Sent
+        <div className="border bg-card p-3 rounded-xl shadow-xs space-y-0.5">
+          <div className="text-[10px] font-semibold text-muted-foreground uppercase flex items-center justify-between">
+            Inbox DMs Sent
             <Inbox className="w-3.5 h-3.5 text-blue-600" />
           </div>
-          <div className="text-xl font-black text-blue-600 dark:text-blue-400">
+          <div className="text-lg font-black text-blue-600 dark:text-blue-400">
             {comments.filter((c) => c.inboxStatus === "Sent").length}
           </div>
           <div className="text-[10px] text-muted-foreground">
-            Page Modal + Direct Messenger Bot
+            Auto Messenger DM
           </div>
         </div>
 
-        <div className="border bg-card p-3.5 rounded-xl shadow-xs space-y-1">
-          <div className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider flex items-center justify-between">
-            Failed / Retry Queue
+        <div className="border bg-card p-3 rounded-xl shadow-xs space-y-0.5">
+          <div className="text-[10px] font-semibold text-muted-foreground uppercase flex items-center justify-between">
+            Failed / Retry
             <AlertTriangle className={`w-3.5 h-3.5 ${failedComments.length > 0 ? "text-rose-500" : "text-emerald-500"}`} />
           </div>
-          <div className={`text-xl font-black ${failedComments.length > 0 ? "text-rose-600 dark:text-rose-400" : "text-emerald-600"}`}>
+          <div className={`text-lg font-black ${failedComments.length > 0 ? "text-rose-600 dark:text-rose-400" : "text-emerald-600"}`}>
             {failedComments.length}
           </div>
           <div className="text-[10px] text-muted-foreground">
-            {failedComments.length > 0 ? "1-Click instant retry ready" : "Zero delivery failures"}
+            {failedComments.length > 0 ? "1-Click retry ready" : "0 failures"}
           </div>
         </div>
 
-        <div className="border bg-card p-3.5 rounded-xl shadow-xs space-y-1 col-span-2 lg:col-span-1">
-          <div className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider flex items-center justify-between">
-            Anti-Ban Health &amp; Speed
+        <div className="border bg-card p-3 rounded-xl shadow-xs space-y-0.5 col-span-2 lg:col-span-1">
+          <div className="text-[10px] font-semibold text-muted-foreground uppercase flex items-center justify-between">
+            Anti-Ban Speed
             <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
           </div>
-          <div className="text-base font-black text-emerald-600 dark:text-emerald-400 pt-0.5">
-            Safe (~{avgLatencySeconds}s Avg)
+          <div className="text-sm font-black text-emerald-600 dark:text-emerald-400 pt-0.5">
+            Safe (~{avgLatencySeconds}s)
           </div>
           <div className="text-[10px] text-muted-foreground">
-            Jitter:{" "}
-            {autoDelayRange === "fast"
-              ? "5s–15s (Fast)"
-              : autoDelayRange === "safe"
-              ? "45s–120s (Ultra Safe)"
-              : "15s–45s (Natural)"}{" "}
-            • Proxy active
+            Jitter: {autoDelayRange === "fast" ? "5–15s" : autoDelayRange === "safe" ? "45–120s" : "15–45s"}
           </div>
         </div>
       </div>
 
       {/* TAB 1: LIVE ACTIVITY STREAM (COMPACT TABLE + CARDS + MULTI-ACCOUNT FILTER BAR) */}
       {activeTab === "incoming" && (
-        <div className="space-y-4 animate-in fade-in duration-200">
-          {/* Step-by-Step Monitored Posts Quick Bar (100 Posts under ID, Page, or Group) */}
-          <div className="border bg-card p-3.5 rounded-xl shadow-xs space-y-2.5 text-xs">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="font-bold text-foreground flex items-center gap-1.5">
-                  <Layers className="w-3.5 h-3.5 text-blue-600" />
-                  Active Monitored Posts ({monitoredPosts.length}/{MAX_MONITORED_POSTS}):
-                </span>
-                <span className="text-[11px] text-muted-foreground">
-                  1. Click <strong>Add Post</strong> &rarr; 2. Select <strong>ID / Page / Group</strong> &rarr; 3. Paste <strong>Post Link</strong> &rarr; 4. Pick <strong>Template or Custom Reply + DM</strong>
-                </span>
-              </div>
-
-              <div className="flex items-center gap-2 shrink-0">
-                <button
-                  type="button"
-                  onClick={() => setActiveTab("posts")}
-                  className="px-2.5 py-1 rounded-lg border bg-muted/40 hover:bg-muted text-foreground font-semibold transition flex items-center gap-1 text-[11px]"
-                >
-                  Manage All Posts ({monitoredPosts.length}/{MAX_MONITORED_POSTS})
-                </button>
-                <button
-                  type="button"
-                  onClick={() => openAddPostModal("Personal ID")}
-                  className="px-3 py-1 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-bold transition flex items-center gap-1.5 text-[11px] shadow-xs"
-                >
-                  <Plus className="w-3.5 h-3.5 stroke-[2.5]" /> Add Post
-                </button>
-              </div>
-            </div>
-
-            {/* Horizontal Filter Pills for Monitored Posts */}
-            <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-0.5">
+        <div className="space-y-3 animate-in fade-in duration-200">
+          {/* Compact Monitored Posts Filter Bar */}
+          <div className="border bg-card px-3 py-2.5 rounded-xl shadow-xs flex items-center justify-between gap-2 text-xs">
+            <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar">
+              <span className="font-bold text-foreground flex items-center gap-1 shrink-0 mr-1 text-[11px]">
+                <Layers className="w-3.5 h-3.5 text-blue-600" />
+                Posts ({monitoredPosts.length}/{MAX_MONITORED_POSTS}):
+              </span>
               <button
                 type="button"
                 onClick={() => setSelectedPostFilter("ALL")}
@@ -1520,7 +1467,7 @@ export default function SafeCommentAssistantPage() {
                     : "bg-muted/40 text-muted-foreground hover:bg-muted"
                 }`}
               >
-                All Monitored Posts ({monitoredPosts.length})
+                All ({monitoredPosts.length})
               </button>
               {monitoredPosts.map((mp) => {
                 const postCommentCount = comments.filter((c) => doesCommentMatchMonitoredPost(c, mp)).length
@@ -1544,7 +1491,7 @@ export default function SafeCommentAssistantPage() {
                       }`}
                     />
                     <span className="opacity-75 text-[10px]">[{mp.sourceType}]</span>
-                    <span className="truncate max-w-[160px]">{mp.postTitle}</span>
+                    <span className="truncate max-w-[140px]">{mp.postTitle}</span>
                     <span
                       className={`px-1.5 py-0.2 rounded-full text-[10px] ${
                         isSelected ? "bg-white/20 text-white" : "bg-muted text-muted-foreground"
@@ -1556,36 +1503,53 @@ export default function SafeCommentAssistantPage() {
                 )
               })}
             </div>
+
+            <div className="flex items-center gap-1.5 shrink-0">
+              <button
+                type="button"
+                onClick={() => setActiveTab("posts")}
+                className="px-2.5 py-1 rounded-lg border bg-muted/40 hover:bg-muted text-foreground font-semibold transition text-[11px] whitespace-nowrap"
+              >
+                Manage ({monitoredPosts.length})
+              </button>
+              <button
+                type="button"
+                onClick={() => openAddPostModal("Personal ID")}
+                className="px-2.5 py-1 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-bold transition flex items-center gap-1 text-[11px] shadow-xs whitespace-nowrap"
+              >
+                <Plus className="w-3.5 h-3.5 stroke-[2.5]" /> Add Post
+              </button>
+            </div>
           </div>
 
-          {/* Primary Auto-Pilot & Anti-Ban System Health Bar */}
-          <div className="border bg-card p-3.5 rounded-xl shadow-xs flex flex-col lg:flex-row lg:items-center justify-between gap-3 text-xs">
-            <div className="flex flex-wrap items-center gap-2.5">
-              <span className="font-bold text-foreground flex items-center gap-1.5">
-                <Zap className="w-3.5 h-3.5 text-blue-600" /> Engine Mode:
+          {/* Compact Engine Mode & Controls Bar */}
+          <div className="border bg-card px-3 py-2.5 rounded-xl shadow-xs flex flex-col lg:flex-row lg:items-center justify-between gap-2.5 text-xs">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="font-bold text-foreground flex items-center gap-1 text-[11px]">
+                <Zap className="w-3.5 h-3.5 text-blue-600" /> Mode:
               </span>
               <div className="flex items-center bg-muted p-0.5 rounded-lg border">
                 <button
                   type="button"
                   onClick={() => setMode("Auto")}
-                  className={`px-3 py-1.5 rounded-md font-bold transition flex items-center gap-1.5 ${
+                  className={`px-2.5 py-1 rounded-md text-[11px] font-bold transition flex items-center gap-1.5 ${
                     mode === "Auto"
                       ? "bg-blue-600 text-white shadow-xs"
                       : "text-muted-foreground hover:text-foreground"
                   }`}
                 >
-                  <Bot className="w-3.5 h-3.5" /> Auto-Pilot (Instant AI Nested Reply + Inbox)
+                  <Bot className="w-3.5 h-3.5" /> Auto-Pilot
                 </button>
                 <button
                   type="button"
                   onClick={() => setMode("Manual")}
-                  className={`px-3 py-1.5 rounded-md font-semibold transition flex items-center gap-1.5 ${
+                  className={`px-2.5 py-1 rounded-md text-[11px] font-semibold transition flex items-center gap-1.5 ${
                     mode === "Manual"
                       ? "bg-blue-600 text-white shadow-xs"
                       : "text-muted-foreground hover:text-foreground"
                   }`}
                 >
-                  <UserCheck className="w-3.5 h-3.5" /> Manual Exceptions Queue ({pendingComments.length})
+                  <UserCheck className="w-3.5 h-3.5" /> Manual Queue ({pendingComments.length})
                 </button>
               </div>
 
@@ -1594,49 +1558,49 @@ export default function SafeCommentAssistantPage() {
                   type="button"
                   disabled={isBatchProcessing}
                   onClick={handleBatchAutoPilotSweep}
-                  className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-semibold transition flex items-center gap-1.5 shadow-xs"
+                  className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-semibold transition flex items-center gap-1 text-[11px] shadow-xs"
                 >
                   {isBatchProcessing ? (
                     <>
-                      <RotateCw className="w-3.5 h-3.5 animate-spin" /> Auto-Replying ({pendingComments.length})...
+                      <RotateCw className="w-3 h-3 animate-spin" /> Replying ({pendingComments.length})...
                     </>
                   ) : (
                     <>
-                      <Zap className="w-3.5 h-3.5" /> Auto-Reply Pending ({pendingComments.length})
+                      <Zap className="w-3 h-3" /> Reply Pending ({pendingComments.length})
                     </>
                   )}
                 </button>
               )}
             </div>
 
-            <div className="flex items-center gap-3 flex-wrap">
-              <label className="flex items-center gap-1.5 font-semibold cursor-pointer select-none">
+            <div className="flex items-center gap-2.5 flex-wrap">
+              <label className="flex items-center gap-1.5 text-[11px] font-semibold cursor-pointer select-none">
                 <input
                   type="checkbox"
                   checked={enablePrivateInboxReply}
                   onChange={(e) => setEnablePrivateInboxReply(e.target.checked)}
                   className="w-3.5 h-3.5 rounded text-blue-600 focus:ring-blue-500 cursor-pointer"
                 />
-                <span>Auto-Send Private Messenger DM</span>
+                <span>Auto Inbox DM</span>
               </label>
 
-              <div className="flex items-center gap-1.5">
-                <span className="text-[10px] font-semibold text-muted-foreground uppercase">Anti-Ban Jitter:</span>
+              <div className="flex items-center gap-1">
+                <span className="text-[10px] font-semibold text-muted-foreground uppercase">Delay:</span>
                 <select
                   value={autoDelayRange}
                   onChange={(e) => setAutoDelayRange(e.target.value as any)}
-                  className="px-2 py-1 border rounded-lg bg-background text-xs font-medium focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none"
+                  className="px-2 py-1 border rounded-lg bg-background text-[11px] font-medium outline-none"
                 >
-                  <option value="fast">5s–15s (Fast Burst)</option>
-                  <option value="natural">15s–45s (Natural Human)</option>
-                  <option value="safe">45s–120s (100-Acc Ultra Safe)</option>
+                  <option value="fast">5–15s (Fast)</option>
+                  <option value="natural">15–45s (Natural)</option>
+                  <option value="safe">45–120s (Safe)</option>
                 </select>
               </div>
 
               <button
                 type="button"
                 onClick={() => setShowQuickSimModal(true)}
-                className="px-2.5 py-1 border rounded-lg bg-muted/50 hover:bg-muted text-muted-foreground hover:text-foreground font-semibold transition flex items-center gap-1"
+                className="px-2.5 py-1 border rounded-lg bg-muted/50 hover:bg-muted text-muted-foreground hover:text-foreground font-semibold transition flex items-center gap-1 text-[11px]"
                 title="Inject a simulated comment event to test the live stream"
               >
                 <Terminal className="w-3 h-3 text-blue-600" /> + Test Event
@@ -2375,36 +2339,26 @@ export default function SafeCommentAssistantPage() {
 
       {/* TAB 1.5: MONITORED POSTS (UP TO 100 POSTS UNDER PERSONAL ID, PAGE, OR GROUP) */}
       {activeTab === "posts" && (
-        <div className="space-y-4 animate-in fade-in duration-200">
-          {/* Step-by-Step User Journey Banner & Capacity Overview */}
-          <div className="border bg-card rounded-xl shadow-xs p-4 flex flex-col lg:flex-row lg:items-center justify-between gap-4 text-xs">
-            <div className="space-y-1">
+        <div className="space-y-3 animate-in fade-in duration-200">
+          {/* Compact Monitored Posts Header Bar */}
+          <div className="border bg-card rounded-xl shadow-xs px-4 py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+            <div>
               <div className="font-bold text-sm text-foreground flex items-center gap-2">
                 <Layers className="w-4 h-4 text-emerald-600" />
-                100-Post Multi-Channel Campaign Manager (Personal IDs, Pages &amp; Groups)
+                Monitored Posts ({monitoredPosts.length}/{MAX_MONITORED_POSTS})
               </div>
               <p className="text-muted-foreground text-[11px]">
-                Add up to <strong>{MAX_MONITORED_POSTS} Facebook posts</strong> across your connected IDs, Pages, and Groups. Each post uses its own configured Template or Custom Nested Comment Reply + Private Inbox DM.
+                Auto-reply &amp; Inbox DM rules per Facebook ID, Page, or Group post.
               </p>
             </div>
 
-            <div className="flex flex-wrap items-center gap-2.5 shrink-0">
-              <div className="px-3 py-1.5 rounded-lg bg-muted/50 border text-[11px] font-semibold">
-                Capacity:{" "}
-                <strong className="text-foreground">
-                  {monitoredPosts.length} / {MAX_MONITORED_POSTS}
-                </strong>{" "}
-                Posts Active
-              </div>
-
-              <button
-                type="button"
-                onClick={() => openAddPostModal("Personal ID")}
-                className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs rounded-lg shadow-xs transition flex items-center gap-1.5 cursor-pointer"
-              >
-                <Plus className="w-4 h-4 stroke-[2.5]" /> Add Post (ID / Page / Group)
-              </button>
-            </div>
+            <button
+              type="button"
+              onClick={() => openAddPostModal("Personal ID")}
+              className="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs rounded-lg shadow-xs transition flex items-center gap-1.5 cursor-pointer shrink-0 self-start sm:self-auto"
+            >
+              <Plus className="w-4 h-4 stroke-[2.5]" /> Add Post
+            </button>
           </div>
 
           {/* Source Filter Tabs & Search Bar */}
@@ -3242,17 +3196,15 @@ export default function SafeCommentAssistantPage() {
       {/* MODAL 0: STEP-BY-STEP "+ ADD POST" USER JOURNEY MODAL (ID / PAGE / GROUP -> DROPDOWN -> POST LINK -> TEMPLATE OR CUSTOM REPLY + DM) */}
       {showAddPostModal && (
         <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-card border border-border rounded-2xl max-w-2xl w-full p-5 space-y-4 shadow-2xl animate-in zoom-in-95 duration-200 my-8">
-            <div className="flex items-center justify-between border-b pb-3">
+          <div className="bg-card border border-border rounded-2xl max-w-xl w-full p-4 sm:p-5 space-y-3.5 shadow-2xl animate-in zoom-in-95 duration-200 my-6">
+            <div className="flex items-center justify-between border-b pb-2.5">
               <div>
-                <h3 className="font-bold text-sm text-foreground flex items-center gap-2">
+                <h3 className="font-bold text-sm text-foreground flex items-center gap-1.5">
                   <Plus className="w-4 h-4 text-blue-600" />
-                  {editingPostId
-                    ? "Edit Monitored Post Configuration"
-                    : "Add Post to AI Comment & Inbox Assistant"}
+                  {editingPostId ? "Edit Post" : "Add Post"}
                 </h3>
-                <p className="text-[11px] text-muted-foreground mt-0.5">
-                  Select Personal ID, Facebook Page, or Group &rarr; Pick from Dropdown &rarr; Paste Post Link &rarr; Choose Template or Write Custom Reply &amp; DM ({monitoredPosts.length}/{MAX_MONITORED_POSTS} Posts)
+                <p className="text-[11px] text-muted-foreground">
+                  Set auto comment reply &amp; inbox DM ({monitoredPosts.length}/{MAX_MONITORED_POSTS} posts)
                 </p>
               </div>
               <button
@@ -3264,72 +3216,72 @@ export default function SafeCommentAssistantPage() {
               </button>
             </div>
 
-            <form onSubmit={handleSaveMonitoredPostSubmit} className="space-y-4 text-xs">
-              {/* STEP 1: SELECT SOURCE TYPE TAB (PERSONAL ID | FACEBOOK PAGE | FACEBOOK GROUP) */}
+            <form onSubmit={handleSaveMonitoredPostSubmit} className="space-y-3.5 text-xs">
+              {/* STEP 1: SELECT SOURCE TYPE TAB */}
               <div className="space-y-1.5">
                 <label className="font-bold text-foreground uppercase text-[10px] tracking-wider flex items-center gap-1.5">
                   <span className="w-4 h-4 rounded-full bg-blue-600 text-white inline-flex items-center justify-center text-[10px] font-black">
                     1
                   </span>
-                  Select Target Channel Tab (Personal ID, Facebook Page, or Facebook Group) *
+                  Channel *
                 </label>
 
-                <div className="grid grid-cols-3 gap-2 p-1 bg-muted/60 rounded-xl border">
+                <div className="grid grid-cols-3 gap-1.5 p-1 bg-muted/60 rounded-xl border">
                   <button
                     type="button"
                     data-testid="source-tab-id"
                     onClick={() => handleSwitchPostSourceTab("Personal ID")}
-                    className={`py-2 px-3 rounded-lg font-bold text-xs transition flex items-center justify-center gap-1.5 ${
+                    className={`py-1.5 px-2.5 rounded-lg font-bold text-xs transition flex items-center justify-center gap-1.5 ${
                       postSourceTab === "Personal ID"
                         ? "bg-emerald-600 text-white shadow-xs"
                         : "text-muted-foreground hover:text-foreground"
                     }`}
                   >
                     <UserCheck className="w-3.5 h-3.5" />
-                    Personal ID ({connectedPersonalIds.length})
+                    ID ({connectedPersonalIds.length})
                   </button>
 
                   <button
                     type="button"
                     data-testid="source-tab-page"
                     onClick={() => handleSwitchPostSourceTab("Page")}
-                    className={`py-2 px-3 rounded-lg font-bold text-xs transition flex items-center justify-center gap-1.5 ${
+                    className={`py-1.5 px-2.5 rounded-lg font-bold text-xs transition flex items-center justify-center gap-1.5 ${
                       postSourceTab === "Page"
                         ? "bg-blue-600 text-white shadow-xs"
                         : "text-muted-foreground hover:text-foreground"
                     }`}
                   >
                     <Globe className="w-3.5 h-3.5" />
-                    Facebook Page ({connectedPages.length})
+                    Page ({connectedPages.length})
                   </button>
 
                   <button
                     type="button"
                     data-testid="source-tab-group"
                     onClick={() => handleSwitchPostSourceTab("Group")}
-                    className={`py-2 px-3 rounded-lg font-bold text-xs transition flex items-center justify-center gap-1.5 ${
+                    className={`py-1.5 px-2.5 rounded-lg font-bold text-xs transition flex items-center justify-center gap-1.5 ${
                       postSourceTab === "Group"
                         ? "bg-violet-600 text-white shadow-xs"
                         : "text-muted-foreground hover:text-foreground"
                     }`}
                   >
                     <Users className="w-3.5 h-3.5" />
-                    Facebook Group ({connectedGroups.length})
+                    Group ({connectedGroups.length})
                   </button>
                 </div>
               </div>
 
-              {/* STEP 2: DYNAMIC DROPDOWN FOR ALL CONNECTED IDs, PAGES, OR GROUPS */}
-              <div className="space-y-2">
+              {/* STEP 2: DYNAMIC DROPDOWN */}
+              <div className="space-y-1.5">
                 <label className="font-bold text-foreground uppercase text-[10px] tracking-wider flex items-center gap-1.5">
                   <span className="w-4 h-4 rounded-full bg-blue-600 text-white inline-flex items-center justify-center text-[10px] font-black">
                     2
                   </span>
                   {postSourceTab === "Personal ID"
-                    ? "Select Personal ID from Connected Fleet Dropdown *"
+                    ? "Select ID *"
                     : postSourceTab === "Page"
-                    ? "Select Facebook Page from Connected Pages Dropdown *"
-                    : "Select Facebook Group from Connected Groups Dropdown *"}
+                    ? "Select Page *"
+                    : "Select Group *"}
                 </label>
 
                 {postSourceTab === "Personal ID" && (
@@ -3338,7 +3290,7 @@ export default function SafeCommentAssistantPage() {
                     value={selectedTargetId}
                     onChange={(e) => handleSelectTargetFromDropdown(e.target.value)}
                     aria-label="Select Connected Personal ID"
-                    className="w-full px-3 py-2.5 border rounded-lg bg-background font-semibold text-xs focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none"
+                    className="w-full px-3 py-2 border rounded-lg bg-background font-semibold text-xs focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none"
                   >
                     {connectedPersonalIds.map((item) => (
                       <option key={item.id} value={item.id}>
@@ -3354,7 +3306,7 @@ export default function SafeCommentAssistantPage() {
                     value={selectedTargetId}
                     onChange={(e) => handleSelectTargetFromDropdown(e.target.value)}
                     aria-label="Select Connected Facebook Page"
-                    className="w-full px-3 py-2.5 border rounded-lg bg-background font-semibold text-xs focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none"
+                    className="w-full px-3 py-2 border rounded-lg bg-background font-semibold text-xs focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none"
                   >
                     {connectedPages.map((item) => (
                       <option key={item.id} value={item.id}>
@@ -3365,11 +3317,9 @@ export default function SafeCommentAssistantPage() {
                 )}
 
                 {postSourceTab === "Group" && (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     <div>
-                      <span className="text-[10px] font-semibold text-muted-foreground block mb-1">
-                        Target Facebook Group:
-                      </span>
+                      <span className="text-[10px] font-semibold text-muted-foreground block mb-1">Group:</span>
                       <select
                         data-testid="target-entity-select"
                         value={selectedTargetId}
@@ -3379,16 +3329,14 @@ export default function SafeCommentAssistantPage() {
                       >
                         {connectedGroups.map((grp) => (
                           <option key={grp.id} value={grp.id}>
-                            {grp.name} ({(grp.memberCount / 1000).toFixed(0)}k members)
+                            {grp.name} ({(grp.memberCount / 1000).toFixed(0)}k)
                           </option>
                         ))}
                       </select>
                     </div>
 
                     <div>
-                      <span className="text-[10px] font-semibold text-muted-foreground block mb-1">
-                        Operating Account ID for Group Reply &amp; DM:
-                      </span>
+                      <span className="text-[10px] font-semibold text-muted-foreground block mb-1">Reply ID:</span>
                       <select
                         data-testid="operating-account-select"
                         value={selectedPostAccountName}
@@ -3408,24 +3356,21 @@ export default function SafeCommentAssistantPage() {
               </div>
 
               {/* STEP 3: PASTE FACEBOOK POST LINK (URL) & OPTIONAL POST TITLE */}
-              <div className="space-y-2">
+              <div className="space-y-1.5">
                 <label className="font-bold text-foreground uppercase text-[10px] tracking-wider flex items-center gap-1.5">
                   <span className="w-4 h-4 rounded-full bg-blue-600 text-white inline-flex items-center justify-center text-[10px] font-black">
                     3
                   </span>
-                  Paste Facebook Post Link (URL) &amp; Optional Campaign Title *
+                  Post Link &amp; Title *
                 </label>
 
-                <div className="grid grid-cols-1 sm:grid-cols-12 gap-2.5">
+                <div className="grid grid-cols-1 sm:grid-cols-12 gap-2">
                   <div className="sm:col-span-7">
-                    <span className="text-[10px] font-semibold text-muted-foreground block mb-1">
-                      Facebook Post Link (URL) *
-                    </span>
                     <input
                       type="url"
                       required
                       data-testid="post-url-input"
-                      placeholder="https://www.facebook.com/.../posts/..."
+                      placeholder="Paste Facebook Post Link (https://...)"
                       value={postLinkInput}
                       onChange={(e) => setPostLinkInput(e.target.value)}
                       className="w-full px-3 py-2 border rounded-lg bg-background font-mono text-xs focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none"
@@ -3433,13 +3378,10 @@ export default function SafeCommentAssistantPage() {
                   </div>
 
                   <div className="sm:col-span-5">
-                    <span className="text-[10px] font-semibold text-muted-foreground block mb-1">
-                      Post / Product Campaign Label (Optional)
-                    </span>
                     <input
                       type="text"
                       data-testid="post-title-input"
-                      placeholder={`e.g. ${selectedTargetName} Offer Post`}
+                      placeholder={`Label (e.g. ${selectedTargetName})`}
                       value={postTitleInput}
                       onChange={(e) => setPostTitleInput(e.target.value)}
                       className="w-full px-3 py-2 border rounded-lg bg-background text-xs focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none"
@@ -3448,80 +3390,73 @@ export default function SafeCommentAssistantPage() {
                 </div>
               </div>
 
-              {/* STEP 4: CONFIGURE COMMENT REPLY & PRIVATE INBOX MESSAGE (SELECT TEMPLATE OR WRITE CUSTOM) */}
-              <div className="space-y-3 pt-1 border-t">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pt-2">
+              {/* STEP 4: CONFIGURE COMMENT REPLY & PRIVATE INBOX MESSAGE */}
+              <div className="space-y-2.5 pt-1 border-t">
+                <div className="flex items-center justify-between gap-2 pt-2">
                   <label className="font-bold text-foreground uppercase text-[10px] tracking-wider flex items-center gap-1.5">
                     <span className="w-4 h-4 rounded-full bg-blue-600 text-white inline-flex items-center justify-center text-[10px] font-black shrink-0">
                       4
                     </span>
-                    <span>Configure Nested Comment Reply &amp; Private Inbox Message *</span>
+                    <span>Reply &amp; Inbox DM *</span>
                   </label>
 
-                  {/* Mode Switcher: Select from Template vs Write Custom */}
-                  <div className="inline-flex items-center bg-muted p-0.5 rounded-lg border shrink-0 self-start sm:self-auto">
+                  <div className="inline-flex items-center bg-muted p-0.5 rounded-lg border shrink-0">
                     <button
                       type="button"
                       data-testid="reply-mode-template"
                       onClick={() => handleSelectPostTemplate(selectedPostTemplateId || library[0]?.id || "")}
-                      className={`px-2.5 py-1.5 rounded-md text-[11px] font-semibold whitespace-nowrap transition flex items-center gap-1.5 shrink-0 ${
+                      className={`px-2.5 py-1 rounded-md text-[11px] font-semibold whitespace-nowrap transition flex items-center gap-1 shrink-0 ${
                         postReplyMode === "template"
                           ? "bg-blue-600 text-white shadow-xs font-bold"
                           : "text-muted-foreground hover:text-foreground"
                       }`}
                     >
                       <BookOpen className="w-3 h-3 shrink-0" />
-                      <span>Select from Template ({library.length})</span>
+                      <span>Template ({library.length})</span>
                     </button>
                     <button
                       type="button"
                       data-testid="reply-mode-custom"
                       onClick={() => setPostReplyMode("custom")}
-                      className={`px-2.5 py-1.5 rounded-md text-[11px] font-semibold whitespace-nowrap transition flex items-center gap-1.5 shrink-0 ${
+                      className={`px-2.5 py-1 rounded-md text-[11px] font-semibold whitespace-nowrap transition flex items-center gap-1 shrink-0 ${
                         postReplyMode === "custom"
                           ? "bg-blue-600 text-white shadow-xs font-bold"
                           : "text-muted-foreground hover:text-foreground"
                       }`}
                     >
-                      <Edit3 className="w-3.5 h-3.5 shrink-0" />
-                      <span>Write Custom Reply &amp; DM</span>
+                      <Edit3 className="w-3 h-3 shrink-0" />
+                      <span>Custom</span>
                     </button>
                   </div>
                 </div>
 
-                {/* Template Picker Dropdown (shown when "Select from Template" is active) */}
                 {postReplyMode === "template" && (
-                  <div className="p-3 rounded-xl bg-blue-500/5 border border-blue-500/20 space-y-1.5">
-                    <label className="text-[11px] font-bold text-blue-600 dark:text-blue-400 block">
-                      Choose Saved Template / AI Knowledgebase Rule (Pre-fills Reply &amp; Message below):
-                    </label>
-                    <select
-                      data-testid="template-select"
-                      value={selectedPostTemplateId}
-                      onChange={(e) => handleSelectPostTemplate(e.target.value)}
-                      aria-label="Select Reply and Inbox Template"
-                      className="w-full px-3 py-2 border rounded-lg bg-background font-semibold text-xs outline-none"
-                    >
-                      {library.map((tmpl) => (
-                        <option key={tmpl.id} value={tmpl.id}>
-                          [{tmpl.category}] {tmpl.title} — {tmpl.priceInfo || "Standard"}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
+                  <select
+                    data-testid="template-select"
+                    value={selectedPostTemplateId}
+                    onChange={(e) => handleSelectPostTemplate(e.target.value)}
+                    aria-label="Select Reply and Inbox Template"
+                    className="w-full px-3 py-2 border rounded-lg bg-background font-semibold text-xs outline-none"
+                  >
+                    {library.map((tmpl) => (
+                      <option key={tmpl.id} value={tmpl.id}>
+                        [{tmpl.category}] {tmpl.title} — {tmpl.priceInfo || "Standard"}
+                      </option>
+                    ))}
+                  </select>
                 )}
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
                   <div className="space-y-1">
-                    <label className="font-semibold text-foreground text-[11px] flex items-center gap-1.5">
-                      <MessageSquare className="w-3.5 h-3.5 text-blue-600" />
-                      1. Comment Reply (Nested Inside Comment) *
+                    <label className="font-semibold text-foreground text-[11px] flex items-center gap-1">
+                      <MessageSquare className="w-3 h-3 text-blue-600" />
+                      Comment Reply *
                     </label>
                     <textarea
                       rows={3}
                       required
                       data-testid="custom-public-reply-input"
-                      placeholder="Write the reply that the AI bot will post directly inside the customer's comment..."
+                      placeholder="Public comment reply..."
                       value={postCustomPublicReply}
                       onChange={(e) => {
                         const val = e.target.value
@@ -3531,20 +3466,20 @@ export default function SafeCommentAssistantPage() {
                           setPostReplyMode("custom")
                         }
                       }}
-                      className="w-full p-2.5 border rounded-lg bg-background text-xs leading-relaxed focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none"
+                      className="w-full p-2 border rounded-lg bg-background text-xs leading-relaxed focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none"
                     />
                   </div>
 
                   <div className="space-y-1">
-                    <label className="font-semibold text-foreground text-[11px] flex items-center gap-1.5">
-                      <Inbox className="w-3.5 h-3.5 text-blue-600" />
-                      2. Private Inbox Message (Messenger DM) *
+                    <label className="font-semibold text-foreground text-[11px] flex items-center gap-1">
+                      <Inbox className="w-3 h-3 text-blue-600" />
+                      Inbox Message (DM) *
                     </label>
                     <textarea
                       rows={3}
                       required
                       data-testid="custom-inbox-msg-input"
-                      placeholder="Write the private message that the AI bot will send to the customer's Messenger inbox..."
+                      placeholder="Private Messenger DM..."
                       value={postCustomInboxMessage}
                       onChange={(e) => {
                         const val = e.target.value
@@ -3558,48 +3493,46 @@ export default function SafeCommentAssistantPage() {
                           setPostReplyMode("custom")
                         }
                       }}
-                      className="w-full p-2.5 border rounded-lg bg-background text-xs leading-relaxed focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none"
+                      className="w-full p-2 border rounded-lg bg-background text-xs leading-relaxed focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none"
                     />
                   </div>
                 </div>
 
-                <label className="flex items-center gap-2 font-semibold text-foreground cursor-pointer select-none pt-1">
+                <label className="flex items-center gap-2 font-semibold text-foreground cursor-pointer select-none">
                   <input
                     type="checkbox"
                     data-testid="send-private-inbox-checkbox"
                     checked={postSendPrivateInbox}
                     onChange={(e) => setPostSendPrivateInbox(e.target.checked)}
-                    className="w-4 h-4 rounded text-blue-600"
+                    className="w-3.5 h-3.5 rounded text-blue-600"
                   />
-                  <span>
-                    Automatically send Private Messenger Inbox DM alongside every Nested Comment Reply
-                  </span>
+                  <span>Also send Private Inbox Message (DM)</span>
                 </label>
               </div>
 
-              {/* STEP 5: SAVE & ACTIVATE MONITORING */}
+              {/* STEP 5: SAVE */}
               <div className="flex items-center justify-between gap-3 pt-2 border-t">
-                <span className="text-[11px] text-muted-foreground">
+                <span className="text-[11px] text-muted-foreground truncate">
                   Target: <strong className="text-foreground">{selectedTargetName}</strong> ({postSourceTab})
                 </span>
 
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 shrink-0">
                   <button
                     type="button"
                     onClick={() => setShowAddPostModal(false)}
-                    className="px-3.5 py-2 border rounded-lg text-xs font-semibold text-muted-foreground hover:text-foreground"
+                    className="px-3 py-1.5 border rounded-lg text-xs font-semibold text-muted-foreground hover:text-foreground"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
                     data-testid="save-monitored-post-btn"
-                    className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-lg shadow-xs transition flex items-center gap-1.5 cursor-pointer"
+                    className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs rounded-lg shadow-xs transition flex items-center gap-1.5 cursor-pointer"
                   >
-                    <CheckCircle2 className="w-4 h-4" />
+                    <CheckCircle2 className="w-3.5 h-3.5" />
                     {editingPostId
-                      ? "Save Post Changes"
-                      : `Add Post to Active Monitoring (${Math.min(monitoredPosts.length + 1, MAX_MONITORED_POSTS)}/${MAX_MONITORED_POSTS})`}
+                      ? "Save Changes"
+                      : `Save Post (${Math.min(monitoredPosts.length + 1, MAX_MONITORED_POSTS)}/${MAX_MONITORED_POSTS})`}
                   </button>
                 </div>
               </div>
