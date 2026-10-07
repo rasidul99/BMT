@@ -979,7 +979,13 @@ export default function SafeCommentAssistantPage() {
       updateLibraryTemplate(editingTemplateId, payload)
       setEditingTemplateId(null)
     } else {
-      addLibraryTemplate(payload)
+      const created = addLibraryTemplate(payload)
+      if (created?.id) {
+        setSelectedPostTemplateId(created.id)
+        setPostReplyMode("template")
+        setPostCustomPublicReply(created.publicReply)
+        setPostCustomInboxMessage(created.privateInboxReply)
+      }
     }
 
     setTmplTitle("")
@@ -3076,7 +3082,7 @@ export default function SafeCommentAssistantPage() {
               {/* STEP 1: SELECT SOURCE TYPE TAB */}
               <div className="space-y-1.5">
                 <label className="font-bold text-foreground uppercase text-[10px] tracking-wider flex items-center gap-1.5">
-                  <span className="w-4 h-4 rounded-full bg-blue-600 text-white inline-flex items-center justify-center text-[10px] font-black">
+                  <span className="w-4 h-4 rounded-full bg-muted text-muted-foreground border border-border/60 inline-flex items-center justify-center text-[10px] font-medium shrink-0">
                     1
                   </span>
                   Channel *
@@ -3130,7 +3136,7 @@ export default function SafeCommentAssistantPage() {
               {/* STEP 2: DYNAMIC DROPDOWN */}
               <div className="space-y-1.5">
                 <label className="font-bold text-foreground uppercase text-[10px] tracking-wider flex items-center gap-1.5">
-                  <span className="w-4 h-4 rounded-full bg-blue-600 text-white inline-flex items-center justify-center text-[10px] font-black">
+                  <span className="w-4 h-4 rounded-full bg-muted text-muted-foreground border border-border/60 inline-flex items-center justify-center text-[10px] font-medium shrink-0">
                     2
                   </span>
                   {postSourceTab === "Personal ID"
@@ -3214,7 +3220,7 @@ export default function SafeCommentAssistantPage() {
               {/* STEP 3: PASTE FACEBOOK POST LINK (URL) & OPTIONAL POST TITLE */}
               <div className="space-y-1.5">
                 <label className="font-bold text-foreground uppercase text-[10px] tracking-wider flex items-center gap-1.5">
-                  <span className="w-4 h-4 rounded-full bg-blue-600 text-white inline-flex items-center justify-center text-[10px] font-black">
+                  <span className="w-4 h-4 rounded-full bg-muted text-muted-foreground border border-border/60 inline-flex items-center justify-center text-[10px] font-medium shrink-0">
                     3
                   </span>
                   Post Link &amp; Title *
@@ -3250,38 +3256,55 @@ export default function SafeCommentAssistantPage() {
               <div className="space-y-2.5 pt-1 border-t">
                 <div className="flex items-center justify-between gap-2 pt-2">
                   <label className="font-bold text-foreground uppercase text-[10px] tracking-wider flex items-center gap-1.5">
-                    <span className="w-4 h-4 rounded-full bg-blue-600 text-white inline-flex items-center justify-center text-[10px] font-black shrink-0">
+                    <span className="w-4 h-4 rounded-full bg-muted text-muted-foreground border border-border/60 inline-flex items-center justify-center text-[10px] font-medium shrink-0">
                       4
                     </span>
                     <span>Reply &amp; Inbox DM *</span>
                   </label>
 
-                  <div className="inline-flex items-center bg-muted p-0.5 rounded-lg border shrink-0">
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <div className="inline-flex items-center bg-muted p-0.5 rounded-lg border shrink-0">
+                      <button
+                        type="button"
+                        data-testid="reply-mode-template"
+                        onClick={() => handleSelectPostTemplate(selectedPostTemplateId || library[0]?.id || "")}
+                        className={`px-2.5 py-1 rounded-md text-[11px] font-semibold whitespace-nowrap transition flex items-center gap-1 shrink-0 ${
+                          postReplyMode === "template"
+                            ? "bg-blue-600 text-white shadow-xs font-bold"
+                            : "text-muted-foreground hover:text-foreground"
+                        }`}
+                      >
+                        <BookOpen className="w-3 h-3 shrink-0" />
+                        <span>Template ({library.length})</span>
+                      </button>
+                      <button
+                        type="button"
+                        data-testid="reply-mode-custom"
+                        onClick={() => setPostReplyMode("custom")}
+                        className={`px-2.5 py-1 rounded-md text-[11px] font-semibold whitespace-nowrap transition flex items-center gap-1 shrink-0 ${
+                          postReplyMode === "custom"
+                            ? "bg-blue-600 text-white shadow-xs font-bold"
+                            : "text-muted-foreground hover:text-foreground"
+                        }`}
+                      >
+                        <Edit3 className="w-3 h-3 shrink-0" />
+                        <span>Custom</span>
+                      </button>
+                    </div>
+
                     <button
                       type="button"
-                      data-testid="reply-mode-template"
-                      onClick={() => handleSelectPostTemplate(selectedPostTemplateId || library[0]?.id || "")}
-                      className={`px-2.5 py-1 rounded-md text-[11px] font-semibold whitespace-nowrap transition flex items-center gap-1 shrink-0 ${
-                        postReplyMode === "template"
-                          ? "bg-blue-600 text-white shadow-xs font-bold"
-                          : "text-muted-foreground hover:text-foreground"
-                      }`}
+                      onClick={() => {
+                        setEditingTemplateId(null)
+                        setTmplTitle("")
+                        setTmplPublicReply(postCustomPublicReply)
+                        setTmplInboxReply(postCustomInboxMessage)
+                        setShowTemplateModal(true)
+                      }}
+                      title="Add New Reply & DM Template"
+                      className="px-2 py-1 rounded-lg border border-blue-500/30 bg-blue-500/10 hover:bg-blue-500/20 text-blue-600 dark:text-blue-400 text-[11px] font-semibold flex items-center gap-1 transition cursor-pointer shrink-0"
                     >
-                      <BookOpen className="w-3 h-3 shrink-0" />
-                      <span>Template ({library.length})</span>
-                    </button>
-                    <button
-                      type="button"
-                      data-testid="reply-mode-custom"
-                      onClick={() => setPostReplyMode("custom")}
-                      className={`px-2.5 py-1 rounded-md text-[11px] font-semibold whitespace-nowrap transition flex items-center gap-1 shrink-0 ${
-                        postReplyMode === "custom"
-                          ? "bg-blue-600 text-white shadow-xs font-bold"
-                          : "text-muted-foreground hover:text-foreground"
-                      }`}
-                    >
-                      <Edit3 className="w-3 h-3 shrink-0" />
-                      <span>Custom</span>
+                      <Plus className="w-3 h-3" /> New Template
                     </button>
                   </div>
                 </div>
@@ -3367,46 +3390,41 @@ export default function SafeCommentAssistantPage() {
               </div>
 
               {/* STEP 5: SAVE */}
-              <div className="flex items-center justify-between gap-3 pt-2 border-t">
-                <span className="text-[11px] text-muted-foreground truncate">
-                  Target: <strong className="text-foreground">{selectedTargetName}</strong> ({postSourceTab})
-                </span>
-
-                <div className="flex items-center gap-2 shrink-0">
-                  <button
-                    type="button"
-                    onClick={() => setShowAddPostModal(false)}
-                    className="px-3 py-1.5 border rounded-lg text-xs font-semibold text-muted-foreground hover:text-foreground"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    data-testid="save-monitored-post-btn"
-                    className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs rounded-lg shadow-xs transition flex items-center gap-1.5 cursor-pointer"
-                  >
-                    <CheckCircle2 className="w-3.5 h-3.5" />
-                    {editingPostId
-                      ? "Save Changes"
-                      : `Save Post (${Math.min(monitoredPosts.length + 1, MAX_MONITORED_POSTS)}/${MAX_MONITORED_POSTS})`}
-                  </button>
-                </div>
+              <div className="flex items-center justify-end gap-2 pt-2 border-t">
+                <button
+                  type="button"
+                  onClick={() => setShowAddPostModal(false)}
+                  className="px-3 py-1.5 border rounded-lg text-xs font-semibold text-muted-foreground hover:text-foreground"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  data-testid="save-monitored-post-btn"
+                  className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs rounded-lg shadow-xs transition flex items-center gap-1.5 cursor-pointer"
+                >
+                  <CheckCircle2 className="w-3.5 h-3.5" />
+                  {editingPostId
+                    ? "Save Changes"
+                    : `Save Post (${Math.min(monitoredPosts.length + 1, MAX_MONITORED_POSTS)}/${MAX_MONITORED_POSTS})`}
+                </button>
               </div>
             </form>
           </div>
         </div>
       )}
 
-      {/* MODAL 1: ADD / EDIT AI KNOWLEDGEBASE & PROMPT RULE */}
+      {/* MODAL 1: ADD / EDIT REPLY & DM TEMPLATE */}
       {showTemplateModal && (
-        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-card border border-border rounded-2xl max-w-xl w-full p-5 space-y-4 shadow-2xl animate-in zoom-in-95 duration-200 my-8">
-            <div className="flex items-center justify-between border-b pb-3">
-              <h3 className="font-bold text-sm text-foreground flex items-center gap-2">
+        <div className="fixed inset-0 z-60 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-card border border-border rounded-2xl max-w-md w-full p-4 sm:p-5 space-y-3.5 shadow-2xl animate-in zoom-in-95 duration-200 my-8">
+            <div className="flex items-center justify-between border-b pb-2.5">
+              <h3 className="font-bold text-sm text-foreground flex items-center gap-1.5">
                 <BookOpen className="w-4 h-4 text-blue-600" />
-                {editingTemplateId ? "Edit AI Knowledgebase & Prompt Rule" : "Add AI Knowledgebase & Prompt Rule"}
+                {editingTemplateId ? "Edit Template" : "New Template"}
               </h3>
               <button
+                type="button"
                 onClick={() => setShowTemplateModal(false)}
                 className="text-muted-foreground hover:text-foreground p-1 rounded-lg transition"
               >
@@ -3415,21 +3433,21 @@ export default function SafeCommentAssistantPage() {
             </div>
 
             <form onSubmit={handleSaveTemplateSubmit} className="space-y-3 text-xs">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="font-semibold block mb-1">Rule Title *</label>
+              <div className="grid grid-cols-1 sm:grid-cols-12 gap-2.5">
+                <div className="sm:col-span-7">
+                  <label className="font-semibold block mb-1">Template Name *</label>
                   <input
                     type="text"
                     required
-                    placeholder="e.g. Eid Watch Price & Free COD Rule"
+                    placeholder="e.g. Eid Offer Reply"
                     value={tmplTitle}
                     onChange={(e) => setTmplTitle(e.target.value)}
                     className="w-full px-3 py-2 border rounded-lg bg-background outline-none"
                   />
                 </div>
 
-                <div>
-                  <label className="font-semibold block mb-1">Intent Category *</label>
+                <div className="sm:col-span-5">
+                  <label className="font-semibold block mb-1">Category *</label>
                   <select
                     value={tmplCategory}
                     onChange={(e) => setTmplCategory(e.target.value as CommentIntentType)}
@@ -3440,89 +3458,17 @@ export default function SafeCommentAssistantPage() {
                     <option value="Stock Query">Stock Query</option>
                     <option value="Warranty Query">Warranty Query</option>
                     <option value="Location Query">Location Query</option>
-                    <option value="Needs Review">Needs Review</option>
                     <option value="General Greeting">General Greeting</option>
                   </select>
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="font-semibold block mb-1">Target Account / Page / Group Scope</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. CARE HUB BD + All 100 Accounts"
-                    value={tmplTargetScope}
-                    onChange={(e) => setTmplTargetScope(e.target.value)}
-                    className="w-full px-3 py-2 border rounded-lg bg-background outline-none"
-                  />
-                </div>
-
-                <div>
-                  <label className="font-semibold block mb-1">Product / Campaign Name</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. Eid Special Premium Watch 2026"
-                    value={tmplProductName}
-                    onChange={(e) => setTmplProductName(e.target.value)}
-                    className="w-full px-3 py-2 border rounded-lg bg-background outline-none"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <div>
-                  <label className="font-semibold block mb-1">Price &amp; Discount Info</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. ৳2,490 (Reg ৳3,990)"
-                    value={tmplPriceInfo}
-                    onChange={(e) => setTmplPriceInfo(e.target.value)}
-                    className="w-full px-3 py-2 border rounded-lg bg-background outline-none"
-                  />
-                </div>
-                <div>
-                  <label className="font-semibold block mb-1">Delivery SLA &amp; Charge</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. Free COD (24h Dhaka)"
-                    value={tmplDeliveryInfo}
-                    onChange={(e) => setTmplDeliveryInfo(e.target.value)}
-                    className="w-full px-3 py-2 border rounded-lg bg-background outline-none"
-                  />
-                </div>
-                <div>
-                  <label className="font-semibold block mb-1">Stock Status</label>
-                  <select
-                    value={tmplStockStatus}
-                    onChange={(e) => setTmplStockStatus(e.target.value as any)}
-                    className="w-full px-2.5 py-2 border rounded-lg bg-background font-medium outline-none"
-                  >
-                    <option value="In Stock">In Stock</option>
-                    <option value="Limited Stock">Limited Stock</option>
-                    <option value="Pre-Order">Pre-Order</option>
-                    <option value="Out of Stock">Out of Stock</option>
-                  </select>
-                </div>
-              </div>
-
               <div>
-                <label className="font-semibold block mb-1">AI Prompt Instruction (Dynamic Guidance)</label>
-                <input
-                  type="text"
-                  placeholder="e.g. Emphasize 1-year replacement guarantee and ask for phone + address in DM"
-                  value={tmplAiPromptInstruction}
-                  onChange={(e) => setTmplAiPromptInstruction(e.target.value)}
-                  className="w-full px-3 py-2 border rounded-lg bg-background outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="font-semibold block mb-1">1. Nested Comment Reply (Inside Comment Thread) *</label>
+                <label className="font-semibold block mb-1">Comment Reply *</label>
                 <textarea
                   rows={2}
                   required
-                  placeholder="Nested reply posted directly under the customer's comment..."
+                  placeholder="Public comment reply..."
                   value={tmplPublicReply}
                   onChange={(e) => setTmplPublicReply(e.target.value)}
                   className="w-full px-3 py-2 border rounded-lg bg-background outline-none"
@@ -3530,34 +3476,32 @@ export default function SafeCommentAssistantPage() {
               </div>
 
               <div>
-                <label className="font-semibold block mb-1">2. Private Messenger Inbox Message (DM) *</label>
+                <label className="font-semibold block mb-1">Inbox Message (DM) *</label>
                 <textarea
                   rows={3}
                   required
-                  placeholder="Private message dispatched to the customer's Messenger inbox..."
+                  placeholder="Private Messenger DM..."
                   value={tmplInboxReply}
                   onChange={(e) => setTmplInboxReply(e.target.value)}
                   className="w-full px-3 py-2 border rounded-lg bg-background outline-none"
                 />
               </div>
 
-              <div>
-                <label className="font-semibold block mb-1">Trigger Keywords (comma separated)</label>
-                <input
-                  type="text"
-                  placeholder="e.g. দাম, price, কত, cost, koto"
-                  value={tmplKeywords}
-                  onChange={(e) => setTmplKeywords(e.target.value)}
-                  className="w-full px-3 py-2 border rounded-lg bg-background font-mono text-xs outline-none"
-                />
+              <div className="flex items-center justify-end gap-2 pt-2 border-t">
+                <button
+                  type="button"
+                  onClick={() => setShowTemplateModal(false)}
+                  className="px-3 py-1.5 border rounded-lg text-xs font-semibold text-muted-foreground hover:text-foreground"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-lg shadow-xs transition cursor-pointer"
+                >
+                  Save Template
+                </button>
               </div>
-
-              <button
-                type="submit"
-                className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 rounded-lg shadow-xs transition mt-2"
-              >
-                Save Rule to AI Knowledgebase
-              </button>
             </form>
           </div>
         </div>
