@@ -33,6 +33,13 @@ import {
   Truck,
   Package,
   MapPin,
+  Radio,
+  Play,
+  Square,
+  RefreshCw,
+  Zap,
+  Globe,
+  Shield,
 } from "lucide-react"
 import {
   useCommentAssistant,
@@ -59,7 +66,20 @@ export default function SafeCommentAssistantPage() {
   } = useCommentAssistant()
 
   // Navigation Tabs
-  const [activeTab, setActiveTab] = useState<"incoming" | "library" | "simulator" | "logs">("incoming")
+  const [activeTab, setActiveTab] = useState<"incoming" | "library" | "simulator" | "logs" | "liveTest">("incoming")
+
+  // Live Real-World Test State
+  const [watcherPostUrl, setWatcherPostUrl] = useState("")
+  const [watcherAutoReply, setWatcherAutoReply] = useState(true)
+  const [watcherHeaded, setWatcherHeaded] = useState(true)
+  const [watcherJobId, setWatcherJobId] = useState<string | null>(null)
+  const [watcherStatus, setWatcherStatus] = useState<string>("IDLE")
+  const [watcherCheckCount, setWatcherCheckCount] = useState<number>(0)
+  const [watcherReplies, setWatcherReplies] = useState<any[]>([])
+  const [watcherLogs, setWatcherLogs] = useState<string>("")
+  const [watcherLoading, setWatcherLoading] = useState(false)
+  const [liveWebhookEvents, setLiveWebhookEvents] = useState<any[]>([])
+  const [liveWebhookLoading, setLiveWebhookLoading] = useState(false)
 
   // Mode: Manual vs Auto
   const [mode, setMode] = useState<"Manual" | "Auto">("Manual")
@@ -278,6 +298,88 @@ export default function SafeCommentAssistantPage() {
     setSimPushedSuccess(true)
   }
 
+  // Polling for watcher bot status
+  useEffect(() => {
+    if (!watcherJobId || watcherStatus === "COMPLETED" || watcherStatus === "ERROR") return
+
+    const interval = setInterval(async () => {
+      try {
+        const res = await fetch(`/api/facebook-bot/comment-watcher?jobId=${watcherJobId}`)
+        const data = await res.json()
+        if (data.success) {
+          setWatcherStatus(data.status)
+          setWatcherCheckCount(data.checkCount || 0)
+          if (data.replies) setWatcherReplies(data.replies)
+          if (data.logs) setWatcherLogs(data.logs)
+        }
+      } catch (e) {
+        console.error("Error polling watcher status", e)
+      }
+    }, 2500)
+
+    return () => clearInterval(interval)
+  }, [watcherJobId, watcherStatus])
+
+  // Polling for live webhook events
+  const fetchLiveWebhookEvents = async () => {
+    setLiveWebhookLoading(true)
+    try {
+      const res = await fetch("/api/webhooks/facebook")
+      const data = await res.json()
+      if (data.events) {
+        setLiveWebhookEvents(data.events)
+      }
+    } catch (e) {
+      console.error("Error fetching live webhook events", e)
+    } finally {
+      setLiveWebhookLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    if (activeTab === "liveTest") {
+      fetchLiveWebhookEvents()
+    }
+  }, [activeTab])
+
+  const handleStartWatcher = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!watcherPostUrl.trim()) return alert("Please enter a valid Facebook post URL.")
+
+    setWatcherLoading(true)
+    setWatcherReplies([])
+    setWatcherLogs("")
+    setWatcherStatus("STARTING")
+
+    try {
+      const res = await fetch("/api/facebook-bot/comment-watcher", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          postUrl: watcherPostUrl.trim(),
+          autoReply: watcherAutoReply,
+          headless: !watcherHeaded,
+          checkIntervalSeconds: 15,
+          maxChecks: 40,
+        }),
+      })
+
+      const data = await res.json()
+      if (data.success && data.jobId) {
+        setWatcherJobId(data.jobId)
+        setWatcherStatus("WATCHING")
+      } else {
+        alert(data.error || "Failed to launch watcher bot.")
+        setWatcherStatus("ERROR")
+      }
+    } catch (e: any) {
+      alert("Error starting watcher bot: " + e.message)
+      setWatcherStatus("ERROR")
+    } finally {
+      setWatcherLoading(false)
+    }
+  }
+
   return (
     <div className="max-w-6xl mx-auto space-y-6 pb-20">
       {/* Header */}
@@ -340,6 +442,17 @@ export default function SafeCommentAssistantPage() {
           >
             <Terminal className="w-3.5 h-3.5 text-blue-600" />
             Webhook Simulator
+          </button>
+          <button
+            onClick={() => setActiveTab("liveTest")}
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition flex items-center gap-1.5 shrink-0 ${
+              activeTab === "liveTest"
+                ? "bg-rose-600 text-white shadow-xs font-bold"
+                : "text-rose-600 hover:bg-rose-500/10 font-semibold"
+            }`}
+          >
+            <Radio className="w-3.5 h-3.5 animate-pulse text-current" />
+            Live Real-World Test (ID &amp; Page)
           </button>
         </div>
       </div>
@@ -973,6 +1086,270 @@ export default function SafeCommentAssistantPage() {
               </table>
             </div>
           )}
+        </div>
+      )}
+
+      {/* TAB 5: LIVE REAL-WORLD TEST */}
+      {activeTab === "liveTest" && (
+        <div className="space-y-6">
+          {/* Top Banner Alert */}
+          <div className="bg-gradient-to-r from-rose-500/10 via-amber-500/10 to-blue-500/10 border border-rose-500/30 p-4 rounded-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-3">
+            <div className="space-y-1">
+              <div className="flex items-center gap-2 text-rose-600 dark:text-rose-400 font-bold text-sm">
+                <Radio className="w-4 h-4 animate-pulse" />
+                Live Facebook End-to-End Real World Testing
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Test with 2 different accounts: Post with your 1st ID (or Page), comment from your 2nd ID, and watch the AI reply in real time!
+              </p>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <span className="text-[11px] bg-background border px-2.5 py-1 rounded-full font-semibold text-foreground flex items-center gap-1.5 shadow-xs">
+                <Shield className="w-3 h-3 text-emerald-500" /> Active Session: Rasidul
+              </span>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            {/* Left Column (7 cols): Personal Facebook ID / Group Comment Watcher Bot */}
+            <div className="lg:col-span-7 space-y-4">
+              <div className="border bg-card p-5 rounded-xl shadow-xs space-y-4">
+                <div className="border-b pb-3 flex items-center justify-between">
+                  <div>
+                    <h2 className="font-bold text-sm text-foreground flex items-center gap-2">
+                      <Bot className="w-4 h-4 text-blue-600" /> Personal ID / Group Live Watcher Bot
+                    </h2>
+                    <p className="text-[11px] text-muted-foreground mt-0.5">
+                      Monitors your Facebook post and replies automatically when your 2nd ID comments.
+                    </p>
+                  </div>
+                  {watcherStatus === "WATCHING" && (
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-500/10 text-emerald-600 border border-emerald-500/30 animate-pulse">
+                      <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+                      Watching Post (Check #{watcherCheckCount})
+                    </span>
+                  )}
+                </div>
+
+                {/* 5-Step Guide */}
+                <div className="p-3 bg-muted/40 rounded-lg text-xs space-y-1.5 text-muted-foreground border">
+                  <div className="font-semibold text-foreground flex items-center gap-1.5 text-[11px] uppercase tracking-wider">
+                    <Zap className="w-3.5 h-3.5 text-amber-500" /> How to do the Real-World Test:
+                  </div>
+                  <ol className="list-decimal list-inside space-y-1 text-[11px] leading-relaxed">
+                    <li><strong className="text-foreground">১ম আইডি (Rasidul):</strong> দিয়ে ফেসবুকে আপনার প্রোফাইল বা গ্রুপে একটি পোস্ট করুন।</li>
+                    <li>সেই পোস্টের <strong className="text-foreground">লিঙ্ক (Post URL)</strong> কপি করে নিচের বক্সে পেস্ট করুন।</li>
+                    <li><strong className="text-foreground">Start AI Comment Watcher</strong> বাটনে চাপ দিন (ব্রাউজার উইন্ডো ওপেন হবে)।</li>
+                    <li>এবার আপনার <strong className="text-foreground">২য় ফেসবুক আইডি</strong> থেকে ওই পোস্টে কমেন্ট করুন (যেমন: <em>&ldquo;দাম কত ভাইয়া?&rdquo;</em>)।</li>
+                    <li>কয়েক সেকেন্ডের মধ্যে বট স্বয়ংক্রিয়ভাবে ২য় আইডির কমেন্টের নিচে AI রিপ্লাই টাইপ করে পোস্ট করে দেবে!</li>
+                  </ol>
+                </div>
+
+                <form onSubmit={handleStartWatcher} className="space-y-3.5 text-xs">
+                  <div>
+                    <label className="font-semibold block mb-1">Facebook Post URL *</label>
+                    <input
+                      type="url"
+                      required
+                      placeholder="https://www.facebook.com/... (Profile, Page, or Group Post URL)"
+                      value={watcherPostUrl}
+                      onChange={(e) => setWatcherPostUrl(e.target.value)}
+                      className="w-full px-3 py-2 border rounded-lg bg-background text-xs font-mono focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none"
+                    />
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-4 pt-1">
+                    <label className="flex items-center gap-2 cursor-pointer font-medium select-none">
+                      <input
+                        type="checkbox"
+                        checked={watcherAutoReply}
+                        onChange={(e) => setWatcherAutoReply(e.target.checked)}
+                        className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 w-4 h-4"
+                      />
+                      <span>Auto-Reply with AI (Bangla Intent Classifier)</span>
+                    </label>
+
+                    <label className="flex items-center gap-2 cursor-pointer font-medium select-none">
+                      <input
+                        type="checkbox"
+                        checked={watcherHeaded}
+                        onChange={(e) => setWatcherHeaded(e.target.checked)}
+                        className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 w-4 h-4"
+                      />
+                      <span>Visible Chrome Window (Watch bot live on screen)</span>
+                    </label>
+                  </div>
+
+                  <div className="pt-2 flex items-center gap-3">
+                    <button
+                      type="submit"
+                      disabled={watcherLoading || watcherStatus === "WATCHING"}
+                      className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-semibold px-5 py-2.5 rounded-lg shadow-xs transition flex items-center gap-2 text-xs"
+                    >
+                      {watcherLoading ? (
+                        <>
+                          <RotateCw className="w-3.5 h-3.5 animate-spin" /> Launching Bot...
+                        </>
+                      ) : watcherStatus === "WATCHING" ? (
+                        <>
+                          <RotateCw className="w-3.5 h-3.5 animate-spin" /> Actively Monitoring Comments...
+                        </>
+                      ) : (
+                        <>
+                          <Play className="w-3.5 h-3.5 fill-current" /> Start AI Comment Watcher Bot
+                        </>
+                      )}
+                    </button>
+                    {watcherJobId && (
+                      <span className="text-[11px] text-muted-foreground font-mono">
+                        Job: {watcherJobId}
+                      </span>
+                    )}
+                  </div>
+                </form>
+
+                {/* Detected Live Replies on Facebook */}
+                {watcherReplies.length > 0 && (
+                  <div className="mt-4 border rounded-lg p-3 bg-emerald-500/10 border-emerald-500/30 space-y-2">
+                    <div className="font-bold text-xs text-emerald-700 dark:text-emerald-400 flex items-center gap-1.5">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                      Live Comments Detected &amp; Replied on Facebook ({watcherReplies.length}):
+                    </div>
+                    <div className="space-y-2">
+                      {watcherReplies.map((r, idx) => (
+                        <div key={idx} className="bg-background p-2.5 rounded-md border text-xs space-y-1">
+                          <div className="flex items-center justify-between">
+                            <span className="font-bold text-foreground">👤 {r.author}</span>
+                            <span className="text-[10px] bg-blue-500/10 text-blue-600 px-1.5 py-0.5 rounded font-semibold">
+                              {r.intent}
+                            </span>
+                          </div>
+                          <p className="text-muted-foreground text-[11px]">Query: &ldquo;{r.commentText}&rdquo;</p>
+                          <div className="p-2 bg-muted/40 rounded text-foreground text-[11px] font-medium border">
+                            🤖 AI Reply: {r.aiReply}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Bot Live Execution Logs Terminal */}
+              <div className="border bg-slate-950 text-slate-100 p-4 rounded-xl shadow-xs space-y-2 font-mono text-xs">
+                <div className="flex items-center justify-between border-b border-slate-800 pb-2">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2.5 h-2.5 rounded-full bg-slate-600"></span>
+                    <span className="w-2.5 h-2.5 rounded-full bg-slate-600"></span>
+                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
+                    <span className="text-[11px] font-bold text-slate-400 ml-1">BOT EXECUTION CONSOLE</span>
+                  </div>
+                  <span className="text-[10px] text-slate-500">Status: {watcherStatus}</span>
+                </div>
+                <pre className="p-2 bg-slate-900 border border-slate-800 rounded text-emerald-400 text-[11px] overflow-x-auto whitespace-pre-wrap max-h-56">
+                  {watcherLogs || "Bot console ready. Click 'Start AI Comment Watcher Bot' to see live browser execution logs..."}
+                </pre>
+              </div>
+            </div>
+
+            {/* Right Column (5 cols): Official Meta Page Webhook */}
+            <div className="lg:col-span-5 space-y-4">
+              <div className="border bg-card p-5 rounded-xl shadow-xs space-y-4">
+                <div className="border-b pb-3 flex items-center justify-between">
+                  <div>
+                    <h2 className="font-bold text-sm text-foreground flex items-center gap-2">
+                      <Globe className="w-4 h-4 text-blue-600" /> Official Meta Page Webhooks
+                    </h2>
+                    <p className="text-[11px] text-muted-foreground mt-0.5">
+                      Instant Graph API comment reply + private Messenger delivery.
+                    </p>
+                  </div>
+                  <button
+                    onClick={fetchLiveWebhookEvents}
+                    disabled={liveWebhookLoading}
+                    className="p-1.5 border rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition"
+                    title="Refresh Webhook Events"
+                  >
+                    <RefreshCw className={`w-3.5 h-3.5 ${liveWebhookLoading ? "animate-spin" : ""}`} />
+                  </button>
+                </div>
+
+                <div className="space-y-3 text-xs">
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-semibold text-muted-foreground uppercase">
+                      Webhook Callback URL
+                    </label>
+                    <div className="p-2 bg-muted/40 border rounded-lg font-mono text-[11px] text-foreground select-all break-all">
+                      https://big-poems-brake.loca.lt/api/webhooks/facebook
+                    </div>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-semibold text-muted-foreground uppercase">
+                      Verify Token
+                    </label>
+                    <div className="p-2 bg-muted/40 border rounded-lg font-mono text-[11px] text-foreground select-all">
+                      bmt_webhook_2026
+                    </div>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-semibold text-muted-foreground uppercase">
+                      Connected Meta Page
+                    </label>
+                    <div className="p-2 bg-muted/40 border rounded-lg text-[11px] text-foreground flex items-center justify-between">
+                      <span className="font-semibold">CARE HUB BD</span>
+                      <span className="font-mono text-muted-foreground text-[10px]">ID: 892168940637389</span>
+                    </div>
+                  </div>
+
+                  <div className="p-3 bg-blue-500/10 border border-blue-500/30 rounded-lg text-[11px] text-blue-700 dark:text-blue-300 leading-relaxed space-y-1">
+                    <div className="font-bold flex items-center gap-1">
+                      <ShieldCheck className="w-3.5 h-3.5 text-blue-600" /> Official Dual-Action Flow:
+                    </div>
+                    <p>
+                      When a 2nd ID comments on your Page post, Meta hits this Webhook, and BMT dispatches both:
+                    </p>
+                    <ul className="list-disc list-inside space-y-0.5">
+                      <li><strong>Public Comment:</strong> Graph API <code>/comments</code></li>
+                      <li><strong>Private Message:</strong> Graph API <code>/messages</code></li>
+                    </ul>
+                  </div>
+
+                  {/* Live Webhook Events Received */}
+                  <div className="space-y-2 pt-2 border-t">
+                    <div className="flex items-center justify-between font-semibold text-[11px]">
+                      <span>Live Incoming Page Events:</span>
+                      <span className="text-muted-foreground">{liveWebhookEvents.length} events</span>
+                    </div>
+
+                    {liveWebhookEvents.length === 0 ? (
+                      <div className="p-4 text-center text-muted-foreground text-[11px] border rounded-lg bg-muted/20">
+                        No live page webhook events captured yet.
+                      </div>
+                    ) : (
+                      <div className="space-y-2 max-h-60 overflow-y-auto">
+                        {liveWebhookEvents.map((evt) => (
+                          <div key={evt.id} className="p-2.5 border rounded-lg bg-background text-[11px] space-y-1">
+                            <div className="flex items-center justify-between">
+                              <span className="font-bold text-foreground">{evt.customerName}</span>
+                              <span className="text-[10px] text-muted-foreground">
+                                {new Date(evt.timestamp).toLocaleTimeString()}
+                              </span>
+                            </div>
+                            <p className="text-muted-foreground">Query: &ldquo;{evt.customerQuery}&rdquo;</p>
+                            <div className="text-emerald-600 dark:text-emerald-400 font-medium text-[10px] flex items-center gap-1">
+                              <CheckCircle2 className="w-3 h-3 text-emerald-600" /> Replied: {evt.intent}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       )}
 
