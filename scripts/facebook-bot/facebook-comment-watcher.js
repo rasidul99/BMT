@@ -223,15 +223,29 @@ async function runWatcher(configPath) {
       "--disable-setuid-sandbox",
       "--disable-blink-features=AutomationControlled",
       "--disable-notifications",
-      "--window-size=1280,900",
+      "--window-size=1280,950",
     ],
   });
 
   const page = await browser.newPage();
+  await page.setViewport({ width: 1280, height: 950 });
   await page.setCookie(...cookies);
 
   const processedComments = new Set();
   const allReplies = [];
+
+  async function scrollDialog() {
+    try {
+      await page.mouse.move(640, 450);
+      await page.mouse.wheel({ deltaY: 800 });
+      await sleep(1500);
+      await page.mouse.wheel({ deltaY: 800 });
+      await sleep(1500);
+    } catch (_) {
+      await safeEvaluate(page, () => window.scrollBy({ top: 500, behavior: "smooth" }));
+      await sleep(1500);
+    }
+  }
 
   try {
     // Ensure acting as Page if Page ID is present in URL
@@ -297,28 +311,8 @@ async function runWatcher(configPath) {
       } catch (_) {}
     }
 
-    // Close any blocking popup/dialog if present
-    try {
-      await safeEvaluate(page, () => {
-        const closeBtns = Array.from(document.querySelectorAll('div[aria-label="Close"], div[aria-label="বন্ধ করুন"], div[role="button"][aria-label*="Close" i]'));
-        if (closeBtns.length > 0 && !closeBtns[0].closest('div[role="dialog"][aria-label*="post" i]')) {
-          closeBtns[0].click();
-        }
-      });
-      await sleep(1000);
-    } catch (_) {}
-
-    // Scroll post / modal to ensure comments are visible
-    try {
-      await page.mouse.move(640, 450);
-      await page.mouse.wheel({ deltaY: 800 });
-      await sleep(1500);
-      await page.mouse.wheel({ deltaY: 800 });
-      await sleep(2000);
-    } catch (_) {
-      await safeEvaluate(page, () => window.scrollBy({ top: 500, behavior: "smooth" }));
-      await sleep(2000);
-    }
+    // Initial scroll to ensure comments are visible
+    await scrollDialog();
 
     for (let check = 1; check <= maxChecks; check++) {
       console.log(`\n🔍 [Check ${check}/${maxChecks}] Scanning comment section...`);
@@ -328,7 +322,9 @@ async function runWatcher(configPath) {
       let detectedComments = [];
       try {
         detectedComments = await safeEvaluate(page, () => {
-          const articles = Array.from(document.querySelectorAll('div[role="article"], div[aria-label*="Comment by" i], div[aria-label*="মন্তব্য" i]'));
+          const rawArticles = Array.from(document.querySelectorAll('div[role="article"], div[aria-label*="Comment by" i], div[aria-label*="মন্তব্য" i]'));
+          // Filter out nested child articles so each comment block is visited only once
+          const articles = rawArticles.filter(art => !rawArticles.some(other => other !== art && other.contains(art)));
           const list = [];
 
           articles.forEach((art, idx) => {
@@ -367,7 +363,7 @@ async function runWatcher(configPath) {
             const bodyLines = lines.filter((l) => {
               const low = l.toLowerCase();
               if (l === author) return false;
-              if (low === "like" || low === "reply" || low === "send message" || low === "see translation" || low === "author") return false;
+              if (low === "like" || low === "reply" || low === "send message" || low === "see translation" || low === "author" || low === "see response" || low.includes("see response") || low.includes("রেসপন্স দেখুন")) return false;
               if (low.includes("·") || low.endsWith("m") || low.endsWith("h") || low.endsWith("d") || low.includes("ago")) return false;
               if (low.includes("পছন্দ") || low.includes("উত্তর") || low.includes("বার্তা পাঠান")) return false;
               return true;
@@ -395,8 +391,15 @@ async function runWatcher(configPath) {
 
       console.log(`📊 Found ${detectedComments.length} comment blocks on post.`);
 
+      // If no comments detected on this check, re-scroll dialog to prompt lazy-loading
+      if (detectedComments.length === 0) {
+        console.log("   🔄 Re-scrolling dialog to wake up comment section...");
+        await scrollDialog();
+      }
+
       for (const item of detectedComments) {
-        const commentKey = `${item.author}:::${item.text.slice(0, 40)}`;
+        const cleanSnippet = (item.text || '').replace(/see response/gi, '').replace(/see translation/gi, '').replace(/like/gi, '').replace(/reply/gi, '').trim();
+        const commentKey = `${item.author}:::${cleanSnippet.slice(0, 40)}`;
 
         if (processedComments.has(commentKey)) {
           continue;
@@ -425,9 +428,14 @@ async function runWatcher(configPath) {
         if (sendInbox && item.hasMessageBtn) {
           console.log(`   ✉️ Locating and clicking "Send message" button for ${item.author}...`);
           try {
-            const clickedMsg = await safeEvaluate(page, (artIdx) => {
-              const articles = Array.from(document.querySelectorAll('div[role="article"], div[aria-label*="Comment by" i], div[aria-label*="মন্তব্য" i]'));
-              const targetArt = articles[artIdx];
+            const clickedMsg = await safeEvaluate(page, (targetAuthor, targetText, fallbackIdx) => {
+              const rawArticles = Array.from(document.querySelectorAll('div[role="article"], div[aria-label*="Comment by" i]'));
+              const articles = rawArticles.filter(art => !rawArticles.some(other => other !== art && other.contains(art)));
+              const targetArt = articles.find(a => {
+                const t = (a.innerText || '');
+                return t.includes(targetText) && (!targetAuthor || t.includes(targetAuthor));
+              }) || articles[fallbackIdx];
+
               if (!targetArt) return false;
               const buttons = Array.from(targetArt.querySelectorAll('div[role="button"], span[role="button"], a[role="button"]'));
               const msgBtn = buttons.find((b) => {
@@ -439,7 +447,7 @@ async function runWatcher(configPath) {
                 return true;
               }
               return false;
-            }, item.index);
+            }, item.author, item.text, item.index);
 
             if (clickedMsg) {
               await sleep(3000);
@@ -502,9 +510,14 @@ async function runWatcher(configPath) {
         if (autoReply) {
           console.log(`   ⏳ Locating and clicking "Reply" button for ${item.author}...`);
           try {
-            const clickedReply = await safeEvaluate(page, (artIdx) => {
-              const articles = Array.from(document.querySelectorAll('div[role="article"], div[aria-label*="Comment by" i], div[aria-label*="মন্তব্য" i]'));
-              const targetArt = articles[artIdx];
+            const clickedReply = await safeEvaluate(page, (targetAuthor, targetText, fallbackIdx) => {
+              const rawArticles = Array.from(document.querySelectorAll('div[role="article"], div[aria-label*="Comment by" i]'));
+              const articles = rawArticles.filter(art => !rawArticles.some(other => other !== art && other.contains(art)));
+              const targetArt = articles.find(a => {
+                const t = (a.innerText || '');
+                return t.includes(targetText) && (!targetAuthor || t.includes(targetAuthor));
+              }) || articles[fallbackIdx];
+
               if (!targetArt) return false;
 
               const buttons = Array.from(targetArt.querySelectorAll('div[role="button"], span[role="button"], a[role="button"]'));
@@ -518,14 +531,25 @@ async function runWatcher(configPath) {
                 return true;
               }
               return false;
-            }, item.index);
+            }, item.author, item.text, item.index);
 
             if (clickedReply) {
-              await sleep(2000);
+              await sleep(2500);
 
-              // The active nested reply textbox will have aria-label starting with "Reply to ..."
-              const nestedBox = await page.$('div[role="textbox"][aria-label^="Reply to" i], div[role="textbox"][aria-label^="উত্তর দিন" i]');
-              const boxToUse = nestedBox || (await page.$$('div[role="textbox"][contenteditable="true"]')).pop();
+              // Strictly locate the nested reply textbox (NEVER use top-level post comment box)
+              let boxToUse = await page.$('div[role="textbox"][aria-label*="Reply to" i], div[role="textbox"][aria-label*="উত্তর দিন" i], div[role="textbox"][aria-label*="Write a reply" i], div[role="textbox"][aria-label*="উত্তর লিখুন" i]');
+
+              if (!boxToUse) {
+                const allBoxes = await page.$$('div[role="textbox"][contenteditable="true"]');
+                for (const b of allBoxes) {
+                  const aria = (await page.evaluate(el => el.getAttribute('aria-label') || '', b)).toLowerCase();
+                  if (aria.includes('comment as') || aria.includes('write a comment') || aria.includes('হিসাবে মন্তব্য') || aria.includes('মন্তব্য লিখুন')) {
+                    continue; // Skip top-level comment box
+                  }
+                  boxToUse = b;
+                  break;
+                }
+              }
 
               if (boxToUse) {
                 await boxToUse.click();
@@ -543,6 +567,8 @@ async function runWatcher(configPath) {
 
                 console.log(`   ✅ [SUCCESS] AI Nested Reply successfully posted on Facebook!`);
                 publicSuccess = true;
+              } else {
+                console.warn(`   ⚠️ Nested reply textbox not found. Skipping to prevent posting outside reply thread.`);
               }
             } else {
               console.warn(`   ⚠️ Reply button not found on this comment block.`);

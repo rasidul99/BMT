@@ -1,18 +1,18 @@
 {
-  "jobId": "job-1791254513261",
-  "success": false,
+  "jobId": "job-1791299691307",
+  "success": true,
   "results": [
     {
-      "groupId": "grp-1791254342795",
-      "groupName": "Test your group",
-      "status": "Failed",
-      "error": "এই ফেসবুক আইডিতে গ্রুপের মেম্বারশিপ নেই (Must join \"Test your group\" on Facebook first)",
-      "timestamp": "2026-10-06T02:42:12.869Z"
+      "groupId": "61595136714776",
+      "groupName": "Test Next",
+      "status": "Success",
+      "commentStatus": "Comment submitted & verified",
+      "timestamp": "2026-10-06T15:16:59.221Z"
     }
   ],
   "summary": {
     "total": 1,
-    "success": 0,
-    "failed": 1
+    "success": 1,
+    "failed": 0
   }
 }
