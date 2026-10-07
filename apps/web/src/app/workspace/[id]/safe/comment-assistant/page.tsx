@@ -119,6 +119,8 @@ export default function SafeCommentAssistantPage() {
   const [postTitleInput, setPostTitleInput] = useState<string>("")
   const [postReplyMode, setPostReplyMode] = useState<"template" | "custom">("template")
   const [selectedPostTemplateId, setSelectedPostTemplateId] = useState<string>("tmpl-price-1")
+  const [isTemplateDropdownOpen, setIsTemplateDropdownOpen] = useState<boolean>(false)
+  const [templateDropdownSearch, setTemplateDropdownSearch] = useState<string>("")
   const [postCustomPublicReply, setPostCustomPublicReply] = useState<string>(
     "ধন্যবাদ ভাইয়া! প্রিমিয়াম কালেকশনের স্পেশাল অফার প্রাইজ আপনার ইনবক্সে পাঠানো হয়েছে। দয়া করে মেসেঞ্জার চেক করুন।"
   )
@@ -3309,21 +3311,156 @@ export default function SafeCommentAssistantPage() {
                   </div>
                 </div>
 
-                {postReplyMode === "template" && (
-                  <select
-                    data-testid="template-select"
-                    value={selectedPostTemplateId}
-                    onChange={(e) => handleSelectPostTemplate(e.target.value)}
-                    aria-label="Select Reply and Inbox Template"
-                    className="w-full px-3 py-2 border rounded-lg bg-background font-semibold text-xs outline-none"
-                  >
-                    {library.map((tmpl) => (
-                      <option key={tmpl.id} value={tmpl.id}>
-                        [{tmpl.category}] {tmpl.title} — {tmpl.priceInfo || "Standard"}
-                      </option>
-                    ))}
-                  </select>
-                )}
+                {postReplyMode === "template" && (() => {
+                  const activeTmpl = library.find((t) => t.id === selectedPostTemplateId) || library[0]
+                  const q = templateDropdownSearch.trim().toLowerCase()
+                  const filteredTemplates = q
+                    ? library.filter(
+                        (t) =>
+                          t.title.toLowerCase().includes(q) ||
+                          t.category.toLowerCase().includes(q) ||
+                          t.publicReply.toLowerCase().includes(q) ||
+                          t.privateInboxReply.toLowerCase().includes(q) ||
+                          (t.priceInfo || "").toLowerCase().includes(q)
+                      )
+                    : library
+
+                  return (
+                    <div className="relative">
+                      <button
+                        type="button"
+                        data-testid="template-select"
+                        onClick={() => setIsTemplateDropdownOpen((prev) => !prev)}
+                        className="w-full px-3 py-2 border rounded-lg bg-background hover:bg-muted/30 transition flex items-center justify-between gap-2 text-left outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 cursor-pointer"
+                      >
+                        <div className="flex items-center gap-2 min-w-0">
+                          {activeTmpl && (
+                            <span className="px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20 text-[10px] font-bold shrink-0">
+                              {activeTmpl.category}
+                            </span>
+                          )}
+                          <span className="font-semibold text-xs text-foreground truncate">
+                            {activeTmpl ? activeTmpl.title : "Select a Template..."}
+                          </span>
+                        </div>
+                        <ChevronDown
+                          className={`w-4 h-4 text-muted-foreground shrink-0 transition-transform duration-150 ${
+                            isTemplateDropdownOpen ? "rotate-180 text-foreground" : ""
+                          }`}
+                        />
+                      </button>
+
+                      {isTemplateDropdownOpen && (
+                        <>
+                          <div
+                            className="fixed inset-0 z-40"
+                            onClick={() => setIsTemplateDropdownOpen(false)}
+                          />
+                          <div className="absolute left-0 right-0 top-full mt-1.5 z-50 bg-card border border-border rounded-xl shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+                            {/* Search Input Inside Smart Dropdown */}
+                            <div className="p-2 border-b bg-muted/30 flex items-center gap-2">
+                              <Search className="w-3.5 h-3.5 text-muted-foreground shrink-0 ml-1" />
+                              <input
+                                type="text"
+                                autoFocus
+                                placeholder="Search template by name, category, or reply..."
+                                value={templateDropdownSearch}
+                                onChange={(e) => setTemplateDropdownSearch(e.target.value)}
+                                className="w-full bg-transparent text-xs outline-none placeholder:text-muted-foreground"
+                              />
+                              {templateDropdownSearch && (
+                                <button
+                                  type="button"
+                                  onClick={() => setTemplateDropdownSearch("")}
+                                  className="text-muted-foreground hover:text-foreground p-0.5 rounded"
+                                >
+                                  <X className="w-3.5 h-3.5" />
+                                </button>
+                              )}
+                            </div>
+
+                            {/* Filtered Options List */}
+                            <div className="max-h-52 overflow-y-auto divide-y divide-border/40">
+                              {filteredTemplates.length > 0 ? (
+                                filteredTemplates.map((tmpl) => {
+                                  const isSelected = tmpl.id === selectedPostTemplateId
+                                  return (
+                                    <div
+                                      key={tmpl.id}
+                                      onClick={() => {
+                                        handleSelectPostTemplate(tmpl.id)
+                                        setIsTemplateDropdownOpen(false)
+                                        setTemplateDropdownSearch("")
+                                      }}
+                                      className={`px-3 py-2 flex items-start justify-between gap-2 cursor-pointer transition ${
+                                        isSelected
+                                          ? "bg-blue-500/10"
+                                          : "hover:bg-muted/50"
+                                      }`}
+                                    >
+                                      <div className="min-w-0 flex-1 space-y-0.5">
+                                        <div className="flex items-center gap-1.5">
+                                          <span className="px-1.5 py-0.5 rounded bg-muted text-muted-foreground border text-[10px] font-semibold shrink-0">
+                                            {tmpl.category}
+                                          </span>
+                                          <span className="font-semibold text-xs text-foreground truncate">
+                                            {tmpl.title}
+                                          </span>
+                                        </div>
+                                        <p className="text-[11px] text-muted-foreground truncate">
+                                          {tmpl.publicReply}
+                                        </p>
+                                      </div>
+
+                                      <div className="flex items-center gap-1 shrink-0 pt-0.5">
+                                        <button
+                                          type="button"
+                                          title="Edit Template"
+                                          onClick={(e) => {
+                                            e.stopPropagation()
+                                            setIsTemplateDropdownOpen(false)
+                                            startEditTemplate(tmpl)
+                                          }}
+                                          className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition"
+                                        >
+                                          <Edit3 className="w-3 h-3" />
+                                        </button>
+                                        {isSelected && (
+                                          <CheckCircle2 className="w-4 h-4 text-blue-600 shrink-0" />
+                                        )}
+                                      </div>
+                                    </div>
+                                  )
+                                })
+                              ) : (
+                                <div className="p-4 text-center space-y-2">
+                                  <p className="text-xs text-muted-foreground">
+                                    No template found for &ldquo;{templateDropdownSearch}&rdquo;
+                                  </p>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setIsTemplateDropdownOpen(false)
+                                      setEditingTemplateId(null)
+                                      setTmplTitle(templateDropdownSearch.trim())
+                                      setTmplPublicReply(postCustomPublicReply)
+                                      setTmplInboxReply(postCustomInboxMessage)
+                                      setTemplateDropdownSearch("")
+                                      setShowTemplateModal(true)
+                                    }}
+                                    className="px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold inline-flex items-center gap-1 transition cursor-pointer"
+                                  >
+                                    <Plus className="w-3.5 h-3.5" /> Create &ldquo;{templateDropdownSearch.trim()}&rdquo;
+                                  </button>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  )
+                })()}
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
                   <div className="space-y-1">
