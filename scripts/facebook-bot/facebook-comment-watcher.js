@@ -1,7 +1,7 @@
 /**
- * BMT Facebook Comment Watcher & Auto-Reply Bot
- * Monitors a live Facebook Post (Personal Profile, Group, or Page)
- * Automatically detects incoming comments from other users and replies via AI!
+ * BMT Facebook Comment Watcher & Dual-Reply Bot
+ * Monitors a live Facebook Post (Personal Profile, Page, or Group)
+ * Detects incoming comments, posts an AI public comment reply, AND sends a private message!
  */
 
 const fs = require("fs");
@@ -68,34 +68,98 @@ function parseCookies(rawCookieStr) {
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
-// AI Intent Generator
+async function safeEvaluate(page, fn, ...args) {
+  for (let attempt = 1; attempt <= 4; attempt++) {
+    try {
+      return await page.evaluate(fn, ...args);
+    } catch (err) {
+      if (
+        (err.message.includes("Execution context was destroyed") ||
+          err.message.includes("Target closed") ||
+          err.message.includes("Session closed") ||
+          err.message.includes("context")) &&
+        attempt < 4
+      ) {
+        console.warn(`[SafeEval] Retrying page evaluation after navigation attempt ${attempt}...`);
+        await sleep(2500);
+        continue;
+      }
+      throw err;
+    }
+  }
+}
+
+// AI Intent Classifier (Bengali + Banglish + English)
 function getAiReply(commentText) {
-  const lower = (commentText || "").toLowerCase();
-  if (lower.includes("দাম") || lower.includes("price") || lower.includes("কত") || lower.includes("cost") || lower.includes("টাকা")) {
+  const lower = (commentText || "").toLowerCase().trim();
+
+  // Price queries: দাম, price, koto, কত, cost, taka, টাকা, rate
+  if (
+    lower.includes("দাম") ||
+    lower.includes("price") ||
+    lower.includes("koto") ||
+    lower.includes("কত") ||
+    lower.includes("cost") ||
+    lower.includes("taka") ||
+    lower.includes("টাকা") ||
+    lower.includes("rate") ||
+    lower.includes("dam")
+  ) {
     return {
       intent: "Price Query",
       reply: "ধন্যবাদ ভাইয়া! প্রিমিয়াম কালেকশনের স্পেশাল অফার প্রাইজ ইনবক্সে পাঠানো হয়েছে। দয়া করে ইনবক্স চেক করুন।",
-      inbox: "আসসালামু আলাইকুম! ওয়াচটির ঈদ অফার প্রাইজ মাত্র ২,৪৯০ টাকা (সারাদেশে ফ্রি হোম ডেলিভারি)। অর্ডার করতে নাম ও ঠিকানা দিন।"
+      inbox: "আসসালামু আলাইকুম! ওয়াচটির ঈদ স্পেশাল অফার প্রাইজ মাত্র ২,৪৯০ টাকা (সারাদেশে ফ্রি হোম ডেলিভারি)। অর্ডার করতে নাম, পূর্ণ ঠিকানা ও মোবাইল নম্বর দিন।"
     };
   }
-  if (lower.includes("ডেলিভারি") || lower.includes("delivery") || lower.includes("ক্যাশ অন") || lower.includes("চার্জ")) {
+
+  // Delivery queries: ডেলিভারি, delivery, charge, চার্জ, cash on, ক্যাশ অন
+  if (
+    lower.includes("ডেলিভারি") ||
+    lower.includes("delivery") ||
+    lower.includes("charge") ||
+    lower.includes("চার্জ") ||
+    lower.includes("ক্যাশ অন") ||
+    lower.includes("cash on") ||
+    lower.includes("ঢাকার বাইরে")
+  ) {
     return {
       intent: "Delivery Query",
-      reply: "জি ভাইয়া, আমরা সারাদেশে ক্যাশ অন ডেলিভারি দিচ্ছি। ডেলিভারি সংক্রান্ত বিস্তারিত তথ্য ইনবক্সে পাঠিয়েছি।",
-      inbox: "জি সম্মানিত গ্রাহক! ঢাকা সিটিতে ২৪ ঘণ্টার মধ্যে এবং ঢাকার বাইরে ৪৮ ঘণ্টার মধ্যে ক্যাশ অন ডেলিভারি পাবেন।"
+      reply: "জি ভাইয়া, আমরা সারাদেশে ফ্রি ক্যাশ অন ডেলিভারি দিচ্ছি। ডেলিভারি সংক্রান্ত বিস্তারিত ইনবক্সে চেক করুন।",
+      inbox: "জি সম্মানিত গ্রাহক! ঢাকা সিটিতে ২৪ ঘণ্টার মধ্যে এবং ঢাকার বাইরে ৪৮ ঘণ্টার মধ্যে ক্যাশ অন ডেলিভারি পাবেন। ডেলিভারি ম্যানের সামনে প্রোডাক্ট দেখে মূল্য পরিশোধ করতে পারবেন।"
     };
   }
-  if (lower.includes("স্টক") || lower.includes("stock") || lower.includes("কালার") || lower.includes("color")) {
+
+  // Stock queries: স্টক, stock, available, ase, ache, আছে, কালার, color
+  if (
+    lower.includes("স্টক") ||
+    lower.includes("stock") ||
+    lower.includes("available") ||
+    lower.includes("ase") ||
+    lower.includes("ache") ||
+    lower.includes("আছে") ||
+    lower.includes("কালার") ||
+    lower.includes("color")
+  ) {
     return {
       intent: "Stock Query",
-      reply: "প্রোডাক্টটির সীমিত স্টক এভেইলেবল আছে ভাইয়া! দ্রুত ইনবক্স চেক করে বুকিং কনফার্ম করুন।",
-      inbox: "জি প্রোডাক্টটি আমাদের স্টকে এভেইলেবল আছে। এখনই বুকিং করতে মেসেজ করুন!"
+      reply: "প্রোডাক্টটির সীমিত স্টক এভেইলেবল আছে ভাইয়া! দ্রুত ইনবক্স চেক করে আপনার বুকিং কনফার্ম করুন।",
+      inbox: "জি প্রোডাক্টটি এই মুহূর্তে আমাদের স্টকে এভেইলেবল আছে। এখনই বুকিং কনফার্ম করতে আমাদের মেসেজে জানিয়ে দিন।"
     };
   }
+
+  // Warranty queries: ওয়ারেন্টি, warranty, গ্যারান্টি, guarantee
+  if (lower.includes("ওয়ারেন্টি") || lower.includes("warranty") || lower.includes("গ্যারান্টি") || lower.includes("guarantee")) {
+    return {
+      intent: "Warranty Query",
+      reply: "জি সম্মানিত কাস্টমার, প্রতিটি প্রডাক্টে পাচ্ছেন ১ বছরের অফিসিয়াল রিপ্লেসমেন্ট ওয়ারেন্টি! বিস্তারিত ইনবক্সে দেওয়া হলো।",
+      inbox: "আমাদের প্রতিটি অথেনটিক প্রডাক্টের সাথে পাবেন অফিসিয়াল ১ বছরের রিপ্লেসমেন্ট কার্ড।"
+    };
+  }
+
   return {
     intent: "General Greeting",
     reply: "আসসালামু আলাইকুম! বিস্তারিত তথ্য আপনার ইনবক্সে মেসেজ করা হয়েছে, দয়া করে মেসেঞ্জার চেক করুন।",
-    inbox: "স্বাগতম! আপনার অনুসন্ধানের জন্য ধন্যবাদ। আমরা আপনাকে সহায়তা করতে প্রস্তুত।"
+    inbox: "স্বাগতম! আপনি আমাদের পণ্যটি সম্পর্কে জানতে চাওয়ায় ধন্যবাদ। যেকোনো তথ্য বা অর্ডারের জন্য আমাদের জানাতে পারেন।"
   };
 }
 
@@ -111,9 +175,10 @@ async function runWatcher(configPath) {
   const {
     jobId = `watcher-${Date.now()}`,
     postUrl,
-    checkIntervalSeconds = 15,
-    maxChecks = 30, // 30 checks * 15s = ~7.5 minutes
+    checkIntervalSeconds = 12,
+    maxChecks = 40,
     autoReply = true,
+    sendInbox = true,
     headless = false,
   } = config;
 
@@ -136,10 +201,11 @@ async function runWatcher(configPath) {
   }
 
   console.log("==========================================================");
-  console.log("👀 BMT Live Facebook Comment Watcher & Auto-Reply Bot");
+  console.log("👀 BMT Live Facebook Comment Watcher & Dual-Reply Bot");
   console.log(`🔗 Target Post: ${postUrl}`);
   console.log(`⏱️ Check Interval: ${checkIntervalSeconds}s | Max Checks: ${maxChecks}`);
   console.log(`🤖 AI Auto-Reply: ${autoReply ? "ENABLED" : "DISABLED"}`);
+  console.log(`💬 Private Messenger Inbox: ${sendInbox ? "ENABLED" : "DISABLED"}`);
   console.log(`👁️ Headless: ${headless}`);
   console.log("==========================================================\n");
 
@@ -169,60 +235,90 @@ async function runWatcher(configPath) {
 
   try {
     console.log(`🌐 Navigating to Post URL: ${postUrl}...`);
-    await page.goto(postUrl, { waitUntil: "networkidle2", timeout: 60000 });
-    await sleep(3000);
 
-    // Close any blocking overlay if present
+    // Safe navigation with client-side redirect tolerance
     try {
-      const closeDialogBtn = await page.$('div[aria-label="Close"], div[aria-label="বন্ধ করুন"], div[role="button"][aria-label*="Close" i]');
-      if (closeDialogBtn) {
-        await closeDialogBtn.click();
-        await sleep(1000);
-      }
+      await page.goto(postUrl, { waitUntil: "domcontentloaded", timeout: 60000 });
+    } catch (navErr) {
+      console.warn("Navigation warning (continuing):", navErr.message);
+    }
+
+    // Wait for any Facebook client-side redirection (e.g. share/p/ -> permalink.php) to settle
+    console.log("⏳ Waiting for Facebook URL redirection to settle...");
+    await sleep(6000);
+
+    const currentUrl = page.url();
+    console.log(`📍 Current Facebook URL settled at: ${currentUrl}`);
+
+    // Close any blocking popup/dialog if present
+    try {
+      await safeEvaluate(page, () => {
+        const closeBtns = Array.from(document.querySelectorAll('div[aria-label="Close"], div[aria-label="বন্ধ করুন"], div[role="button"][aria-label*="Close" i]'));
+        if (closeBtns.length > 0) closeBtns[0].click();
+      });
+      await sleep(1000);
     } catch (_) {}
 
-    // Scroll slightly down to make comments area active
-    await page.evaluate(() => window.scrollBy({ top: 400, behavior: "smooth" }));
-    await sleep(2000);
+    // Scroll slightly down to load comments section
+    await safeEvaluate(page, () => window.scrollBy({ top: 300, behavior: "smooth" }));
+    await sleep(2500);
 
     for (let check = 1; check <= maxChecks; check++) {
       console.log(`\n🔍 [Check ${check}/${maxChecks}] Scanning comment section...`);
       updateStatus({ status: "WATCHING", checkCount: check, replies: allReplies, postUrl });
 
-      // Scan page for comments
-      const detectedComments = await page.evaluate(() => {
-        // Find comment articles or containers
-        const articles = Array.from(document.querySelectorAll('div[role="article"], div[aria-label*="Comment by" i], div[aria-label*="মন্তব্য" i]'));
-        const list = [];
+      // Scan page for comments safely
+      let detectedComments = [];
+      try {
+        detectedComments = await safeEvaluate(page, () => {
+          const articles = Array.from(document.querySelectorAll('div[role="article"], div[aria-label*="Comment by" i], div[aria-label*="মন্তব্য" i]'));
+          const list = [];
 
-        articles.forEach((art, idx) => {
-          const text = (art.innerText || "").trim();
-          if (!text || text.length < 2) return;
+          articles.forEach((art, idx) => {
+            const text = (art.innerText || "").trim();
+            if (!text || text.length < 2) return;
 
-          // Check if this article contains a reply button
-          const buttons = Array.from(art.querySelectorAll('div[role="button"], span[role="button"], a[role="button"]'));
-          const hasReplyBtn = buttons.some((b) => {
-            const bt = (b.innerText || b.getAttribute("aria-label") || "").toLowerCase();
-            return bt.includes("reply") || bt.includes("উত্তর দিন") || bt.includes("উত্তর");
+            // Check if this comment is from the Post Author (has 'Author' badge)
+            const isAuthor = text.toLowerCase().includes("author") || text.includes("লেখক");
+
+            // Check for buttons under this comment
+            const buttons = Array.from(art.querySelectorAll('div[role="button"], span[role="button"], a[role="button"]'));
+            const hasReplyBtn = buttons.some((b) => {
+              const bt = (b.innerText || b.getAttribute("aria-label") || "").toLowerCase();
+              return bt.includes("reply") || bt.includes("উত্তর দিন") || bt.includes("উত্তর");
+            });
+
+            const hasMessageBtn = buttons.some((b) => {
+              const bt = (b.innerText || b.getAttribute("aria-label") || "").toLowerCase();
+              return bt.includes("send message") || bt.includes("বার্তা পাঠান");
+            });
+
+            // Extract commenter name and comment text
+            const lines = text.split("\n").map((l) => l.trim()).filter(Boolean);
+            const author = lines[0] || "Facebook User";
+            const body = lines.slice(1).filter((l) => {
+              const low = l.toLowerCase();
+              return !low.includes("like") && !low.includes("reply") && !low.includes("send message") && !low.includes("share") && !low.includes("পছন্দ") && !low.includes("উত্তর") && !low.includes("author") && !low.includes("see translation");
+            }).join(" ");
+
+            list.push({
+              index: idx,
+              author,
+              isAuthor,
+              text: body || text,
+              fullText: text,
+              hasReplyBtn,
+              hasMessageBtn,
+            });
           });
 
-          // Extract commenter name and comment text
-          const lines = text.split("\n").map((l) => l.trim()).filter(Boolean);
-          const author = lines[0] || "Facebook User";
-          // Comment body usually line 2 or combined
-          const body = lines.slice(1).filter((l) => !l.includes("Like") && !l.includes("Reply") && !l.includes("Share") && !l.includes("পছন্দ") && !l.includes("উত্তর")).join(" ");
-
-          list.push({
-            index: idx,
-            author,
-            text: body || text,
-            fullText: text,
-            hasReplyBtn,
-          });
+          return list;
         });
-
-        return list;
-      });
+      } catch (scanErr) {
+        console.warn(`Scan error (will retry next check): ${scanErr.message}`);
+        await sleep(3000);
+        continue;
+      }
 
       console.log(`📊 Found ${detectedComments.length} comment blocks on post.`);
 
@@ -233,49 +329,107 @@ async function runWatcher(configPath) {
           continue;
         }
 
-        // Check if author is our own bot profile
-        if (item.author.toLowerCase().includes("rasidul") || item.author.toLowerCase().includes("care hub")) {
+        // Skip comments made by the author itself (e.g. pinned 1st comments)
+        if (item.isAuthor) {
+          console.log(`ℹ️ Skipping Author comment: "${item.text.slice(0, 30)}..."`);
           processedComments.add(commentKey);
           continue;
         }
 
-        console.log(`\n🎯 [NEW COMMENT DETECTED from 2nd ID]:`);
-        console.log(`   👤 Commenter: ${item.author}`);
-        console.log(`   💬 Comment: "${item.text}"`);
+        console.log(`\n🎯 [NEW CUSTOMER COMMENT DETECTED]:`);
+        console.log(`   👤 Customer Name: ${item.author}`);
+        console.log(`   💬 Customer Query: "${item.text}"`);
 
         const ai = getAiReply(item.text);
         console.log(`   🤖 AI Intent Detected: ${ai.intent}`);
-        console.log(`   📝 AI Public Reply: "${ai.reply}"`);
+        console.log(`   📝 AI Public Comment Reply: "${ai.reply}"`);
+        console.log(`   📩 AI Private Inbox Message: "${ai.inbox}"`);
 
+        let publicSuccess = false;
+        let inboxSuccess = false;
+
+        // 1. Send Private Messenger Message if "Send message" button is present
+        if (sendInbox && item.hasMessageBtn) {
+          console.log(`   ✉️ Locating and clicking "Send message" button for ${item.author}...`);
+          try {
+            const clickedMsg = await safeEvaluate(page, (artIdx) => {
+              const articles = Array.from(document.querySelectorAll('div[role="article"], div[aria-label*="Comment by" i], div[aria-label*="মন্তব্য" i]'));
+              const targetArt = articles[artIdx];
+              if (!targetArt) return false;
+              const buttons = Array.from(targetArt.querySelectorAll('div[role="button"], span[role="button"], a[role="button"]'));
+              const msgBtn = buttons.find((b) => {
+                const bt = (b.innerText || b.getAttribute("aria-label") || "").toLowerCase();
+                return bt === "send message" || bt === "বার্তা পাঠান" || bt.includes("send message") || bt.includes("বার্তা পাঠান");
+              });
+              if (msgBtn) {
+                msgBtn.click();
+                return true;
+              }
+              return false;
+            }, item.index);
+
+            if (clickedMsg) {
+              await sleep(2500);
+
+              // Find messenger input textbox in the popup dialog
+              const msgInputSelector = 'div[role="textbox"][contenteditable="true"], div[aria-label*="Message" i][role="textbox"]';
+              const msgBox = await page.$(msgInputSelector);
+              if (msgBox) {
+                await msgBox.click();
+                await sleep(500);
+                console.log(`   ⌨️ Typing private inbox message...`);
+                for (const char of ai.inbox) {
+                  await page.keyboard.type(char, { delay: Math.floor(Math.random() * 30) + 15 });
+                }
+                await sleep(800);
+                await page.keyboard.press("Enter");
+                await sleep(2500);
+                console.log(`   ✅ [SUCCESS] Private message sent to ${item.author}'s Messenger!`);
+                inboxSuccess = true;
+
+                // Close message modal if open
+                try {
+                  await safeEvaluate(page, () => {
+                    const closeMsg = document.querySelector('div[aria-label="Close chat" i], div[aria-label="Close" i]');
+                    if (closeMsg) closeMsg.click();
+                  });
+                } catch (_) {}
+                await sleep(1000);
+              }
+            }
+          } catch (mErr) {
+            console.warn(`   ⚠️ Private message dispatch notice: ${mErr.message}`);
+          }
+        }
+
+        // 2. Post Public Comment Reply
         if (autoReply) {
           console.log(`   ⏳ Locating and clicking "Reply" button for ${item.author}...`);
+          try {
+            const clickedReply = await safeEvaluate(page, (artIdx) => {
+              const articles = Array.from(document.querySelectorAll('div[role="article"], div[aria-label*="Comment by" i], div[aria-label*="মন্তব্য" i]'));
+              const targetArt = articles[artIdx];
+              if (!targetArt) return false;
 
-          const clickedReply = await page.evaluate((artIdx) => {
-            const articles = Array.from(document.querySelectorAll('div[role="article"], div[aria-label*="Comment by" i], div[aria-label*="মন্তব্য" i]'));
-            const targetArt = articles[artIdx];
-            if (!targetArt) return false;
+              const buttons = Array.from(targetArt.querySelectorAll('div[role="button"], span[role="button"], a[role="button"]'));
+              const replyBtn = buttons.find((b) => {
+                const bt = (b.innerText || b.getAttribute("aria-label") || "").toLowerCase();
+                return bt === "reply" || bt === "উত্তর দিন" || bt.includes("reply") || bt.includes("উত্তর");
+              });
 
-            const buttons = Array.from(targetArt.querySelectorAll('div[role="button"], span[role="button"], a[role="button"]'));
-            const replyBtn = buttons.find((b) => {
-              const bt = (b.innerText || b.getAttribute("aria-label") || "").toLowerCase();
-              return bt === "reply" || bt === "উত্তর দিন" || bt.includes("reply") || bt.includes("উত্তর");
-            });
+              if (replyBtn) {
+                replyBtn.click();
+                return true;
+              }
+              return false;
+            }, item.index);
 
-            if (replyBtn) {
-              replyBtn.click();
-              return true;
-            }
-            return false;
-          }, item.index);
+            if (clickedReply) {
+              await sleep(2000);
 
-          if (clickedReply) {
-            await sleep(1500);
-
-            // Wait for nested reply textbox
-            const replyBoxSelector = 'div[role="textbox"][contenteditable="true"]';
-            try {
-              await page.waitForSelector(replyBoxSelector, { timeout: 6000 });
-              // Get all textboxes, usually the last one is the active reply box
+              // Locate active nested reply textbox
+              const replyBoxSelector = 'div[role="textbox"][contenteditable="true"]';
+              await page.waitForSelector(replyBoxSelector, { timeout: 8000 });
               const textboxes = await page.$$(replyBoxSelector);
               const activeBox = textboxes[textboxes.length - 1];
 
@@ -283,50 +437,55 @@ async function runWatcher(configPath) {
                 await activeBox.click();
                 await sleep(500);
 
-                // Type AI reply with human typing jitter
-                console.log(`   ⌨️ Typing AI reply into comment box...`);
+                console.log(`   ⌨️ Typing AI public reply into comment box...`);
                 for (const char of ai.reply) {
-                  await page.keyboard.type(char, { delay: Math.floor(Math.random() * 40) + 20 });
+                  await page.keyboard.type(char, { delay: Math.floor(Math.random() * 35) + 15 });
                 }
 
                 await sleep(800);
-                console.log(`   🚀 Submitting reply (pressing Enter)...`);
+                console.log(`   🚀 Submitting comment reply (pressing Enter)...`);
                 await page.keyboard.press("Enter");
                 await sleep(4000);
 
-                console.log(`   ✅ [SUCCESS] AI Reply successfully posted on Facebook!`);
-                const replyRecord = {
-                  author: item.author,
-                  commentText: item.text,
-                  intent: ai.intent,
-                  aiReply: ai.reply,
-                  inboxMessage: ai.inbox,
-                  status: "DISPATCHED_TO_FACEBOOK",
-                  timestamp: new Date().toISOString(),
-                };
-                allReplies.push(replyRecord);
-                updateStatus({ status: "WATCHING", checkCount: check, replies: allReplies, postUrl });
+                console.log(`   ✅ [SUCCESS] AI Public Reply successfully posted on Facebook!`);
+                publicSuccess = true;
               }
-            } catch (boxErr) {
-              console.warn(`   ⚠️ Could not focus reply input: ${boxErr.message}`);
+            } else {
+              console.warn(`   ⚠️ Reply button not found on this comment block.`);
             }
-          } else {
-            console.warn(`   ⚠️ Reply button not found on this comment block.`);
+          } catch (rErr) {
+            console.warn(`   ⚠️ Public reply dispatch notice: ${rErr.message}`);
           }
         }
+
+        const replyRecord = {
+          author: item.author,
+          commentText: item.text,
+          intent: ai.intent,
+          aiReply: ai.reply,
+          inboxMessage: ai.inbox,
+          publicSuccess,
+          inboxSuccess,
+          status: publicSuccess ? "SUCCESS" : "DISPATCHED",
+          timestamp: new Date().toISOString(),
+        };
+        allReplies.push(replyRecord);
+        updateStatus({ status: "WATCHING", checkCount: check, replies: allReplies, postUrl });
 
         processedComments.add(commentKey);
       }
 
-      // Wait before next check
+      // Wait before next scan interval
       if (check < maxChecks) {
-        console.log(`⏳ Waiting ${checkIntervalSeconds}s for next incoming comment from 2nd ID...`);
+        console.log(`⏳ Waiting ${checkIntervalSeconds}s for new incoming comments...`);
         await sleep(checkIntervalSeconds * 1000);
 
-        // Periodically refresh post slightly or scroll to trigger new comments
-        await page.evaluate(() => window.scrollBy({ top: 100, behavior: "smooth" }));
-        await sleep(1000);
-        await page.evaluate(() => window.scrollBy({ top: -100, behavior: "smooth" }));
+        // Gentle jitter scroll to trigger real-time Facebook socket updates
+        try {
+          await safeEvaluate(page, () => window.scrollBy({ top: 120, behavior: "smooth" }));
+          await sleep(1000);
+          await safeEvaluate(page, () => window.scrollBy({ top: -120, behavior: "smooth" }));
+        } catch (_) {}
       }
     }
 

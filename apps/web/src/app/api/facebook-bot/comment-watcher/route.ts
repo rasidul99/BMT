@@ -23,6 +23,7 @@ export async function POST(req: NextRequest) {
       checkIntervalSeconds: Number(checkIntervalSeconds) || 15,
       maxChecks: Number(maxChecks) || 30,
       autoReply: Boolean(autoReply),
+      sendInbox: body.sendInbox !== undefined ? Boolean(body.sendInbox) : true,
       headless: Boolean(headless),
     }
 
