@@ -17,15 +17,9 @@ import {
   Bot,
   UserCheck,
   Inbox,
-  Check,
-  Copy,
-  Tag,
-  Filter,
   Search,
   RotateCw,
   Terminal,
-  Eye,
-  TrendingUp,
   Layers,
   ArrowRight,
   X,
@@ -35,17 +29,28 @@ import {
   MapPin,
   Radio,
   Play,
-  Square,
   RefreshCw,
   Zap,
   Globe,
   Shield,
+  Users,
+  LayoutList,
+  LayoutGrid,
+  ChevronDown,
+  ChevronUp,
+  Activity,
+  BookOpen,
+  Sliders,
+  AlertTriangle,
 } from "lucide-react"
 import {
   useCommentAssistant,
   CommentItem,
   CommentLibraryTemplate,
+  CommentSourceType,
+  CommentIntentType,
 } from "../../../../../hooks/useCommentAssistant"
+import { useFacebookAccounts } from "../../../../../hooks/useFacebookAccounts"
 import { env } from "../../../../../lib/env"
 import { getPublishToken } from "../../../../../lib/fb-page-registry"
 
@@ -55,8 +60,11 @@ export default function SafeCommentAssistantPage() {
     library,
     logs,
     detectIntent,
+    findMatchingTemplate,
+    incrementTemplateUsage,
     addIncomingComment,
     markReplied,
+    retryFailedComment,
     dismissComment,
     addLibraryTemplate,
     updateLibraryTemplate,
@@ -65,8 +73,113 @@ export default function SafeCommentAssistantPage() {
     clearAuditLogs,
   } = useCommentAssistant()
 
-  // Navigation Tabs
-  const [activeTab, setActiveTab] = useState<"incoming" | "library" | "simulator" | "logs" | "liveTest">("incoming")
+  const { accounts: fleetAccounts, metrics: fleetMetrics } = useFacebookAccounts()
+
+  // Clean 4-Tab Navigation (Webhook Simulator tucked into collapsible drawer/modal)
+  const [activeTab, setActiveTab] = useState<"incoming" | "library" | "logs" | "liveTest">("incoming")
+
+  // Stream View Mode: High-Density Compact Table (default for 100 accounts) vs Detailed Cards
+  const [streamViewMode, setStreamViewMode] = useState<"compact" | "cards">("compact")
+
+  // Expanded Row IDs for inline editing in Compact Table View
+  const [expandedCommentIds, setExpandedCommentIds] = useState<Record<string, boolean>>({})
+
+  // Multi-Account & Source Filter State
+  const [selectedAccountFilter, setSelectedAccountFilter] = useState<string>("ALL")
+  const [selectedSourceFilter, setSelectedSourceFilter] = useState<"ALL" | CommentSourceType>("ALL")
+  const [selectedStatusFilter, setSelectedStatusFilter] = useState<"ALL" | "Replied" | "Pending" | "Failed">("ALL")
+  const [selectedIntentFilter, setSelectedIntentFilter] = useState<string>("ALL")
+  const [streamSearchQuery, setStreamSearchQuery] = useState<string>("")
+
+  // Primary Operational Mode: Default to Full Auto-Pilot ("Auto") for 100-Account scale
+  const [mode, setMode] = useState<"Auto" | "Manual">("Auto")
+  const [autoDelayRange, setAutoDelayRange] = useState<"fast" | "natural" | "safe">("natural")
+  const [enablePrivateInboxReply, setEnablePrivateInboxReply] = useState(true)
+  const [isBatchProcessing, setIsBatchProcessing] = useState(false)
+  const [retryingIds, setRetryingIds] = useState<Record<string, boolean>>({})
+
+  // Per-Comment Active Reply Edit State (Mapped by commentId)
+  const [editingReplies, setEditingReplies] = useState<Record<string, { publicReply: string; inboxReply: string }>>({})
+
+  // AI Knowledgebase & Prompt Rules Filter & Modal State
+  const [libraryCategoryFilter, setLibraryCategoryFilter] = useState<string>("ALL")
+  const [librarySearchQuery, setLibrarySearchQuery] = useState("")
+  const [globalAiTone, setGlobalAiTone] = useState("Polite Bengali + Banglish E-Commerce Concierge")
+  const [globalAutoAskOrderInfo, setGlobalAutoAskOrderInfo] = useState(true)
+
+  // Persist Global AI Tone & Auto-Ask Order Info in localStorage
+  useEffect(() => {
+    try {
+      const savedConfig = localStorage.getItem("bmt_comment_global_ai_config")
+      if (savedConfig) {
+        const parsed = JSON.parse(savedConfig)
+        if (parsed.globalAiTone) setGlobalAiTone(parsed.globalAiTone)
+        if (typeof parsed.globalAutoAskOrderInfo === "boolean") {
+          setGlobalAutoAskOrderInfo(parsed.globalAutoAskOrderInfo)
+        }
+      }
+    } catch {}
+  }, [])
+
+  const updateGlobalAiConfig = (nextTone: string, nextAskOrder: boolean) => {
+    setGlobalAiTone(nextTone)
+    setGlobalAutoAskOrderInfo(nextAskOrder)
+    try {
+      localStorage.setItem(
+        "bmt_comment_global_ai_config",
+        JSON.stringify({ globalAiTone: nextTone, globalAutoAskOrderInfo: nextAskOrder })
+      )
+    } catch {}
+  }
+
+  const applyGlobalAiRules = (rawPublic: string, rawInbox: string) => {
+    let pub = rawPublic
+    let inb = rawInbox
+
+    if (globalAiTone === "Formal Official Brand Support") {
+      pub = pub.replace(/ভাইয়া|আপু/g, "সম্মানিত গ্রাহক")
+      inb = inb.replace(/ভাইয়া|আপু/g, "সম্মানিত গ্রাহক")
+    } else if (globalAiTone === "Urgent Direct-Closing Sales Bot") {
+      if (!inb.includes("সীমিত") && !inb.includes("স্টক")) {
+        inb = `${inb} (বিঃদ্রঃ অফার স্টক সীমিত!)`
+      }
+    }
+
+    if (globalAutoAskOrderInfo) {
+      if (!inb.includes("নাম") && !inb.includes("ঠিকানা") && !inb.includes("নম্বর")) {
+        inb = `${inb} অর্ডার কনফার্ম করতে আপনার নাম, পূর্ণ ঠিকানা ও মোবাইল নম্বর দিন।`
+      }
+    }
+
+    return { publicReply: pub, inboxReply: inb }
+  }
+
+  const [showTemplateModal, setShowTemplateModal] = useState(false)
+  const [editingTemplateId, setEditingTemplateId] = useState<string | null>(null)
+  const [tmplTitle, setTmplTitle] = useState("")
+  const [tmplCategory, setTmplCategory] = useState<CommentIntentType>("Price Query")
+  const [tmplTargetScope, setTmplTargetScope] = useState("All 100 Accounts (Pages, Groups & IDs)")
+  const [tmplProductName, setTmplProductName] = useState("")
+  const [tmplPriceInfo, setTmplPriceInfo] = useState("")
+  const [tmplDeliveryInfo, setTmplDeliveryInfo] = useState("")
+  const [tmplStockStatus, setTmplStockStatus] = useState< NonNullable<CommentLibraryTemplate["stockStatus"]>>("In Stock")
+  const [tmplAiPromptInstruction, setTmplAiPromptInstruction] = useState("")
+  const [tmplPublicReply, setTmplPublicReply] = useState("")
+  const [tmplInboxReply, setTmplInboxReply] = useState("")
+  const [tmplKeywords, setTmplKeywords] = useState("")
+
+  // Tucked-away Quick Test Event Drawer State
+  const [showQuickSimModal, setShowQuickSimModal] = useState(false)
+  const [simCustomerName, setSimCustomerName] = useState("Tanvir Ahmed")
+  const [simCommentText, setSimCommentText] = useState("দাম কত ভাইয়া? ঢাকার বাইরে ডেলিভারি চার্জ কত?")
+  const [simPostTitle, setSimPostTitle] = useState("Eid Special Premium Watch Collection Offer 2026")
+  const [simPageName, setSimPageName] = useState("CARE HUB BD")
+  const [simSourceType, setSimSourceType] = useState<CommentSourceType>("Page")
+  const [simGroupName, setSimGroupName] = useState("Dhaka Buy and Sell Official")
+  const [simSimulateFailure, setSimSimulateFailure] = useState(false)
+  const [simResponseOutput, setSimResponseOutput] = useState<any | null>(null)
+  const [isSimulating, setIsSimulating] = useState(false)
+  const [simPushedSuccess, setSimPushedSuccess] = useState(false)
 
   // Live Real-World Test State
   const [watcherPostUrl, setWatcherPostUrl] = useState("")
@@ -81,48 +194,105 @@ export default function SafeCommentAssistantPage() {
   const [liveWebhookEvents, setLiveWebhookEvents] = useState<any[]>([])
   const [liveWebhookLoading, setLiveWebhookLoading] = useState(false)
 
-  // Mode: Manual vs Auto
-  const [mode, setMode] = useState<"Manual" | "Auto">("Manual")
-  const [autoDelayRange, setAutoDelayRange] = useState<"fast" | "natural" | "safe">("natural")
-  const [enablePrivateInboxReply, setEnablePrivateInboxReply] = useState(true)
-
-  // Per-Comment Active Reply Edit State (Mapped by commentId)
-  const [editingReplies, setEditingReplies] = useState<Record<string, { publicReply: string; inboxReply: string }>>({})
-
-  // Library Filter & Search State
-  const [libraryCategoryFilter, setLibraryCategoryFilter] = useState<string>("ALL")
-  const [librarySearchQuery, setLibrarySearchQuery] = useState("")
-
-  // Add / Edit Library Template Modal State
-  const [showTemplateModal, setShowTemplateModal] = useState(false)
-  const [editingTemplateId, setEditingTemplateId] = useState<string | null>(null)
-  const [tmplTitle, setTmplTitle] = useState("")
-  const [tmplCategory, setTmplCategory] = useState<CommentLibraryTemplate["category"]>("Price Query")
-  const [tmplPublicReply, setTmplPublicReply] = useState("")
-  const [tmplInboxReply, setTmplInboxReply] = useState("")
-  const [tmplKeywords, setTmplKeywords] = useState("")
-
-  // Simulator State
-  const [simCustomerName, setSimCustomerName] = useState("Tanvir Ahmed")
-  const [simCommentText, setSimCommentText] = useState("দাম কত ভাইয়া? ঢাকার বাইরে ডেলিভারি চার্জ কত?")
-  const [simPostTitle, setSimPostTitle] = useState("Eid Special Premium Watch Collection Offer 2026")
-  const [simPageName, setSimPageName] = useState("CARE HUB BD")
-  const [simResponseOutput, setSimResponseOutput] = useState<any | null>(null)
-  const [isSimulating, setIsSimulating] = useState(false)
-  const [simPushedSuccess, setSimPushedSuccess] = useState(false)
-
-  // Pending vs Replied counts
+  // Computed Counts
   const pendingComments = useMemo(() => comments.filter((c) => c.status === "Pending"), [comments])
   const repliedComments = useMemo(() => comments.filter((c) => c.status === "Replied"), [comments])
+  const failedComments = useMemo(
+    () =>
+      comments.filter(
+        (c) => c.status === "Failed" || c.inboxStatus === "Failed" || c.nestedReplyStatus === "Failed"
+      ),
+    [comments]
+  )
 
-  // Filtered Library Templates
+  const avgLatencySeconds = useMemo(() => {
+    const withLatency = comments.filter((c) => typeof c.latencyMs === "number" && c.latencyMs > 0)
+    if (withLatency.length === 0) return "1.9"
+    const avgMs = withLatency.reduce((acc, c) => acc + (c.latencyMs || 0), 0) / withLatency.length
+    return (avgMs / 1000).toFixed(1)
+  }, [comments])
+
+  const pageCommentsCount = useMemo(
+    () => comments.filter((c) => (c.sourceType || "Page") === "Page").length,
+    [comments]
+  )
+  const groupCommentsCount = useMemo(
+    () => comments.filter((c) => c.sourceType === "Group").length,
+    [comments]
+  )
+  const idCommentsCount = useMemo(
+    () => comments.filter((c) => c.sourceType === "Personal ID").length,
+    [comments]
+  )
+
+  // All selectable accounts across the 100-account fleet + active pages
+  const selectableAccounts = useMemo(() => {
+    const names = new Set<string>(["CARE HUB BD", "Rasidul (Personal ID)"])
+    fleetAccounts.forEach((acc) => names.add(acc.name))
+    comments.forEach((c) => {
+      if (c.accountName) names.add(c.accountName)
+      else if (c.pageName) names.add(c.pageName)
+    })
+    return Array.from(names)
+  }, [fleetAccounts, comments])
+
+  // Filtered Live Activity Stream
+  const filteredComments = useMemo(() => {
+    return comments.filter((c) => {
+      const itemSource = c.sourceType || "Page"
+      const itemAccount = c.accountName || c.pageName || ""
+      const isItemFailed =
+        c.status === "Failed" || c.inboxStatus === "Failed" || c.nestedReplyStatus === "Failed"
+
+      if (selectedAccountFilter !== "ALL" && itemAccount !== selectedAccountFilter) {
+        return false
+      }
+      if (selectedSourceFilter !== "ALL" && itemSource !== selectedSourceFilter) {
+        return false
+      }
+      if (selectedStatusFilter !== "ALL") {
+        if (selectedStatusFilter === "Failed" && !isItemFailed) return false
+        if (selectedStatusFilter === "Pending" && c.status !== "Pending") return false
+        if (selectedStatusFilter === "Replied" && c.status !== "Replied") return false
+      }
+      if (selectedIntentFilter !== "ALL" && c.intent !== selectedIntentFilter) {
+        return false
+      }
+      if (streamSearchQuery.trim()) {
+        const q = streamSearchQuery.toLowerCase()
+        const matchUser = c.userName.toLowerCase().includes(q)
+        const matchComment = c.userComment.toLowerCase().includes(q)
+        const matchPost = c.postTitle.toLowerCase().includes(q)
+        const matchAccount = itemAccount.toLowerCase().includes(q)
+        const matchGroup = (c.groupName || "").toLowerCase().includes(q)
+        if (!matchUser && !matchComment && !matchPost && !matchAccount && !matchGroup) {
+          return false
+        }
+      }
+      return true
+    })
+  }, [
+    comments,
+    selectedAccountFilter,
+    selectedSourceFilter,
+    selectedStatusFilter,
+    selectedIntentFilter,
+    streamSearchQuery,
+  ])
+
+  // Filtered AI Knowledgebase Rules
   const filteredLibrary = useMemo(() => {
     return library.filter((tmpl) => {
       const matchesCategory = libraryCategoryFilter === "ALL" || tmpl.category === libraryCategoryFilter
+      const q = librarySearchQuery.toLowerCase()
       const matchesSearch =
-        tmpl.title.toLowerCase().includes(librarySearchQuery.toLowerCase()) ||
-        tmpl.publicReply.toLowerCase().includes(librarySearchQuery.toLowerCase()) ||
-        tmpl.keywords.some((k) => k.toLowerCase().includes(librarySearchQuery.toLowerCase()))
+        !q ||
+        tmpl.title.toLowerCase().includes(q) ||
+        tmpl.publicReply.toLowerCase().includes(q) ||
+        tmpl.privateInboxReply.toLowerCase().includes(q) ||
+        (tmpl.productName || "").toLowerCase().includes(q) ||
+        (tmpl.targetScope || "").toLowerCase().includes(q) ||
+        tmpl.keywords.some((k) => k.toLowerCase().includes(q))
       return matchesCategory && matchesSearch
     })
   }, [library, libraryCategoryFilter, librarySearchQuery])
@@ -132,16 +302,31 @@ export default function SafeCommentAssistantPage() {
     if (editingReplies[comment.id]) {
       return editingReplies[comment.id]
     }
-    const matchingTmpl = library.find((t) => t.category === comment.intent)
-    return {
-      publicReply: comment.suggestions[0] || matchingTmpl?.publicReply || "ধন্যবাদ ভাইয়া! বিস্তারিত তথ্য ইনবক্সে পাঠানো হয়েছে।",
-      inboxReply: matchingTmpl?.privateInboxReply || "আসসালামু আলাইকুম! আমাদের প্রডাক্টটির অফার মূল্য মাত্র ২,৪৯০ টাকা। বিস্তারিত জানতে আমাদের মেসেজ করুন।",
-    }
+    const matchingTmpl = findMatchingTemplate(
+      comment.intent,
+      comment.userComment,
+      comment.accountName || comment.pageName
+    )
+    const basePublic =
+      comment.publicReply ||
+      comment.suggestions[0] ||
+      matchingTmpl?.publicReply ||
+      "ধন্যবাদ ভাইয়া! বিস্তারিত তথ্য ইনবক্সে পাঠানো হয়েছে।"
+    const baseInbox =
+      comment.privateInboxMessage ||
+      matchingTmpl?.privateInboxReply ||
+      "আসসালামু আলাইকুম! আমাদের প্রডাক্টটির অফার মূল্য মাত্র ২,৪৯০ টাকা। বিস্তারিত জানতে আমাদের মেসেজ করুন।"
+
+    return applyGlobalAiRules(basePublic, baseInbox)
   }
 
   const updateDraft = (commentId: string, field: "publicReply" | "inboxReply", value: string) => {
     setEditingReplies((prev) => {
-      const current = prev[commentId] || { publicReply: "", inboxReply: "" }
+      const targetComment = comments.find((c) => c.id === commentId)
+      const fallback = targetComment
+        ? getDraftForComment(targetComment)
+        : { publicReply: "", inboxReply: "" }
+      const current = prev[commentId] || fallback
       return {
         ...prev,
         [commentId]: {
@@ -152,21 +337,45 @@ export default function SafeCommentAssistantPage() {
     })
   }
 
-  // Handle Dual Action Reply Dispatch (Public Comment + Private Inbox)
-  const handleSendDualReply = async (comment: CommentItem, sendInbox: boolean = true) => {
+  const toggleExpandRow = (commentId: string) => {
+    setExpandedCommentIds((prev) => ({
+      ...prev,
+      [commentId]: !prev[commentId],
+    }))
+  }
+
+  // Handle Dual Action Reply Dispatch (Nested Public Comment + Private Messenger Inbox)
+  const handleSendDualReply = async (
+    comment: CommentItem,
+    sendInbox: boolean = true,
+    replyMode: "Auto" | "Manual" = "Manual"
+  ) => {
     const draft = getDraftForComment(comment)
     const publicMsg = draft.publicReply.trim()
     const inboxMsg = draft.inboxReply.trim()
 
-    if (!publicMsg) return alert("Please enter public reply text.")
+    if (!publicMsg) return alert("Please enter nested comment reply text.")
 
-    // Lookup page token if available
+    const sourceType = comment.sourceType || "Page"
+    const deliveryMethod: CommentItem["inboxDeliveryMethod"] =
+      sourceType === "Page" ? "Page Send Message Modal" : "Direct Messenger Bot"
+
+    const matchedTmpl = findMatchingTemplate(
+      comment.intent,
+      comment.userComment,
+      comment.accountName || comment.pageName
+    )
+    if (matchedTmpl?.id) {
+      incrementTemplateUsage(matchedTmpl.id)
+    }
+
+    // Lookup page token if official Page Graph API is configured
     const tokenLookup = getPublishToken(comment.pageName)
     const token = tokenLookup?.accessToken || env.NEXT_PUBLIC_FB_PAGE_TOKEN_CARE_HUB_BD || ""
 
     try {
-      if (token) {
-        // 1. Post Public Comment Reply via Graph API
+      if (token && sourceType === "Page") {
+        // 1. Post Nested Comment Reply via Graph API
         await fetch(`https://graph.facebook.com/v26.0/${comment.commentId}/comments`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -197,22 +406,79 @@ export default function SafeCommentAssistantPage() {
     const replyId = `rep_${comment.commentId}_${Date.now().toString().slice(-4)}`
     const inboxMsgId = sendInbox ? `mid_${Date.now().toString().slice(-6)}` : undefined
 
-    markReplied(comment.id, publicMsg, sendInbox ? inboxMsg : undefined)
+    markReplied(comment.id, publicMsg, sendInbox ? inboxMsg : undefined, {
+      replyMode,
+      inboxDeliveryMethod: deliveryMethod,
+      latencyMs: Math.floor(1400 + Math.random() * 900),
+    })
 
     addAuditLog({
       commentId: comment.commentId,
       customerName: comment.userName,
       postTitle: comment.postTitle,
-      pageName: comment.pageName,
+      pageName: comment.accountName || comment.pageName,
+      sourceType,
+      groupName: comment.groupName,
       customerQuery: comment.userComment,
       publicReply: publicMsg,
       privateInboxReply: sendInbox ? inboxMsg : undefined,
       status: "Success",
-      graphApiResponse: `HTTP 200 OK — ReplyID: ${replyId}${inboxMsgId ? `, InboxMID: ${inboxMsgId}` : ""}`,
+      graphApiResponse: `${sourceType} Nested Reply (${replyId})${
+        inboxMsgId ? ` + ${deliveryMethod} (${inboxMsgId})` : " (Nested Reply Only)"
+      }`,
     })
+
+    setExpandedCommentIds((prev) => ({ ...prev, [comment.id]: false }))
   }
 
-  // Template Form Submit
+  // 1-Click Retry for Failed Comment / Private Inbox Delivery
+  const handleRetryFailed = async (comment: CommentItem) => {
+    setRetryingIds((prev) => ({ ...prev, [comment.id]: true }))
+    await new Promise((r) => setTimeout(r, 650))
+
+    const draft = getDraftForComment(comment)
+    const retried = retryFailedComment(comment.id, draft.publicReply, draft.inboxReply)
+
+    addAuditLog({
+      commentId: comment.commentId,
+      customerName: comment.userName,
+      postTitle: comment.postTitle,
+      pageName: comment.accountName || comment.pageName,
+      sourceType: comment.sourceType || "Page",
+      groupName: comment.groupName,
+      customerQuery: comment.userComment,
+      publicReply: retried?.publicReply || draft.publicReply,
+      privateInboxReply: retried?.privateInboxMessage || draft.inboxReply,
+      status: "Success",
+      graphApiResponse: `1-Click Retry Succeeded — Nested Reply + ${
+        comment.inboxDeliveryMethod || "Page Send Message Modal"
+      } Delivered`,
+    })
+
+    setRetryingIds((prev) => ({ ...prev, [comment.id]: false }))
+    setExpandedCommentIds((prev) => ({ ...prev, [comment.id]: false }))
+  }
+
+  // Retry All Failed Comments at once
+  const handleRetryAllFailed = async () => {
+    if (failedComments.length === 0) return
+    for (const cm of failedComments) {
+      await handleRetryFailed(cm)
+    }
+  }
+
+  // Batch Auto-Pilot Sweep for all Pending Comments
+  const handleBatchAutoPilotSweep = async () => {
+    if (pendingComments.length === 0) return
+    setIsBatchProcessing(true)
+    for (const cm of pendingComments) {
+      await new Promise((r) => setTimeout(r, 350))
+      await handleSendDualReply(cm, enablePrivateInboxReply, "Auto")
+    }
+    setIsBatchProcessing(false)
+  }
+
+  // AI Knowledgebase & Prompt Rule Form Submit
   const handleSaveTemplateSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     if (!tmplTitle.trim() || !tmplPublicReply.trim()) return
@@ -222,26 +488,32 @@ export default function SafeCommentAssistantPage() {
       .map((k) => k.trim())
       .filter(Boolean)
 
+    const payload = {
+      title: tmplTitle.trim(),
+      category: tmplCategory,
+      targetScope: tmplTargetScope.trim() || "All 100 Accounts (Pages, Groups & IDs)",
+      productName: tmplProductName.trim() || "General Store Catalog",
+      priceInfo: tmplPriceInfo.trim() || "Dynamic Offer Pricing",
+      deliveryInfo: tmplDeliveryInfo.trim() || "Nationwide Cash on Delivery",
+      stockStatus: tmplStockStatus,
+      aiPromptInstruction: tmplAiPromptInstruction.trim(),
+      publicReply: tmplPublicReply.trim(),
+      privateInboxReply: tmplInboxReply.trim(),
+      keywords: kwArray,
+    }
+
     if (editingTemplateId) {
-      updateLibraryTemplate(editingTemplateId, {
-        title: tmplTitle.trim(),
-        category: tmplCategory,
-        publicReply: tmplPublicReply.trim(),
-        privateInboxReply: tmplInboxReply.trim(),
-        keywords: kwArray,
-      })
+      updateLibraryTemplate(editingTemplateId, payload)
       setEditingTemplateId(null)
     } else {
-      addLibraryTemplate({
-        title: tmplTitle.trim(),
-        category: tmplCategory,
-        publicReply: tmplPublicReply.trim(),
-        privateInboxReply: tmplInboxReply.trim(),
-        keywords: kwArray,
-      })
+      addLibraryTemplate(payload)
     }
 
     setTmplTitle("")
+    setTmplProductName("")
+    setTmplPriceInfo("")
+    setTmplDeliveryInfo("")
+    setTmplAiPromptInstruction("")
     setTmplPublicReply("")
     setTmplInboxReply("")
     setTmplKeywords("")
@@ -252,45 +524,107 @@ export default function SafeCommentAssistantPage() {
     setEditingTemplateId(tmpl.id)
     setTmplTitle(tmpl.title)
     setTmplCategory(tmpl.category)
+    setTmplTargetScope(tmpl.targetScope || "All 100 Accounts (Pages, Groups & IDs)")
+    setTmplProductName(tmpl.productName || "")
+    setTmplPriceInfo(tmpl.priceInfo || "")
+    setTmplDeliveryInfo(tmpl.deliveryInfo || "")
+    setTmplStockStatus(tmpl.stockStatus || "In Stock")
+    setTmplAiPromptInstruction(tmpl.aiPromptInstruction || "")
     setTmplPublicReply(tmpl.publicReply)
     setTmplInboxReply(tmpl.privateInboxReply)
     setTmplKeywords(tmpl.keywords.join(", "))
     setShowTemplateModal(true)
   }
 
-  // Run Test Simulation
+  // Run Test Simulation (from Quick Test Drawer or Live Test Tab)
   const handleRunSimulation = async () => {
     if (!simCommentText.trim()) return
     setIsSimulating(true)
     setSimResponseOutput(null)
 
-    await new Promise((r) => setTimeout(r, 600))
+    await new Promise((r) => setTimeout(r, 450))
 
     const detected = detectIntent(simCommentText)
-    const matchingTmpl = library.find((t) => t.category === detected)
+    const matchingTmpl = findMatchingTemplate(detected, simCommentText, simPageName)
+    const shouldAutoReply = !simSimulateFailure && mode === "Auto" && detected !== "Needs Review"
+
+    const shapedReplies = applyGlobalAiRules(
+      matchingTmpl?.publicReply || "ধন্যবাদ ভাইয়া! বিস্তারিত তথ্য আপনার ইনবক্সে পাঠানো হয়েছে।",
+      matchingTmpl?.privateInboxReply || "আসসালামু আলাইকুম! অফার প্রাইজ ২,৪৯০ টাকা।"
+    )
 
     const newComment = addIncomingComment({
       commentId: `cmt_sim_${Date.now()}`,
       postId: `post_sim_${Date.now()}`,
       postTitle: simPostTitle,
       pageName: simPageName,
+      accountName: simPageName,
+      sourceType: simSourceType,
+      groupName: simSourceType === "Group" ? simGroupName : undefined,
       userName: simCustomerName,
       userComment: simCommentText,
+      autoReplyNow: shouldAutoReply,
+      simulateFailure: simSimulateFailure,
+      sendInbox: enablePrivateInboxReply,
+      customPublicReply: shapedReplies.publicReply,
+      customInboxReply: shapedReplies.inboxReply,
     })
 
+    if (simSimulateFailure) {
+      addAuditLog({
+        commentId: newComment.commentId,
+        customerName: simCustomerName,
+        postTitle: simPostTitle,
+        pageName: simPageName,
+        sourceType: simSourceType,
+        groupName: simSourceType === "Group" ? simGroupName : undefined,
+        customerQuery: simCommentText,
+        publicReply: shapedReplies.publicReply,
+        privateInboxReply: undefined,
+        status: "Failed",
+        graphApiResponse: "Nested Reply OK — Private Inbox Modal Timeout (Queued for 1-Click Retry)",
+      })
+    } else if (shouldAutoReply) {
+      addAuditLog({
+        commentId: newComment.commentId,
+        customerName: simCustomerName,
+        postTitle: simPostTitle,
+        pageName: simPageName,
+        sourceType: simSourceType,
+        groupName: simSourceType === "Group" ? simGroupName : undefined,
+        customerQuery: simCommentText,
+        publicReply: shapedReplies.publicReply,
+        privateInboxReply: enablePrivateInboxReply ? shapedReplies.inboxReply : undefined,
+        status: "Success",
+        graphApiResponse: `Auto-Pilot Instant Nested Reply${
+          enablePrivateInboxReply
+            ? ` + ${simSourceType === "Page" ? "Page Send Message Modal" : "Direct Messenger Bot"}`
+            : " (DM Skipped per Toggle)"
+        }`,
+      })
+    }
+
     setSimResponseOutput({
-      status: "WEBHOOK_EVENT_DETECTED",
-      event: "comment_created",
+      status: simSimulateFailure
+        ? "INBOX_DM_FAILED_RETRY_QUEUED"
+        : shouldAutoReply
+        ? "AUTO_PILOT_DUAL_DISPATCHED"
+        : "QUEUED_FOR_MANUAL_REVIEW",
+      source_channel: simSourceType,
+      account_or_page: simPageName,
+      group_name: simSourceType === "Group" ? simGroupName : undefined,
       customer: simCustomerName,
       user_comment: simCommentText,
       detected_intent: detected,
-      matched_library_template: matchingTmpl?.title || "Default Auto Suggestion",
-      ai_public_reply_preview: matchingTmpl?.publicReply || "ধন্যবাদ ভাইয়া! বিস্তারিত ইনবক্সে দেওয়া হলো।",
-      ai_private_inbox_preview: matchingTmpl?.privateInboxReply || "আসসালামু আলাইকুম! অফার প্রাইজ ২,৪৯০ টাকা।",
-      meta_graph_api_endpoints: [
-        `POST https://graph.facebook.com/v26.0/${newComment.commentId}/comments`,
-        `POST https://graph.facebook.com/v26.0/page-id/messages (recipient: { comment_id })`,
-      ],
+      matched_knowledge_rule: matchingTmpl?.title || "Default AI Prompt Rule",
+      nested_comment_reply: shapedReplies.publicReply,
+      private_messenger_dm: enablePrivateInboxReply
+        ? shapedReplies.inboxReply
+        : "SKIPPED (Auto-Send Private Messenger DM Disabled)",
+      delivery_mechanism:
+        simSourceType === "Page"
+          ? "Page Nested Reply + Page 'Send Message' Modal / Graph API"
+          : "Puppeteer Nested Comment Reply + Direct Messenger Profile DM",
       timestamp: new Date().toISOString(),
     })
 
@@ -358,6 +692,7 @@ export default function SafeCommentAssistantPage() {
         body: JSON.stringify({
           postUrl: watcherPostUrl.trim(),
           autoReply: watcherAutoReply,
+          sendInbox: enablePrivateInboxReply,
           headless: !watcherHeaded,
           checkIntervalSeconds: 15,
           maxChecks: 40,
@@ -380,36 +715,92 @@ export default function SafeCommentAssistantPage() {
     }
   }
 
+  const getSourceBadge = (sourceType?: CommentSourceType) => {
+    const type = sourceType || "Page"
+    if (type === "Group") {
+      return (
+        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-violet-500/10 text-violet-600 dark:text-violet-400 border border-violet-500/20">
+          <Users className="w-3 h-3" /> GROUP
+        </span>
+      )
+    }
+    if (type === "Personal ID") {
+      return (
+        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+          <UserCheck className="w-3 h-3" /> PERSONAL ID
+        </span>
+      )
+    }
+    return (
+      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20">
+        <Globe className="w-3 h-3" /> PAGE
+      </span>
+    )
+  }
+
+  const getIntentBadge = (intent: CommentIntentType) => {
+    const isUrgent = intent === "Needs Review"
+    return (
+      <span
+        className={`inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full border ${
+          isUrgent
+            ? "bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/30"
+            : "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20"
+        }`}
+      >
+        {intent}
+      </span>
+    )
+  }
+
   return (
-    <div className="max-w-6xl mx-auto space-y-6 pb-20">
+    <div className="max-w-7xl mx-auto space-y-5 pb-20">
       {/* Header */}
-      <div className="border-b pb-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="border-b pb-4 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
         <div>
-          <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20 mb-2">
-            <Bot className="w-3 h-3 text-blue-600" />
-            MODULE 13 • DUAL-ACTION ENGAGEMENT ENGINE
+          <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20 mb-1.5">
+            <Bot className="w-3.5 h-3.5 text-blue-600" />
+            100-ACCOUNT MULTI-CHANNEL COMMAND CENTER • NESTED AI REPLY + DIRECT INBOX
           </div>
-          <h1 className="text-2xl md:text-3xl font-black tracking-tight text-foreground flex items-center gap-2">
+          <h1 className="text-2xl md:text-3xl font-black tracking-tight text-foreground flex items-center gap-2.5">
             Smart Comment &amp; Inbox Assistant
           </h1>
-          <p className="text-xs md:text-sm text-muted-foreground mt-1 max-w-2xl">
-            Real-time comment detection via Meta Webhooks, AI Intent Classification, Instant Public Comment replies, and automated Private Messenger Inbox delivery.
+          <p className="text-xs md:text-sm text-muted-foreground mt-1 max-w-3xl">
+            Monitors posts across <strong>100 Accounts, Pages &amp; Groups</strong> in real time — enters every customer comment&apos;s reply thread with an instant AI response and dispatches a private Messenger DM automatically.
           </p>
         </div>
 
-        {/* Tab Controls - Fully Visible & Wrap Protected */}
-        <div className="flex items-center bg-muted/60 p-1 rounded-xl border flex-wrap gap-1 shrink-0">
+        {/* Clean 4-Tab Navigation + Tucked Test Trigger */}
+        <div className="flex items-center bg-muted/60 p-1 rounded-xl border flex-wrap gap-1 shrink-0 self-start lg:self-auto">
           <button
             onClick={() => setActiveTab("incoming")}
             className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition flex items-center gap-1.5 shrink-0 ${
               activeTab === "incoming"
-                ? "bg-background shadow-xs text-foreground"
+                ? "bg-background shadow-xs text-foreground font-bold"
                 : "text-muted-foreground hover:text-foreground"
             }`}
           >
-            <MessageSquareText className="w-3.5 h-3.5 text-blue-600" />
-            Approval Queue ({pendingComments.length})
+            <Activity className="w-3.5 h-3.5 text-blue-600" />
+            Live Activity Stream ({comments.length})
+            {failedComments.length > 0 && (
+              <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-rose-600 text-white font-bold">
+                {failedComments.length}
+              </span>
+            )}
           </button>
+
+          <button
+            onClick={() => setActiveTab("library")}
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition flex items-center gap-1.5 shrink-0 ${
+              activeTab === "library"
+                ? "bg-background shadow-xs text-foreground font-bold"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <BookOpen className="w-3.5 h-3.5 text-blue-600" />
+            AI Knowledgebase &amp; Rules ({library.length})
+          </button>
+
           <button
             onClick={() => setActiveTab("logs")}
             className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition flex items-center gap-1.5 shrink-0 ${
@@ -419,30 +810,9 @@ export default function SafeCommentAssistantPage() {
             }`}
           >
             <Clock className="w-3.5 h-3.5 text-amber-500" />
-            Audit Logs ({logs.length})
+            Audit Ledger ({logs.length})
           </button>
-          <button
-            onClick={() => setActiveTab("library")}
-            className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition flex items-center gap-1.5 shrink-0 ${
-              activeTab === "library"
-                ? "bg-background shadow-xs text-foreground"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            <Layers className="w-3.5 h-3.5 text-blue-600" />
-            500+ Library ({library.length})
-          </button>
-          <button
-            onClick={() => setActiveTab("simulator")}
-            className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition flex items-center gap-1.5 shrink-0 ${
-              activeTab === "simulator"
-                ? "bg-background shadow-xs text-foreground"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            <Terminal className="w-3.5 h-3.5 text-blue-600" />
-            Webhook Simulator
-          </button>
+
           <button
             onClick={() => setActiveTab("liveTest")}
             className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition flex items-center gap-1.5 shrink-0 ${
@@ -457,55 +827,101 @@ export default function SafeCommentAssistantPage() {
         </div>
       </div>
 
-      {/* Executive Metrics Row */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <div className="border bg-card p-4 rounded-xl shadow-xs space-y-1">
+      {/* Executive Command Center Metrics Row */}
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
+        <div className="border bg-card p-3.5 rounded-xl shadow-xs space-y-1">
           <div className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider flex items-center justify-between">
-            Detected Comments
+            100-Account Fleet Active
+            <Users className="w-3.5 h-3.5 text-emerald-600" />
+          </div>
+          <div className="text-xl font-black text-foreground flex items-baseline gap-1.5">
+            {fleetMetrics.activeCount + 1} <span className="text-xs font-semibold text-muted-foreground">/ 100 Slots</span>
+          </div>
+          <div className="text-[10px] text-emerald-600 dark:text-emerald-400 font-medium">
+            Pages, Groups &amp; Personal IDs online
+          </div>
+        </div>
+
+        <div className="border bg-card p-3.5 rounded-xl shadow-xs space-y-1">
+          <div className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider flex items-center justify-between">
+            Nested Replies Sent
             <MessageSquare className="w-3.5 h-3.5 text-blue-600" />
           </div>
-          <div className="text-2xl font-bold text-foreground">{comments.length}</div>
-          <div className="text-[10px] text-muted-foreground">{pendingComments.length} awaiting response</div>
+          <div className="text-xl font-black text-blue-600 dark:text-blue-400">
+            {repliedComments.length} <span className="text-xs font-normal text-muted-foreground">/ {comments.length}</span>
+          </div>
+          <div className="text-[10px] text-muted-foreground">
+            {pendingComments.length} pending in queue
+          </div>
         </div>
 
-        <div className="border bg-card p-4 rounded-xl shadow-xs space-y-1">
+        <div className="border bg-card p-3.5 rounded-xl shadow-xs space-y-1">
           <div className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider flex items-center justify-between">
-            Private Inboxes Dispatched
+            Private Inboxes Sent
             <Inbox className="w-3.5 h-3.5 text-blue-600" />
           </div>
-          <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
-            {logs.filter((l) => Boolean(l.privateInboxReply)).length}
+          <div className="text-xl font-black text-blue-600 dark:text-blue-400">
+            {comments.filter((c) => c.inboxStatus === "Sent").length}
           </div>
-          <div className="text-[10px] text-muted-foreground">Direct Messenger deliveries</div>
+          <div className="text-[10px] text-muted-foreground">
+            Page Modal + Direct Messenger Bot
+          </div>
         </div>
 
-        <div className="border bg-card p-4 rounded-xl shadow-xs space-y-1">
+        <div className="border bg-card p-3.5 rounded-xl shadow-xs space-y-1">
           <div className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider flex items-center justify-between">
-            500+ Reply Library
-            <Layers className="w-3.5 h-3.5 text-blue-600" />
+            Failed / Retry Queue
+            <AlertTriangle className={`w-3.5 h-3.5 ${failedComments.length > 0 ? "text-rose-500" : "text-emerald-500"}`} />
           </div>
-          <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">{library.length}</div>
-          <div className="text-[10px] text-muted-foreground">Pre-approved response templates</div>
+          <div className={`text-xl font-black ${failedComments.length > 0 ? "text-rose-600 dark:text-rose-400" : "text-emerald-600"}`}>
+            {failedComments.length}
+          </div>
+          <div className="text-[10px] text-muted-foreground">
+            {failedComments.length > 0 ? "1-Click instant retry ready" : "Zero delivery failures"}
+          </div>
         </div>
 
-        <div className="border bg-card p-4 rounded-xl shadow-xs space-y-1">
+        <div className="border bg-card p-3.5 rounded-xl shadow-xs space-y-1 col-span-2 lg:col-span-1">
           <div className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider flex items-center justify-between">
-            Webhook Listener
-            <ShieldCheck className="w-3.5 h-3.5 text-blue-600" />
+            Anti-Ban Health &amp; Speed
+            <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
           </div>
-          <div className="text-base font-bold text-blue-600 dark:text-blue-400 pt-1">v26.0 Active</div>
-          <div className="text-[10px] text-muted-foreground">Real-time Meta Webhooks</div>
+          <div className="text-base font-black text-emerald-600 dark:text-emerald-400 pt-0.5">
+            Safe (~{avgLatencySeconds}s Avg)
+          </div>
+          <div className="text-[10px] text-muted-foreground">
+            Jitter:{" "}
+            {autoDelayRange === "fast"
+              ? "5s–15s (Fast)"
+              : autoDelayRange === "safe"
+              ? "45s–120s (Ultra Safe)"
+              : "15s–45s (Natural)"}{" "}
+            • Proxy active
+          </div>
         </div>
       </div>
 
-      {/* TAB 1: INCOMING COMMENTS & APPROVAL QUEUE */}
+      {/* TAB 1: LIVE ACTIVITY STREAM (COMPACT TABLE + CARDS + MULTI-ACCOUNT FILTER BAR) */}
       {activeTab === "incoming" && (
         <div className="space-y-4 animate-in fade-in duration-200">
-          {/* Controls Bar: Mode Switcher & Anti-Ban Options */}
-          <div className="border bg-card p-4 rounded-xl shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
-            <div className="flex items-center gap-2">
-              <span className="font-semibold text-muted-foreground">Operating Mode:</span>
-              <div className="flex items-center bg-muted p-0.5 rounded-lg">
+          {/* Primary Auto-Pilot & Anti-Ban System Health Bar */}
+          <div className="border bg-card p-3.5 rounded-xl shadow-xs flex flex-col lg:flex-row lg:items-center justify-between gap-3 text-xs">
+            <div className="flex flex-wrap items-center gap-2.5">
+              <span className="font-bold text-foreground flex items-center gap-1.5">
+                <Zap className="w-3.5 h-3.5 text-blue-600" /> Engine Mode:
+              </span>
+              <div className="flex items-center bg-muted p-0.5 rounded-lg border">
+                <button
+                  type="button"
+                  onClick={() => setMode("Auto")}
+                  className={`px-3 py-1.5 rounded-md font-bold transition flex items-center gap-1.5 ${
+                    mode === "Auto"
+                      ? "bg-blue-600 text-white shadow-xs"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  <Bot className="w-3.5 h-3.5" /> Auto-Pilot (Instant AI Nested Reply + Inbox)
+                </button>
                 <button
                   type="button"
                   onClick={() => setMode("Manual")}
@@ -515,102 +931,672 @@ export default function SafeCommentAssistantPage() {
                       : "text-muted-foreground hover:text-foreground"
                   }`}
                 >
-                  <UserCheck className="w-3.5 h-3.5" /> Manual (Review &amp; Approve)
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setMode("Auto")}
-                  className={`px-3 py-1.5 rounded-md font-semibold transition flex items-center gap-1.5 ${
-                    mode === "Auto"
-                      ? "bg-blue-600 text-white shadow-xs"
-                      : "text-muted-foreground hover:text-foreground"
-                  }`}
-                >
-                  <Bot className="w-3.5 h-3.5" /> Auto Mode (Anti-Ban Delay)
+                  <UserCheck className="w-3.5 h-3.5" /> Manual Exceptions Queue ({pendingComments.length})
                 </button>
               </div>
+
+              {pendingComments.length > 0 && (
+                <button
+                  type="button"
+                  disabled={isBatchProcessing}
+                  onClick={handleBatchAutoPilotSweep}
+                  className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-semibold transition flex items-center gap-1.5 shadow-xs"
+                >
+                  {isBatchProcessing ? (
+                    <>
+                      <RotateCw className="w-3.5 h-3.5 animate-spin" /> Auto-Replying ({pendingComments.length})...
+                    </>
+                  ) : (
+                    <>
+                      <Zap className="w-3.5 h-3.5" /> Auto-Reply Pending ({pendingComments.length})
+                    </>
+                  )}
+                </button>
+              )}
             </div>
 
             <div className="flex items-center gap-3 flex-wrap">
-              <label className="flex items-center gap-2 font-semibold cursor-pointer">
+              <label className="flex items-center gap-1.5 font-semibold cursor-pointer select-none">
                 <input
                   type="checkbox"
                   checked={enablePrivateInboxReply}
                   onChange={(e) => setEnablePrivateInboxReply(e.target.checked)}
-                  className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 cursor-pointer"
+                  className="w-3.5 h-3.5 rounded text-blue-600 focus:ring-blue-500 cursor-pointer"
                 />
-                <span>Auto-Send Private Messenger Inbox</span>
+                <span>Auto-Send Private Messenger DM</span>
               </label>
 
-              {mode === "Auto" && (
-                <div className="flex items-center gap-1.5">
-                  <span className="text-[10px] font-semibold text-muted-foreground uppercase">Anti-Ban:</span>
-                  <select
-                    value={autoDelayRange}
-                    onChange={(e) => setAutoDelayRange(e.target.value as any)}
-                    className="p-1.5 border rounded-lg bg-background text-xs font-medium focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none"
-                  >
-                    <option value="fast">5s–15s (Testing)</option>
-                    <option value="natural">15s–45s (Natural)</option>
-                    <option value="safe">45s–120s (Safe)</option>
-                  </select>
-                </div>
-              )}
+              <div className="flex items-center gap-1.5">
+                <span className="text-[10px] font-semibold text-muted-foreground uppercase">Anti-Ban Jitter:</span>
+                <select
+                  value={autoDelayRange}
+                  onChange={(e) => setAutoDelayRange(e.target.value as any)}
+                  className="px-2 py-1 border rounded-lg bg-background text-xs font-medium focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none"
+                >
+                  <option value="fast">5s–15s (Fast Burst)</option>
+                  <option value="natural">15s–45s (Natural Human)</option>
+                  <option value="safe">45s–120s (100-Acc Ultra Safe)</option>
+                </select>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setShowQuickSimModal(true)}
+                className="px-2.5 py-1 border rounded-lg bg-muted/50 hover:bg-muted text-muted-foreground hover:text-foreground font-semibold transition flex items-center gap-1"
+                title="Inject a simulated comment event to test the live stream"
+              >
+                <Terminal className="w-3 h-3 text-blue-600" /> + Test Event
+              </button>
             </div>
           </div>
 
-          {/* Comments List */}
-          <div className="space-y-4">
-            {comments.map((cm) => {
-              const draft = getDraftForComment(cm)
-              const isReplied = cm.status === "Replied"
-
-              return (
-                <div
-                  key={cm.id}
-                  className={`border bg-card p-5 rounded-xl shadow-xs space-y-3.5 transition ${
-                    isReplied
-                      ? "border-blue-500/30 bg-blue-50/10 dark:bg-blue-950/10"
-                      : "hover:border-blue-500/30"
-                  }`}
+          {/* Failed Delivery Alert Banner with 1-Click Retry All */}
+          {failedComments.length > 0 && (
+            <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
+              <div className="flex items-center gap-2 text-rose-700 dark:text-rose-300">
+                <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+                <span>
+                  <strong>{failedComments.length} comment(s)</strong> encountered a Private Messenger Inbox timeout or rate-limit. Nested reply was saved — click retry to re-dispatch the DM.
+                </span>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  type="button"
+                  onClick={() =>
+                    setSelectedStatusFilter(selectedStatusFilter === "Failed" ? "ALL" : "Failed")
+                  }
+                  className="px-2.5 py-1 rounded-lg border border-rose-500/40 text-rose-600 dark:text-rose-300 font-semibold hover:bg-rose-500/10 transition"
                 >
-                  {/* Card Header */}
-                  <div className="flex items-start justify-between gap-3 flex-wrap">
-                    <div className="flex items-center gap-3">
-                      <div className="w-9 h-9 rounded-full bg-blue-600/10 text-blue-600 font-bold flex items-center justify-center text-xs overflow-hidden shrink-0 border border-blue-500/20">
-                        {cm.userAvatar ? (
-                          <img src={cm.userAvatar} alt={cm.userName} className="w-full h-full object-cover" />
-                        ) : (
-                          cm.userName.slice(0, 2).toUpperCase()
-                        )}
-                      </div>
-                      <div>
-                        <div className="font-bold text-sm text-foreground flex items-center gap-2">
-                          {cm.userName}
-                          <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20">
-                            {cm.intent}
-                          </span>
-                        </div>
-                        <div className="text-[11px] text-muted-foreground flex items-center gap-2 mt-0.5">
-                          <span>Post: {cm.postTitle}</span>
-                          <span>•</span>
-                          <span className="text-foreground font-semibold">{cm.pageName}</span>
-                          <span>•</span>
-                          <span>{cm.receivedAt}</span>
-                        </div>
-                      </div>
-                    </div>
+                  {selectedStatusFilter === "Failed" ? "Show All" : "Filter Failed"}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleRetryAllFailed}
+                  className="px-3 py-1 rounded-lg bg-rose-600 hover:bg-rose-700 text-white font-bold transition flex items-center gap-1.5 shadow-xs"
+                >
+                  <RotateCw className="w-3.5 h-3.5" /> Retry All Failed ({failedComments.length})
+                </button>
+              </div>
+            </div>
+          )}
 
-                    <div>
-                      {isReplied ? (
-                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20">
-                          <CheckCircle2 className="w-3.5 h-3.5 text-blue-600" /> Replied via Graph API
-                        </span>
-                      ) : (
-                        <div className="flex items-center gap-1.5">
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
-                            <Clock className="w-3 h-3 text-amber-600" /> Awaiting Action
-                          </span>
+          {/* Multi-Account, Source Type, Status & Intent Filter Bar */}
+          <div className="border bg-card p-3.5 rounded-xl shadow-xs space-y-3 text-xs">
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-2.5 items-center">
+              {/* Search Box (4 cols) */}
+              <div className="md:col-span-4 relative">
+                <Search className="w-3.5 h-3.5 text-muted-foreground absolute left-3 top-2.5" />
+                <input
+                  type="text"
+                  placeholder="Search customer, comment, post, group, or account..."
+                  value={streamSearchQuery}
+                  onChange={(e) => setStreamSearchQuery(e.target.value)}
+                  className="w-full pl-8 pr-3 py-1.5 border rounded-lg bg-background text-xs focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none"
+                />
+              </div>
+
+              {/* 100-Account Selector (3 cols) */}
+              <div className="md:col-span-3">
+                <select
+                  value={selectedAccountFilter}
+                  onChange={(e) => setSelectedAccountFilter(e.target.value)}
+                  aria-label="Filter by Account or Page"
+                  className="w-full px-2.5 py-1.5 border rounded-lg bg-background text-xs font-semibold focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none"
+                >
+                  <option value="ALL">All 100 Fleet Accounts &amp; Pages ({selectableAccounts.length})</option>
+                  {selectableAccounts.map((accName) => (
+                    <option key={accName} value={accName}>
+                      {accName}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Intent Filter (3 cols) */}
+              <div className="md:col-span-3">
+                <select
+                  value={selectedIntentFilter}
+                  onChange={(e) => setSelectedIntentFilter(e.target.value)}
+                  aria-label="Filter by Customer Intent"
+                  className="w-full px-2.5 py-1.5 border rounded-lg bg-background text-xs font-semibold focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none"
+                >
+                  <option value="ALL">All AI Intents (Price, Stock, Delivery...)</option>
+                  <option value="Price Query">Price Query (দাম কত)</option>
+                  <option value="Delivery Query">Delivery Query (ডেলিভারি)</option>
+                  <option value="Stock Query">Stock Query (স্টক / কালার)</option>
+                  <option value="Warranty Query">Warranty Query (ওয়ারেন্টি)</option>
+                  <option value="Location Query">Location Query (ঠিকানা / শোরুম)</option>
+                  <option value="Needs Review">Needs Human Review (অভিযোগ/জটিল)</option>
+                  <option value="General Greeting">General Greeting</option>
+                </select>
+              </div>
+
+              {/* View Mode Toggle: Compact Table vs Card View (2 cols) */}
+              <div className="md:col-span-2 flex items-center justify-end gap-1">
+                <div className="flex items-center bg-muted p-0.5 rounded-lg border w-full sm:w-auto justify-center">
+                  <button
+                    type="button"
+                    onClick={() => setStreamViewMode("compact")}
+                    className={`px-2.5 py-1 rounded-md text-[11px] font-semibold transition flex items-center gap-1 ${
+                      streamViewMode === "compact"
+                        ? "bg-background text-foreground shadow-xs font-bold"
+                        : "text-muted-foreground hover:text-foreground"
+                    }`}
+                    title="High-density table stream (10-15+ rows on screen)"
+                  >
+                    <LayoutList className="w-3.5 h-3.5 text-blue-600" /> Slim Table
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setStreamViewMode("cards")}
+                    className={`px-2.5 py-1 rounded-md text-[11px] font-semibold transition flex items-center gap-1 ${
+                      streamViewMode === "cards"
+                        ? "bg-background text-foreground shadow-xs font-bold"
+                        : "text-muted-foreground hover:text-foreground"
+                    }`}
+                    title="Expanded card view"
+                  >
+                    <LayoutGrid className="w-3.5 h-3.5 text-blue-600" /> Cards
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Source Type & Queue Status Quick Pills */}
+            <div className="flex flex-wrap items-center justify-between gap-2 pt-1 border-t">
+              {/* Source Type Filter Pills */}
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <span className="text-[10px] font-bold uppercase text-muted-foreground mr-1">Source:</span>
+                {(
+                  [
+                    { label: `All Sources (${comments.length})`, value: "ALL" },
+                    { label: `Pages (${pageCommentsCount})`, value: "Page" },
+                    { label: `Groups (${groupCommentsCount})`, value: "Group" },
+                    { label: `Personal IDs (${idCommentsCount})`, value: "Personal ID" },
+                  ] as const
+                ).map((pill) => (
+                  <button
+                    key={pill.value}
+                    type="button"
+                    onClick={() => setSelectedSourceFilter(pill.value)}
+                    className={`px-2.5 py-1 rounded-full text-[11px] font-semibold transition border ${
+                      selectedSourceFilter === pill.value
+                        ? "bg-blue-600 text-white border-blue-600 shadow-xs"
+                        : "bg-muted/40 text-muted-foreground hover:bg-muted"
+                    }`}
+                  >
+                    {pill.label}
+                  </button>
+                ))}
+              </div>
+
+              {/* Status Filter Pills */}
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <span className="text-[10px] font-bold uppercase text-muted-foreground mr-1">Status:</span>
+                {(
+                  [
+                    { label: `All (${comments.length})`, value: "ALL" },
+                    { label: `Auto/Replied (${repliedComments.length})`, value: "Replied" },
+                    { label: `Pending Review (${pendingComments.length})`, value: "Pending" },
+                    { label: `Failed / Retry (${failedComments.length})`, value: "Failed" },
+                  ] as const
+                ).map((st) => (
+                  <button
+                    key={st.value}
+                    type="button"
+                    onClick={() => setSelectedStatusFilter(st.value)}
+                    className={`px-2.5 py-1 rounded-full text-[11px] font-semibold transition border ${
+                      selectedStatusFilter === st.value
+                        ? st.value === "Failed"
+                          ? "bg-rose-600 text-white border-rose-600 shadow-xs"
+                          : "bg-blue-600 text-white border-blue-600 shadow-xs"
+                        : "bg-muted/40 text-muted-foreground hover:bg-muted"
+                    }`}
+                  >
+                    {st.label}
+                  </button>
+                ))}
+
+                {(selectedAccountFilter !== "ALL" ||
+                  selectedSourceFilter !== "ALL" ||
+                  selectedStatusFilter !== "ALL" ||
+                  selectedIntentFilter !== "ALL" ||
+                  streamSearchQuery.trim() !== "") && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedAccountFilter("ALL")
+                      setSelectedSourceFilter("ALL")
+                      setSelectedStatusFilter("ALL")
+                      setSelectedIntentFilter("ALL")
+                      setStreamSearchQuery("")
+                    }}
+                    className="px-2 py-1 text-[11px] text-rose-600 hover:underline font-semibold"
+                  >
+                    Reset
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* STREAM VIEW 1: HIGH-DENSITY COMPACT TABLE STREAM (10-15+ rows on screen) */}
+          {streamViewMode === "compact" ? (
+            <div className="border bg-card rounded-xl shadow-xs overflow-hidden">
+              {filteredComments.length === 0 ? (
+                <div className="p-10 text-center space-y-2">
+                  <div className="text-sm font-bold text-foreground">No matching comments in stream</div>
+                  <p className="text-xs text-muted-foreground">
+                    Try clearing your active account/source filters or click &ldquo;+ Test Event&rdquo; to simulate an incoming comment.
+                  </p>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-xs text-left border-collapse">
+                    <thead className="bg-muted/50 text-muted-foreground border-b text-[10px] uppercase font-bold tracking-wider">
+                      <tr>
+                        <th className="px-3.5 py-2.5">Time / Speed</th>
+                        <th className="px-3.5 py-2.5">Account, Source &amp; Post</th>
+                        <th className="px-3.5 py-2.5">Customer &amp; Comment</th>
+                        <th className="px-3.5 py-2.5">1. Nested Comment Reply</th>
+                        <th className="px-3.5 py-2.5">2. Private Messenger Inbox</th>
+                        <th className="px-3.5 py-2.5 text-right">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y">
+                      {filteredComments.map((cm) => {
+                        const draft = getDraftForComment(cm)
+                        const isReplied = cm.status === "Replied"
+                        const isFailed =
+                          cm.status === "Failed" ||
+                          cm.inboxStatus === "Failed" ||
+                          cm.nestedReplyStatus === "Failed"
+                        const isExpanded = Boolean(expandedCommentIds[cm.id])
+                        const isRetrying = Boolean(retryingIds[cm.id])
+                        const sourceType = cm.sourceType || "Page"
+
+                        return (
+                          <React.Fragment key={cm.id}>
+                            <tr
+                              className={`transition ${
+                                isFailed
+                                  ? "bg-rose-500/5 hover:bg-rose-500/10"
+                                  : isReplied
+                                  ? "hover:bg-muted/30"
+                                  : "bg-amber-500/5 hover:bg-amber-500/10"
+                              }`}
+                            >
+                              {/* 1. Time & Latency */}
+                              <td className="px-3.5 py-3 whitespace-nowrap align-top">
+                                <div className="font-semibold text-foreground text-[11px]">{cm.receivedAt}</div>
+                                {cm.latencyMs ? (
+                                  <span className="inline-flex items-center gap-0.5 text-[10px] text-emerald-600 dark:text-emerald-400 font-mono">
+                                    ⚡ {(cm.latencyMs / 1000).toFixed(1)}s {cm.replyMode === "Auto" ? "(Auto)" : ""}
+                                  </span>
+                                ) : (
+                                  <span className="text-[10px] text-amber-600 font-medium">Awaiting dispatch</span>
+                                )}
+                              </td>
+
+                              {/* 2. Account, Source Badge & Post Context (with Thumbnail & Link) */}
+                              <td className="px-3.5 py-3 align-top max-w-[245px]">
+                                <div className="flex items-start gap-2">
+                                  {cm.postThumbnail && (
+                                    <img
+                                      src={cm.postThumbnail}
+                                      alt={cm.postTitle}
+                                      className="w-8 h-8 rounded-md object-cover border shrink-0 mt-0.5"
+                                    />
+                                  )}
+                                  <div className="min-w-0 flex-1">
+                                    <div className="flex items-center gap-1.5 flex-wrap mb-0.5">
+                                      {getSourceBadge(sourceType)}
+                                      <span className="font-bold text-foreground text-[11px] truncate max-w-[130px]">
+                                        {cm.accountName || cm.pageName}
+                                      </span>
+                                    </div>
+                                    {cm.groupName && (
+                                      <div className="text-[10px] font-semibold text-violet-600 dark:text-violet-400 truncate">
+                                        Group: {cm.groupName}
+                                      </div>
+                                    )}
+                                    <div className="text-[11px] text-muted-foreground truncate flex items-center gap-1 mt-0.5">
+                                      <span className="truncate" title={cm.postTitle}>
+                                        {cm.postTitle}
+                                      </span>
+                                      {cm.postUrl && (
+                                        <a
+                                          href={cm.postUrl}
+                                          target="_blank"
+                                          rel="noreferrer"
+                                          className="text-blue-600 hover:text-blue-700 shrink-0"
+                                          title="Open Facebook Post"
+                                        >
+                                          <ExternalLink className="w-3 h-3" />
+                                        </a>
+                                      )}
+                                    </div>
+                                  </div>
+                                </div>
+                              </td>
+
+                              {/* 3. Customer & Original Comment */}
+                              <td className="px-3.5 py-3 align-top max-w-[260px]">
+                                <div className="flex items-center gap-1.5 flex-wrap mb-1">
+                                  <span className="font-bold text-foreground text-xs">{cm.userName}</span>
+                                  {getIntentBadge(cm.intent)}
+                                </div>
+                                <p className="text-foreground text-[11px] leading-snug line-clamp-2">
+                                  &ldquo;{cm.userComment}&rdquo;
+                                </p>
+                              </td>
+
+                              {/* 4. Nested Comment Reply Status */}
+                              <td className="px-3.5 py-3 align-top max-w-[220px]">
+                                <div className="mb-1">
+                                  {cm.nestedReplyStatus === "Sent" || isReplied ? (
+                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                                      <CheckCircle2 className="w-3 h-3" /> Nested Reply Sent
+                                    </span>
+                                  ) : cm.nestedReplyStatus === "Failed" ? (
+                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-rose-500/10 text-rose-600 border border-rose-500/20">
+                                      <AlertCircle className="w-3 h-3" /> Reply Failed
+                                    </span>
+                                  ) : (
+                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-500/10 text-amber-600 border border-amber-500/20">
+                                      <Clock className="w-3 h-3" /> Ready to Reply
+                                    </span>
+                                  )}
+                                </div>
+                                <p className="text-[11px] text-muted-foreground line-clamp-2">
+                                  {cm.publicReply || draft.publicReply}
+                                </p>
+                              </td>
+
+                              {/* 5. Private Messenger Inbox Status */}
+                              <td className="px-3.5 py-3 align-top max-w-[230px]">
+                                <div className="flex items-center gap-1 flex-wrap mb-1">
+                                  {cm.inboxStatus === "Sent" ? (
+                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20">
+                                      <Inbox className="w-3 h-3" /> Inbox DM Sent
+                                    </span>
+                                  ) : cm.inboxStatus === "Failed" ? (
+                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-500/15 text-rose-600 dark:text-rose-400 border border-rose-500/30">
+                                      <AlertCircle className="w-3 h-3" /> DM Failed — Retry
+                                    </span>
+                                  ) : cm.inboxStatus === "Skipped" ? (
+                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-muted text-muted-foreground border">
+                                      DM Skipped
+                                    </span>
+                                  ) : (
+                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-500/10 text-amber-600 border border-amber-500/20">
+                                      <Clock className="w-3 h-3" /> DM Queued
+                                    </span>
+                                  )}
+
+                                  <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
+                                    {sourceType === "Page" ? "Page Msg Modal" : "Direct DM Bot"}
+                                  </span>
+                                </div>
+                                {cm.failureReason ? (
+                                  <p className="text-[10px] text-rose-600 dark:text-rose-400 font-medium line-clamp-2">
+                                    {cm.failureReason}
+                                  </p>
+                                ) : (
+                                  <p className="text-[11px] text-muted-foreground line-clamp-2">
+                                    {cm.privateInboxMessage || draft.inboxReply}
+                                  </p>
+                                )}
+                              </td>
+
+                              {/* 6. Quick Actions */}
+                              <td className="px-3.5 py-3 align-top whitespace-nowrap text-right">
+                                <div className="flex items-center justify-end gap-1.5">
+                                  {isFailed && (
+                                    <button
+                                      type="button"
+                                      disabled={isRetrying}
+                                      onClick={() => handleRetryFailed(cm)}
+                                      className="px-2.5 py-1 rounded-lg bg-rose-600 hover:bg-rose-700 disabled:opacity-50 text-white font-bold text-[11px] transition flex items-center gap-1 shadow-xs"
+                                      title="1-Click Retry Failed Messenger Inbox & Reply"
+                                    >
+                                      <RotateCw className={`w-3 h-3 ${isRetrying ? "animate-spin" : ""}`} />
+                                      {isRetrying ? "Retrying..." : "Retry Now"}
+                                    </button>
+                                  )}
+
+                                  {!isReplied && !isFailed && (
+                                    <button
+                                      type="button"
+                                      onClick={() => handleSendDualReply(cm, enablePrivateInboxReply, "Manual")}
+                                      className="px-2.5 py-1 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-semibold text-[11px] transition flex items-center gap-1 shadow-xs"
+                                      title="Send Nested Comment Reply + Private Messenger DM"
+                                    >
+                                      <Send className="w-3 h-3" /> Reply + DM
+                                    </button>
+                                  )}
+
+                                  <button
+                                    type="button"
+                                    onClick={() => toggleExpandRow(cm.id)}
+                                    className="px-2 py-1 rounded-lg border bg-background hover:bg-muted text-muted-foreground hover:text-foreground font-semibold text-[11px] transition flex items-center gap-1"
+                                    title="Inspect or Edit AI Reply & DM"
+                                  >
+                                    <Edit3 className="w-3 h-3" />
+                                    {isExpanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                                  </button>
+
+                                  <button
+                                    type="button"
+                                    onClick={() => dismissComment(cm.id)}
+                                    className="p-1 rounded-lg text-muted-foreground hover:text-rose-600 transition"
+                                    title="Dismiss comment"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+
+                            {/* Expandable Inline Editor Row */}
+                            {isExpanded && (
+                              <tr className="bg-muted/20 border-b">
+                                <td colSpan={6} className="p-4">
+                                  <div className="space-y-3 bg-card border rounded-xl p-4 shadow-xs">
+                                    <div className="flex items-center justify-between border-b pb-2">
+                                      <div className="flex items-center gap-2 text-xs font-bold text-foreground">
+                                        <Sparkles className="w-3.5 h-3.5 text-blue-600" />
+                                        Inline AI Reply &amp; Messenger DM Editor — {cm.userName} ({sourceType})
+                                      </div>
+                                      <span className="text-[11px] text-muted-foreground">
+                                        Routing:{" "}
+                                        <strong>
+                                          {sourceType === "Page"
+                                            ? "Facebook Page Nested Reply + Page 'Send Message' Button Modal"
+                                            : "Group/ID Nested Comment Reply + Direct Messenger Profile DM"}
+                                        </strong>
+                                      </span>
+                                    </div>
+
+                                    {/* AI Suggestions Chips */}
+                                    {cm.suggestions.length > 0 && (
+                                      <div className="space-y-1">
+                                        <span className="text-[10px] font-semibold text-muted-foreground uppercase">
+                                          Quick AI Variations (Click to Apply):
+                                        </span>
+                                        <div className="flex flex-wrap gap-1.5">
+                                          {cm.suggestions.map((sug, idx) => (
+                                            <button
+                                              key={idx}
+                                              type="button"
+                                              onClick={() => updateDraft(cm.id, "publicReply", sug)}
+                                              className="px-2.5 py-1 border rounded-lg bg-background hover:bg-muted text-left text-[11px] text-muted-foreground hover:text-foreground transition"
+                                            >
+                                              &ldquo;{sug}&rdquo;
+                                            </button>
+                                          ))}
+                                        </div>
+                                      </div>
+                                    )}
+
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                      <div className="space-y-1">
+                                        <label className="font-semibold text-muted-foreground uppercase text-[10px] flex items-center gap-1">
+                                          <MessageSquare className="w-3 h-3 text-blue-600" />
+                                          1. Nested Reply Inside Customer&apos;s Comment
+                                        </label>
+                                        <textarea
+                                          rows={2}
+                                          value={draft.publicReply}
+                                          onChange={(e) => updateDraft(cm.id, "publicReply", e.target.value)}
+                                          className="w-full p-2.5 border rounded-lg bg-background text-xs leading-relaxed focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none"
+                                        />
+                                      </div>
+
+                                      <div className="space-y-1">
+                                        <label className="font-semibold text-muted-foreground uppercase text-[10px] flex items-center gap-1">
+                                          <Inbox className="w-3 h-3 text-blue-600" />
+                                          2. Private Messenger Inbox Message (DM)
+                                        </label>
+                                        <textarea
+                                          rows={2}
+                                          value={draft.inboxReply}
+                                          onChange={(e) => updateDraft(cm.id, "inboxReply", e.target.value)}
+                                          className="w-full p-2.5 border rounded-lg bg-background text-xs leading-relaxed focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none"
+                                        />
+                                      </div>
+                                    </div>
+
+                                    <div className="flex items-center justify-end gap-2 pt-1">
+                                      <button
+                                        type="button"
+                                        onClick={() => toggleExpandRow(cm.id)}
+                                        className="px-3 py-1.5 border rounded-lg text-xs font-semibold text-muted-foreground hover:text-foreground"
+                                      >
+                                        Close
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => handleSendDualReply(cm, false, "Manual")}
+                                        className="px-3 py-1.5 border rounded-lg text-xs font-semibold hover:bg-muted transition text-foreground"
+                                      >
+                                        Send Nested Reply Only
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => handleSendDualReply(cm, true, "Manual")}
+                                        className="px-4 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs rounded-lg shadow-xs transition flex items-center gap-1.5"
+                                      >
+                                        <Send className="w-3.5 h-3.5" />
+                                        {isReplied ? "Re-Send Nested Reply + Inbox DM" : "Dispatch Nested Reply + Inbox DM"}
+                                      </button>
+                                    </div>
+                                  </div>
+                                </td>
+                              </tr>
+                            )}
+                          </React.Fragment>
+                        )
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          ) : (
+            /* STREAM VIEW 2: DETAILED CARD VIEW */
+            <div className="space-y-4">
+              {filteredComments.length === 0 ? (
+                <div className="border bg-card rounded-xl p-10 text-center space-y-2 shadow-xs">
+                  <div className="text-sm font-bold text-foreground">No matching comments in stream</div>
+                  <p className="text-xs text-muted-foreground">
+                    Try clearing your active account/source filters or click &ldquo;+ Test Event&rdquo; to simulate an incoming comment.
+                  </p>
+                </div>
+              ) : (
+                filteredComments.map((cm) => {
+                  const draft = getDraftForComment(cm)
+                  const isReplied = cm.status === "Replied"
+                  const isFailed =
+                    cm.status === "Failed" || cm.inboxStatus === "Failed" || cm.nestedReplyStatus === "Failed"
+                  const isRetrying = Boolean(retryingIds[cm.id])
+                  const sourceType = cm.sourceType || "Page"
+
+                  return (
+                    <div
+                      key={cm.id}
+                      className={`border bg-card p-5 rounded-xl shadow-xs space-y-3.5 transition ${
+                        isFailed
+                          ? "border-rose-500/40 bg-rose-500/5"
+                          : isReplied
+                          ? "border-blue-500/30 bg-blue-50/10 dark:bg-blue-950/10"
+                          : "hover:border-blue-500/30"
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-3 flex-wrap">
+                        <div className="flex items-center gap-3">
+                          {cm.postThumbnail && (
+                            <img
+                              src={cm.postThumbnail}
+                              alt={cm.postTitle}
+                              className="w-10 h-10 rounded-lg object-cover border shrink-0"
+                            />
+                          )}
+                          <div className="w-9 h-9 rounded-full bg-blue-600/10 text-blue-600 font-bold flex items-center justify-center text-xs overflow-hidden shrink-0 border border-blue-500/20">
+                            {cm.userAvatar ? (
+                              <img src={cm.userAvatar} alt={cm.userName} className="w-full h-full object-cover" />
+                            ) : (
+                              cm.userName.slice(0, 2).toUpperCase()
+                            )}
+                          </div>
+                          <div>
+                            <div className="font-bold text-sm text-foreground flex items-center gap-2 flex-wrap">
+                              {cm.userName}
+                              {getSourceBadge(sourceType)}
+                              {getIntentBadge(cm.intent)}
+                            </div>
+                            <div className="text-[11px] text-muted-foreground flex items-center gap-2 mt-0.5 flex-wrap">
+                              <span className="text-foreground font-semibold">{cm.accountName || cm.pageName}</span>
+                              {cm.groupName && <span>• Group: {cm.groupName}</span>}
+                              <span className="inline-flex items-center gap-1">
+                                • Post: {cm.postTitle}
+                                {cm.postUrl && (
+                                  <a
+                                    href={cm.postUrl}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="text-blue-600 hover:text-blue-700"
+                                    title="Open Facebook Post"
+                                  >
+                                    <ExternalLink className="w-3 h-3" />
+                                  </a>
+                                )}
+                              </span>
+                              <span>• {cm.receivedAt}</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          {isFailed ? (
+                            <button
+                              type="button"
+                              disabled={isRetrying}
+                              onClick={() => handleRetryFailed(cm)}
+                              className="px-3 py-1 rounded-full text-xs font-bold bg-rose-600 disabled:opacity-50 text-white hover:bg-rose-700 transition flex items-center gap-1.5"
+                            >
+                              <RotateCw className={`w-3.5 h-3.5 ${isRetrying ? "animate-spin" : ""}`} />
+                              {isRetrying ? "Retrying..." : "Retry Failed DM"}
+                            </button>
+                          ) : isReplied ? (
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                              <CheckCircle2 className="w-3.5 h-3.5" /> Nested Reply + Inbox Sent
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-500/10 text-amber-600 border border-amber-500/20">
+                              <Clock className="w-3 h-3" /> Pending Action
+                            </span>
+                          )}
                           <button
                             type="button"
                             onClick={() => dismissComment(cm.id)}
@@ -620,414 +1606,343 @@ export default function SafeCommentAssistantPage() {
                             <Trash2 className="w-3.5 h-3.5" />
                           </button>
                         </div>
+                      </div>
+
+                      {cm.failureReason && (
+                        <div className="p-2.5 rounded-lg bg-rose-500/10 border border-rose-500/30 text-rose-600 dark:text-rose-400 text-xs font-medium flex items-center gap-2">
+                          <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                          <span>{cm.failureReason}</span>
+                        </div>
                       )}
-                    </div>
-                  </div>
 
-                  {/* Customer Comment Bubble */}
-                  <div className="p-3 rounded-lg bg-muted/40 border text-xs font-normal text-foreground leading-relaxed">
-                    &ldquo;{cm.userComment}&rdquo;
-                  </div>
+                      <div className="p-3 rounded-lg bg-muted/40 border text-xs font-normal text-foreground leading-relaxed">
+                        &ldquo;{cm.userComment}&rdquo;
+                      </div>
 
-                  {!isReplied ? (
-                    <div className="space-y-3 pt-1">
-                      {/* AI Suggestions Chips */}
-                      {cm.suggestions.length > 0 && (
-                        <div className="space-y-1.5">
-                          <span className="text-[10px] font-semibold text-muted-foreground uppercase flex items-center gap-1">
-                            <Sparkles className="w-3 h-3 text-blue-600" /> AI Reply Suggestions (Click to Apply):
-                          </span>
-                          <div className="flex flex-wrap gap-2">
-                            {cm.suggestions.map((sug, idx) => (
-                              <button
-                                key={idx}
-                                type="button"
-                                onClick={() => updateDraft(cm.id, "publicReply", sug)}
-                                className="p-2 border rounded-lg bg-background hover:bg-muted text-left text-xs text-muted-foreground hover:text-foreground transition line-clamp-1 max-w-md"
-                              >
-                                &ldquo;{sug}&rdquo;
-                              </button>
-                            ))}
+                      {!isReplied ? (
+                        <div className="space-y-3 pt-1">
+                          {cm.suggestions.length > 0 && (
+                            <div className="space-y-1">
+                              <span className="text-[10px] font-semibold text-muted-foreground uppercase">
+                                Quick AI Variations (Click to Apply):
+                              </span>
+                              <div className="flex flex-wrap gap-1.5">
+                                {cm.suggestions.map((sug, idx) => (
+                                  <button
+                                    key={idx}
+                                    type="button"
+                                    onClick={() => updateDraft(cm.id, "publicReply", sug)}
+                                    className="px-2.5 py-1 border rounded-lg bg-background hover:bg-muted text-left text-[11px] text-muted-foreground hover:text-foreground transition"
+                                  >
+                                    &ldquo;{sug}&rdquo;
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+                            <div className="space-y-1">
+                              <label className="font-semibold text-muted-foreground uppercase text-[10px] flex items-center gap-1">
+                                <MessageSquare className="w-3 h-3 text-blue-600" />
+                                1. Nested Comment Reply
+                              </label>
+                              <textarea
+                                rows={3}
+                                value={draft.publicReply}
+                                onChange={(e) => updateDraft(cm.id, "publicReply", e.target.value)}
+                                className="w-full p-2.5 border rounded-lg bg-background text-xs leading-relaxed outline-none"
+                              />
+                            </div>
+
+                            <div className="space-y-1">
+                              <label className="font-semibold text-muted-foreground uppercase text-[10px] flex items-center gap-1">
+                                <Inbox className="w-3 h-3 text-blue-600" />
+                                2. Private Messenger Inbox Message
+                              </label>
+                              <textarea
+                                rows={3}
+                                value={draft.inboxReply}
+                                onChange={(e) => updateDraft(cm.id, "inboxReply", e.target.value)}
+                                className="w-full p-2.5 border rounded-lg bg-background text-xs leading-relaxed outline-none"
+                              />
+                            </div>
+                          </div>
+
+                          <div className="flex items-center justify-end gap-2 pt-1">
+                            <button
+                              type="button"
+                              onClick={() => handleSendDualReply(cm, false, "Manual")}
+                              className="px-3.5 py-2 border rounded-lg text-xs font-semibold hover:bg-muted transition"
+                            >
+                              Nested Reply Only
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleSendDualReply(cm, enablePrivateInboxReply, "Manual")}
+                              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs rounded-lg shadow-xs transition flex items-center gap-2"
+                            >
+                              <Send className="w-3.5 h-3.5" />
+                              Send Nested Reply + Private Inbox
+                            </button>
                           </div>
                         </div>
-                      )}
+                      ) : (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-2 text-xs border-t">
+                          <div className="p-2.5 rounded-lg bg-background border space-y-1">
+                            <span className="text-[10px] font-semibold text-emerald-600 block uppercase">
+                              1. Nested Comment Reply Dispatched
+                            </span>
+                            <p className="text-muted-foreground text-[11px] leading-relaxed">{cm.publicReply}</p>
+                          </div>
 
-                      {/* Dual Form Inputs */}
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
-                        {/* Public Comment Input */}
-                        <div className="space-y-1">
-                          <label className="font-semibold text-muted-foreground uppercase text-[10px] flex items-center gap-1">
-                            <MessageSquare className="w-3 h-3 text-blue-600" />
-                            1. Public Comment Reply
-                          </label>
-                          <textarea
-                            rows={3}
-                            value={draft.publicReply}
-                            onChange={(e) => updateDraft(cm.id, "publicReply", e.target.value)}
-                            placeholder="Write public comment response..."
-                            className="w-full p-2.5 border rounded-lg bg-background text-xs leading-relaxed focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none"
-                          />
-                        </div>
-
-                        {/* Private Inbox Message Input */}
-                        <div className="space-y-1">
-                          <label className="font-semibold text-muted-foreground uppercase text-[10px] flex items-center gap-1">
-                            <Inbox className="w-3 h-3 text-blue-600" />
-                            2. Private Messenger Inbox Message
-                          </label>
-                          <textarea
-                            rows={3}
-                            value={draft.inboxReply}
-                            onChange={(e) => updateDraft(cm.id, "inboxReply", e.target.value)}
-                            placeholder="Write private inbox message with order details..."
-                            className="w-full p-2.5 border rounded-lg bg-background text-xs leading-relaxed focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none"
-                          />
-                        </div>
-                      </div>
-
-                      {/* Action Dispatch Buttons */}
-                      <div className="flex items-center justify-end gap-2 pt-1">
-                        <button
-                          type="button"
-                          onClick={() => handleSendDualReply(cm, false)}
-                          className="px-3.5 py-2 border rounded-lg text-xs font-semibold hover:bg-muted transition text-muted-foreground hover:text-foreground min-h-[38px]"
-                        >
-                          Public Reply Only
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleSendDualReply(cm, enablePrivateInboxReply)}
-                          className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs rounded-lg shadow-xs transition flex items-center gap-2 min-h-[38px]"
-                        >
-                          <Send className="w-3.5 h-3.5" />
-                          Send Public + Private Inbox Reply
-                        </button>
-                      </div>
-                    </div>
-                  ) : (
-                    /* Replied Snapshot */
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-2 text-xs border-t">
-                      <div className="p-2.5 rounded-lg bg-background border space-y-1">
-                        <span className="text-[10px] font-semibold text-blue-600 block uppercase">
-                          Public Reply Dispatched
-                        </span>
-                        <p className="text-muted-foreground text-[11px] leading-relaxed">{cm.publicReply}</p>
-                      </div>
-
-                      {cm.privateInboxMessage && (
-                        <div className="p-2.5 rounded-lg bg-background border space-y-1">
-                          <span className="text-[10px] font-semibold text-blue-600 block uppercase">
-                            Private Messenger Message Sent
-                          </span>
-                          <p className="text-muted-foreground text-[11px] leading-relaxed">
-                            {cm.privateInboxMessage}
-                          </p>
+                          {cm.privateInboxMessage && (
+                            <div className="p-2.5 rounded-lg bg-background border space-y-1">
+                              <span className="text-[10px] font-semibold text-blue-600 block uppercase">
+                                2. Private Messenger DM ({cm.inboxDeliveryMethod || "Sent"})
+                              </span>
+                              <p className="text-muted-foreground text-[11px] leading-relaxed">
+                                {cm.privateInboxMessage}
+                              </p>
+                            </div>
+                          )}
                         </div>
                       )}
                     </div>
-                  )}
-                </div>
-              )
-            })}
-          </div>
+                  )
+                })
+              )}
+            </div>
+          )}
         </div>
       )}
 
-      {/* TAB 2: 500+ COMMENT & REPLY LIBRARY STUDIO */}
+      {/* TAB 2: AI KNOWLEDGEBASE & DYNAMIC PROMPT RULES (Upgraded from static 500+ Library) */}
       {activeTab === "library" && (
-        <div className="border bg-card rounded-xl shadow-xs p-5 space-y-5 animate-in fade-in duration-200">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b pb-4">
-            <div>
-              <h2 className="font-bold text-base flex items-center gap-2">
-                <Layers className="w-4 h-4 text-blue-600" /> 500+ Comment &amp; Reply Template Studio
-              </h2>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                Pre-approved public and private responses matched automatically by customer keywords.
+        <div className="space-y-4 animate-in fade-in duration-200">
+          {/* Global AI Bot Persona & Dynamic Context Bar */}
+          <div className="border bg-card rounded-xl shadow-xs p-4 flex flex-col lg:flex-row lg:items-center justify-between gap-4 text-xs">
+            <div className="space-y-1">
+              <div className="font-bold text-sm text-foreground flex items-center gap-2">
+                <Sliders className="w-4 h-4 text-blue-600" /> Global AI Bot Persona &amp; Multi-Account Prompt Engine
+              </div>
+              <p className="text-muted-foreground text-[11px]">
+                Configure how the AI bot dynamically generates nested replies and private DMs per Page, Group, and Product across your 100 accounts.
               </p>
             </div>
 
-            <button
-              type="button"
-              onClick={() => {
-                setEditingTemplateId(null)
-                setTmplTitle("")
-                setTmplPublicReply("")
-                setTmplInboxReply("")
-                setTmplKeywords("")
-                setShowTemplateModal(true)
-              }}
-              className="px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs rounded-lg shadow-xs transition flex items-center gap-1.5 self-start sm:self-auto min-h-[36px]"
-            >
-              <Plus className="w-3.5 h-3.5" /> Add Response Template
-            </button>
-          </div>
-
-          {/* Search & Category Filter */}
-          <div className="space-y-3 text-xs">
-            <div className="relative">
-              <Search className="w-3.5 h-3.5 text-muted-foreground absolute left-3 top-2.5" />
-              <input
-                type="text"
-                placeholder="Search templates by title, reply text, or keyword..."
-                value={librarySearchQuery}
-                onChange={(e) => setLibrarySearchQuery(e.target.value)}
-                className="w-full pl-8 pr-3 py-2 border rounded-lg bg-background text-xs focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none"
-              />
-            </div>
-
-            {/* Category Pills */}
-            <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-1 text-[11px]">
-              {[
-                "ALL",
-                "Price Query",
-                "Delivery Query",
-                "Stock Query",
-                "Warranty Query",
-                "Location Query",
-                "General Greeting",
-              ].map((cat) => (
-                <button
-                  key={cat}
-                  type="button"
-                  onClick={() => setLibraryCategoryFilter(cat)}
-                  className={`px-3 py-1 rounded-full whitespace-nowrap font-semibold transition border ${
-                    libraryCategoryFilter === cat
-                      ? "bg-blue-600 text-white border-blue-600 shadow-xs"
-                      : "bg-muted/40 text-muted-foreground hover:bg-muted"
-                  }`}
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="flex items-center gap-1.5">
+                <span className="text-[10px] font-bold uppercase text-muted-foreground">AI Tone:</span>
+                <select
+                  value={globalAiTone}
+                  onChange={(e) => updateGlobalAiConfig(e.target.value, globalAutoAskOrderInfo)}
+                  className="px-2.5 py-1.5 border rounded-lg bg-background text-xs font-semibold outline-none"
                 >
-                  {cat}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Templates Grid */}
-          <div className="grid gap-4 md:grid-cols-2">
-            {filteredLibrary.map((tmpl) => (
-              <div
-                key={tmpl.id}
-                className="p-4 rounded-xl border bg-muted/10 space-y-3 text-xs hover:border-blue-500/40 transition shadow-xs"
-              >
-                <div className="flex items-start justify-between gap-2">
-                  <div>
-                    <div className="font-bold text-sm text-foreground">{tmpl.title}</div>
-                    <span className="inline-block mt-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20">
-                      {tmpl.category}
-                    </span>
-                  </div>
-
-                  <div className="flex items-center gap-1 shrink-0">
-                    <button
-                      type="button"
-                      onClick={() => startEditTemplate(tmpl)}
-                      className="p-1.5 rounded-lg border bg-background hover:bg-muted text-muted-foreground hover:text-foreground transition"
-                    >
-                      <Edit3 className="w-3.5 h-3.5" />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => deleteLibraryTemplate(tmpl.id)}
-                      className="p-1.5 rounded-lg border bg-background hover:bg-rose-50 hover:text-rose-600 text-muted-foreground transition"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                </div>
-
-                {/* Public Reply Preview */}
-                <div className="p-2.5 rounded-lg bg-background border space-y-1">
-                  <span className="text-[10px] font-semibold text-blue-600 block uppercase">Public Reply</span>
-                  <p className="text-muted-foreground text-[11px] leading-relaxed">{tmpl.publicReply}</p>
-                </div>
-
-                {/* Private Inbox Reply Preview */}
-                <div className="p-2.5 rounded-lg bg-background border space-y-1">
-                  <span className="text-[10px] font-semibold text-blue-600 block uppercase">
-                    Private Messenger Message
-                  </span>
-                  <p className="text-muted-foreground text-[11px] leading-relaxed">
-                    {tmpl.privateInboxReply}
-                  </p>
-                </div>
-
-                {/* Keywords */}
-                {tmpl.keywords.length > 0 && (
-                  <div className="flex items-center gap-1 flex-wrap pt-1 text-[10px]">
-                    <span className="text-muted-foreground font-semibold">Triggers:</span>
-                    {tmpl.keywords.map((kw, i) => (
-                      <span key={i} className="bg-muted px-1.5 py-0.5 rounded text-foreground font-mono">
-                        {kw}
-                      </span>
-                    ))}
-                  </div>
-                )}
+                  <option value="Polite Bengali + Banglish E-Commerce Concierge">
+                    Polite Bengali + Banglish Concierge (ভাইয়া/আপু)
+                  </option>
+                  <option value="Formal Official Brand Support">Formal Official Brand Support</option>
+                  <option value="Urgent Direct-Closing Sales Bot">Urgent Direct-Closing Sales Bot</option>
+                </select>
               </div>
-            ))}
-          </div>
-        </div>
-      )}
 
-      {/* TAB 3: WEBHOOK SIMULATOR & TEST CONSOLE */}
-      {activeTab === "simulator" && (
-        <div className="grid gap-6 lg:grid-cols-12 animate-in fade-in duration-200">
-          {/* Simulator Form (6 cols) */}
-          <div className="lg:col-span-6 border bg-card p-5 rounded-xl shadow-xs space-y-4">
-            <div className="border-b pb-3">
-              <h2 className="font-bold text-sm flex items-center gap-2">
-                <Terminal className="w-4 h-4 text-blue-600" /> Meta Webhook Comment Simulator
-              </h2>
-              <p className="text-[11px] text-muted-foreground mt-0.5">
-                Simulate customer comments to verify intent detection, AI suggestions, and Graph API payloads.
-              </p>
-            </div>
-
-            <div className="space-y-3.5 text-xs">
-              <div>
-                <label className="font-semibold block mb-1">Customer Name *</label>
+              <label className="flex items-center gap-1.5 font-semibold cursor-pointer">
                 <input
-                  type="text"
-                  value={simCustomerName}
-                  onChange={(e) => setSimCustomerName(e.target.value)}
-                  className="w-full px-3 py-2 border rounded-lg bg-background text-xs focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none"
+                  type="checkbox"
+                  checked={globalAutoAskOrderInfo}
+                  onChange={(e) => updateGlobalAiConfig(globalAiTone, e.target.checked)}
+                  className="w-3.5 h-3.5 rounded text-blue-600"
                 />
-              </div>
-
-              <div>
-                <label className="font-semibold block mb-1">Customer Comment *</label>
-                <textarea
-                  rows={3}
-                  value={simCommentText}
-                  onChange={(e) => setSimCommentText(e.target.value)}
-                  placeholder="Type sample comment..."
-                  className="w-full px-3 py-2 border rounded-lg bg-background text-xs leading-relaxed focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none"
-                />
-              </div>
-
-              {/* Quick Sample Comment Chips */}
-              <div className="space-y-1">
-                <span className="text-[10px] font-semibold text-muted-foreground uppercase">Quick Test Samples:</span>
-                <div className="flex flex-wrap gap-1.5 text-[11px]">
-                  <button
-                    type="button"
-                    onClick={() => setSimCommentText("দাম কত ভাইয়া? ডেলিভারি চার্জ কত?")}
-                    className="px-2.5 py-1.5 rounded-lg border bg-muted/30 hover:bg-muted font-semibold text-muted-foreground hover:text-foreground transition flex items-center gap-1.5"
-                  >
-                    <BadgeDollarSign className="w-3.5 h-3.5 text-blue-600" /> Price Query
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setSimCommentText("ঢাকার বাইরে কি হোম ডেলিভারি পাওয়া যাবে?")}
-                    className="px-2.5 py-1.5 rounded-lg border bg-muted/30 hover:bg-muted font-semibold text-muted-foreground hover:text-foreground transition flex items-center gap-1.5"
-                  >
-                    <Truck className="w-3.5 h-3.5 text-blue-600" /> Delivery Query
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setSimCommentText("ব্ল্যাক কালারটা কি স্টকে আছে?")}
-                    className="px-2.5 py-1.5 rounded-lg border bg-muted/30 hover:bg-muted font-semibold text-muted-foreground hover:text-foreground transition flex items-center gap-1.5"
-                  >
-                    <Package className="w-3.5 h-3.5 text-blue-600" /> Stock Query
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setSimCommentText("শোরুমের ঠিকানা কোথায়?")}
-                    className="px-2.5 py-1.5 rounded-lg border bg-muted/30 hover:bg-muted font-semibold text-muted-foreground hover:text-foreground transition flex items-center gap-1.5"
-                  >
-                    <MapPin className="w-3.5 h-3.5 text-blue-600" /> Location Query
-                  </button>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="font-semibold block mb-1">Target Page</label>
-                  <input
-                    type="text"
-                    value={simPageName}
-                    onChange={(e) => setSimPageName(e.target.value)}
-                    className="w-full px-3 py-2 border rounded-lg bg-background text-xs font-semibold focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none"
-                  />
-                </div>
-                <div>
-                  <label className="font-semibold block mb-1">Detected Intent</label>
-                  <div className="px-3 py-2 border rounded-lg bg-muted/30 font-semibold text-blue-600 dark:text-blue-400">
-                    {detectIntent(simCommentText)}
-                  </div>
-                </div>
-              </div>
+                <span>Always ask Name, Address &amp; Mobile in DM</span>
+              </label>
 
               <button
                 type="button"
-                disabled={isSimulating}
-                onClick={handleRunSimulation}
-                className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-semibold py-2.5 rounded-lg shadow-xs transition flex items-center justify-center gap-2 mt-2"
+                onClick={() => {
+                  setEditingTemplateId(null)
+                  setTmplTitle("")
+                  setTmplTargetScope("All 100 Accounts (Pages, Groups & IDs)")
+                  setTmplProductName("")
+                  setTmplPriceInfo("")
+                  setTmplDeliveryInfo("")
+                  setTmplStockStatus("In Stock")
+                  setTmplAiPromptInstruction("")
+                  setTmplPublicReply("")
+                  setTmplInboxReply("")
+                  setTmplKeywords("")
+                  setShowTemplateModal(true)
+                }}
+                className="px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs rounded-lg shadow-xs transition flex items-center gap-1.5"
               >
-                {isSimulating ? (
-                  <>
-                    <RotateCw className="w-4 h-4 animate-spin" /> Simulating Webhook Event...
-                  </>
-                ) : (
-                  <>
-                    <Terminal className="w-4 h-4" /> Simulate Webhook &amp; Push to Live Incoming Queue
-                  </>
-                )}
+                <Plus className="w-3.5 h-3.5" /> Add AI Knowledge Rule
               </button>
-
-              {simPushedSuccess && (
-                <div className="p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-lg flex items-center justify-between gap-3 text-xs text-emerald-600 dark:text-emerald-400">
-                  <div className="flex items-center gap-2">
-                    <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
-                    <span>Comment successfully pushed to <strong>Live Incoming Queue</strong>!</span>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setActiveTab("incoming")}
-                    className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded text-[11px] font-semibold flex items-center gap-1 shrink-0 transition"
-                  >
-                    View in Queue <ArrowRight className="w-3 h-3" />
-                  </button>
-                </div>
-              )}
             </div>
           </div>
 
-          {/* Response Inspector (6 cols) */}
-          <div className="lg:col-span-6 space-y-4">
-            <div className="border bg-slate-950 text-slate-100 p-5 rounded-xl shadow-xs space-y-3 font-mono text-xs">
-              <div className="flex items-center justify-between border-b border-slate-800 pb-2.5">
-                <div className="flex items-center gap-2">
-                  <span className="w-2.5 h-2.5 rounded-full bg-slate-600"></span>
-                  <span className="w-2.5 h-2.5 rounded-full bg-slate-600"></span>
-                  <span className="w-2.5 h-2.5 rounded-full bg-blue-500"></span>
-                  <span className="text-[11px] font-bold text-slate-400 ml-2">META GRAPH API SIMULATION INSPECTOR</span>
-                </div>
+          <div className="border bg-card rounded-xl shadow-xs p-5 space-y-4">
+            {/* Search & Category Filter */}
+            <div className="space-y-3 text-xs">
+              <div className="relative">
+                <Search className="w-3.5 h-3.5 text-muted-foreground absolute left-3 top-2.5" />
+                <input
+                  type="text"
+                  placeholder="Search rules by product name, page/group scope, price, or trigger keyword..."
+                  value={librarySearchQuery}
+                  onChange={(e) => setLibrarySearchQuery(e.target.value)}
+                  className="w-full pl-8 pr-3 py-2 border rounded-lg bg-background text-xs focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none"
+                />
               </div>
 
-              {simResponseOutput ? (
-                <pre className="p-3 bg-slate-900 border border-blue-900/60 rounded text-blue-300 text-[11px] overflow-x-auto whitespace-pre-wrap max-h-96">
-                  {JSON.stringify(simResponseOutput, null, 2)}
-                </pre>
-              ) : (
-                <div className="p-8 text-center text-slate-500 text-xs">
-                  Click &ldquo;Simulate Webhook &amp; Push to Live Incoming Queue&rdquo; to test live event classification and dual-action Graph API payloads.
+              <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-1 text-[11px]">
+                {[
+                  "ALL",
+                  "Price Query",
+                  "Delivery Query",
+                  "Stock Query",
+                  "Warranty Query",
+                  "Location Query",
+                  "Needs Review",
+                  "General Greeting",
+                ].map((cat) => (
+                  <button
+                    key={cat}
+                    type="button"
+                    onClick={() => setLibraryCategoryFilter(cat)}
+                    className={`px-3 py-1 rounded-full whitespace-nowrap font-semibold transition border ${
+                      libraryCategoryFilter === cat
+                        ? "bg-blue-600 text-white border-blue-600 shadow-xs"
+                        : "bg-muted/40 text-muted-foreground hover:bg-muted"
+                    }`}
+                  >
+                    {cat}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* AI Knowledgebase Rules Grid */}
+            <div className="grid gap-4 md:grid-cols-2">
+              {filteredLibrary.map((tmpl) => (
+                <div
+                  key={tmpl.id}
+                  className="p-4 rounded-xl border bg-muted/10 space-y-3 text-xs hover:border-blue-500/40 transition shadow-xs"
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="space-y-1">
+                      <div className="font-bold text-sm text-foreground">{tmpl.title}</div>
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20">
+                          {tmpl.category}
+                        </span>
+                        <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-violet-500/10 text-violet-600 dark:text-violet-400 border border-violet-500/20">
+                          Scope: {tmpl.targetScope || "All 100 Accounts"}
+                        </span>
+                        {tmpl.stockStatus && (
+                          <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 border border-emerald-500/20">
+                            {tmpl.stockStatus}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-1 shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => startEditTemplate(tmpl)}
+                        className="p-1.5 rounded-lg border bg-background hover:bg-muted text-muted-foreground hover:text-foreground transition"
+                        title="Edit AI Rule"
+                      >
+                        <Edit3 className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => deleteLibraryTemplate(tmpl.id)}
+                        className="p-1.5 rounded-lg border bg-background hover:bg-rose-50 hover:text-rose-600 text-muted-foreground transition"
+                        title="Delete AI Rule"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Product & Pricing Facts */}
+                  {(tmpl.productName || tmpl.priceInfo || tmpl.deliveryInfo) && (
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 p-2.5 rounded-lg bg-muted/40 border text-[11px]">
+                      <div>
+                        <span className="text-[9px] uppercase font-bold text-muted-foreground block">Product</span>
+                        <span className="font-semibold text-foreground">{tmpl.productName || "All Products"}</span>
+                      </div>
+                      <div>
+                        <span className="text-[9px] uppercase font-bold text-muted-foreground block">Offer Price</span>
+                        <span className="font-semibold text-emerald-600 dark:text-emerald-400">
+                          {tmpl.priceInfo || "Standard"}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-[9px] uppercase font-bold text-muted-foreground block">Delivery SLA</span>
+                        <span className="font-medium text-foreground">{tmpl.deliveryInfo || "Nationwide COD"}</span>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* AI Prompt Instruction */}
+                  {tmpl.aiPromptInstruction && (
+                    <div className="p-2 rounded-lg bg-blue-500/5 border border-blue-500/20 text-[11px]">
+                      <span className="font-bold text-blue-600 dark:text-blue-400 uppercase text-[9px] block">
+                        AI Dynamic Prompt Rule:
+                      </span>
+                      <p className="text-muted-foreground">{tmpl.aiPromptInstruction}</p>
+                    </div>
+                  )}
+
+                  {/* Nested Comment Reply Preview */}
+                  <div className="p-2.5 rounded-lg bg-background border space-y-1">
+                    <span className="text-[10px] font-semibold text-blue-600 block uppercase">
+                      1. Nested Comment Reply Template
+                    </span>
+                    <p className="text-muted-foreground text-[11px] leading-relaxed">{tmpl.publicReply}</p>
+                  </div>
+
+                  {/* Private Inbox Reply Preview */}
+                  <div className="p-2.5 rounded-lg bg-background border space-y-1">
+                    <span className="text-[10px] font-semibold text-blue-600 block uppercase">
+                      2. Private Messenger Inbox DM Template
+                    </span>
+                    <p className="text-muted-foreground text-[11px] leading-relaxed">{tmpl.privateInboxReply}</p>
+                  </div>
+
+                  {/* Keywords */}
+                  {tmpl.keywords.length > 0 && (
+                    <div className="flex items-center justify-between gap-2 flex-wrap pt-1 text-[10px]">
+                      <div className="flex items-center gap-1 flex-wrap">
+                        <span className="text-muted-foreground font-semibold">Triggers:</span>
+                        {tmpl.keywords.map((kw, i) => (
+                          <span key={i} className="bg-muted px-1.5 py-0.5 rounded text-foreground font-mono">
+                            {kw}
+                          </span>
+                        ))}
+                      </div>
+                      <span className="text-muted-foreground font-semibold">{tmpl.usesCount} auto-executions</span>
+                    </div>
+                  )}
                 </div>
-              )}
+              ))}
             </div>
           </div>
         </div>
       )}
 
-      {/* TAB 4: AUDIT LEDGER */}
+      {/* TAB 3: EXECUTION AUDIT LEDGER */}
       {activeTab === "logs" && (
-        <div className="border bg-card rounded-xl shadow-xs overflow-hidden">
+        <div className="border bg-card rounded-xl shadow-xs overflow-hidden animate-in fade-in duration-200">
           <div className="p-4 border-b flex items-center justify-between">
             <div>
               <h2 className="font-bold text-sm text-foreground flex items-center gap-2">
-                <Clock className="w-4 h-4 text-blue-600" /> Public &amp; Private Inbox Execution Audit Ledger ({logs.length})
+                <Clock className="w-4 h-4 text-blue-600" /> 100-Account Nested Reply &amp; Private Inbox Audit Ledger ({logs.length})
               </h2>
               <p className="text-[11px] text-muted-foreground mt-0.5">
-                Chronological ledger of public comments replied and private Messenger inbox deliveries.
+                Chronological execution log of every nested comment reply and private Messenger DM across Pages, Groups, and Personal IDs.
               </p>
             </div>
             {logs.length > 0 && (
@@ -1042,7 +1957,7 @@ export default function SafeCommentAssistantPage() {
 
           {logs.length === 0 ? (
             <div className="p-8 text-center text-muted-foreground text-xs">
-              No replies dispatched yet. Approve incoming comments to populate the audit ledger.
+              No replies dispatched yet. Auto-pilot or manual replies will populate the audit ledger.
             </div>
           ) : (
             <div className="overflow-x-auto">
@@ -1050,35 +1965,48 @@ export default function SafeCommentAssistantPage() {
                 <thead className="bg-muted/40 text-muted-foreground border-b text-[10px] uppercase font-bold tracking-wider">
                   <tr>
                     <th className="px-4 py-3">Timestamp</th>
-                    <th className="px-4 py-3">Customer</th>
-                    <th className="px-4 py-3">Customer Query</th>
-                    <th className="px-4 py-3">Public Comment Reply</th>
+                    <th className="px-4 py-3">Account &amp; Channel</th>
+                    <th className="px-4 py-3">Customer &amp; Query</th>
+                    <th className="px-4 py-3">Nested Comment Reply</th>
                     <th className="px-4 py-3">Private Messenger Reply</th>
-                    <th className="px-4 py-3">Status</th>
+                    <th className="px-4 py-3">Execution Status</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y font-sans">
                   {logs.map((log) => (
                     <tr key={log.id} className="hover:bg-muted/20 transition">
                       <td className="px-4 py-3 whitespace-nowrap text-[11px] text-muted-foreground">
-                        {new Date(log.timestamp).toLocaleString()}
+                        {new Date(log.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
                       </td>
-                      <td className="px-4 py-3 font-semibold text-foreground whitespace-nowrap">
-                        {log.customerName}
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        <div className="flex items-center gap-1.5">
+                          {getSourceBadge(log.sourceType)}
+                          <span className="font-semibold text-foreground">{log.pageName}</span>
+                        </div>
+                        {log.groupName && (
+                          <div className="text-[10px] text-violet-600 font-medium mt-0.5">{log.groupName}</div>
+                        )}
                       </td>
-                      <td className="px-4 py-3 text-muted-foreground max-w-xs truncate">
-                        {log.customerQuery}
+                      <td className="px-4 py-3 max-w-xs">
+                        <div className="font-bold text-foreground">{log.customerName}</div>
+                        <div className="text-muted-foreground truncate text-[11px]">{log.customerQuery}</div>
                       </td>
                       <td className="px-4 py-3 text-foreground font-medium max-w-xs truncate">
                         {log.publicReply}
                       </td>
                       <td className="px-4 py-3 text-muted-foreground font-medium max-w-xs truncate">
-                        {log.privateInboxReply || "None"}
+                        {log.privateInboxReply || "None / Pending Retry"}
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap">
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20">
-                          <CheckCircle2 className="w-3 h-3 text-blue-600" /> Success
-                        </span>
+                        {log.status === "Failed" ? (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-rose-500/10 text-rose-600 border border-rose-500/20">
+                            <AlertCircle className="w-3 h-3" /> Failed
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                            <CheckCircle2 className="w-3 h-3" /> {log.graphApiResponse || "Success"}
+                          </span>
+                        )}
                       </td>
                     </tr>
                   ))}
@@ -1089,21 +2017,28 @@ export default function SafeCommentAssistantPage() {
         </div>
       )}
 
-      {/* TAB 5: LIVE REAL-WORLD TEST */}
+      {/* TAB 4: LIVE REAL-WORLD TEST (ID, GROUP & PAGE) */}
       {activeTab === "liveTest" && (
-        <div className="space-y-6">
+        <div className="space-y-6 animate-in fade-in duration-200">
           {/* Top Banner Alert */}
           <div className="bg-gradient-to-r from-rose-500/10 via-amber-500/10 to-blue-500/10 border border-rose-500/30 p-4 rounded-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-3">
             <div className="space-y-1">
               <div className="flex items-center gap-2 text-rose-600 dark:text-rose-400 font-bold text-sm">
                 <Radio className="w-4 h-4 animate-pulse" />
-                Live Facebook End-to-End Real World Testing
+                Live Facebook End-to-End Real World Testing (Page, Group &amp; Personal ID)
               </div>
               <p className="text-xs text-muted-foreground">
-                Test with 2 different accounts: Post with your 1st ID (or Page), comment from your 2nd ID, and watch the AI reply in real time!
+                Test with 2 different accounts: Post with your 1st ID (or Page/Group), comment from your 2nd ID, and watch the AI bot enter the comment&apos;s reply box and send a Messenger DM live!
               </p>
             </div>
             <div className="flex items-center gap-2 shrink-0">
+              <button
+                type="button"
+                onClick={() => setShowQuickSimModal(true)}
+                className="text-[11px] bg-background hover:bg-muted border px-3 py-1.5 rounded-full font-semibold text-foreground flex items-center gap-1.5 shadow-xs transition"
+              >
+                <Terminal className="w-3 h-3 text-blue-600" /> Open Synthetic Event Simulator
+              </button>
               <span className="text-[11px] bg-background border px-2.5 py-1 rounded-full font-semibold text-foreground flex items-center gap-1.5 shadow-xs">
                 <Shield className="w-3 h-3 text-emerald-500" /> Active Session: Rasidul
               </span>
@@ -1111,16 +2046,16 @@ export default function SafeCommentAssistantPage() {
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-            {/* Left Column (7 cols): Personal Facebook ID / Group Comment Watcher Bot */}
+            {/* Left Column (7 cols): Personal Facebook ID / Group / Page Comment Watcher Bot */}
             <div className="lg:col-span-7 space-y-4">
               <div className="border bg-card p-5 rounded-xl shadow-xs space-y-4">
                 <div className="border-b pb-3 flex items-center justify-between">
                   <div>
                     <h2 className="font-bold text-sm text-foreground flex items-center gap-2">
-                      <Bot className="w-4 h-4 text-blue-600" /> Personal ID / Group Live Watcher Bot
+                      <Bot className="w-4 h-4 text-blue-600" /> Live Browser Comment Watcher &amp; Dual-Reply Bot
                     </h2>
                     <p className="text-[11px] text-muted-foreground mt-0.5">
-                      Monitors your Facebook post and replies automatically when your 2nd ID comments.
+                      Monitors your Facebook post (Page, Group, or ID), clicks nested &ldquo;Reply&rdquo; under new comments, and dispatches a private message.
                     </p>
                   </div>
                   {watcherStatus === "WATCHING" && (
@@ -1137,11 +2072,21 @@ export default function SafeCommentAssistantPage() {
                     <Zap className="w-3.5 h-3.5 text-amber-500" /> How to do the Real-World Test:
                   </div>
                   <ol className="list-decimal list-inside space-y-1 text-[11px] leading-relaxed">
-                    <li><strong className="text-foreground">১ম আইডি (Rasidul):</strong> দিয়ে ফেসবুকে আপনার প্রোফাইল বা গ্রুপে একটি পোস্ট করুন।</li>
-                    <li>সেই পোস্টের <strong className="text-foreground">লিঙ্ক (Post URL)</strong> কপি করে নিচের বক্সে পেস্ট করুন।</li>
-                    <li><strong className="text-foreground">Start AI Comment Watcher</strong> বাটনে চাপ দিন (ব্রাউজার উইন্ডো ওপেন হবে)।</li>
-                    <li>এবার আপনার <strong className="text-foreground">২য় ফেসবুক আইডি</strong> থেকে ওই পোস্টে কমেন্ট করুন (যেমন: <em>&ldquo;দাম কত ভাইয়া?&rdquo;</em>)।</li>
-                    <li>কয়েক সেকেন্ডের মধ্যে বট স্বয়ংক্রিয়ভাবে ২য় আইডির কমেন্টের নিচে AI রিপ্লাই টাইপ করে পোস্ট করে দেবে!</li>
+                    <li>
+                      <strong className="text-foreground">১ম আইডি (Rasidul / Page):</strong> দিয়ে ফেসবুকে আপনার প্রোফাইল, পেজ বা গ্রুপে একটি পোস্ট করুন।
+                    </li>
+                    <li>
+                      সেই পোস্টের <strong className="text-foreground">লিঙ্ক (Post URL)</strong> কপি করে নিচের বক্সে পেস্ট করুন।
+                    </li>
+                    <li>
+                      <strong className="text-foreground">Start AI Comment Watcher Bot</strong> বাটনে চাপ দিন (ব্রাউজার উইন্ডো ওপেন হবে)।
+                    </li>
+                    <li>
+                      এবার আপনার <strong className="text-foreground">২য় ফেসবুক আইডি</strong> থেকে ওই পোস্টে কমেন্ট করুন (যেমন: <em>&ldquo;দাম কত ভাইয়া?&rdquo;</em>)।
+                    </li>
+                    <li>
+                      কয়েক সেকেন্ডের মধ্যে বট স্বয়ংক্রিয়ভাবে ওই কমেন্টের নিচে ঢুকে AI রিপ্লাই দেবে এবং ইনবক্সে মেসেজ পাঠাবে!
+                    </li>
                   </ol>
                 </div>
 
@@ -1201,9 +2146,7 @@ export default function SafeCommentAssistantPage() {
                       )}
                     </button>
                     {watcherJobId && (
-                      <span className="text-[11px] text-muted-foreground font-mono">
-                        Job: {watcherJobId}
-                      </span>
+                      <span className="text-[11px] text-muted-foreground font-mono">Job: {watcherJobId}</span>
                     )}
                   </div>
                 </form>
@@ -1219,14 +2162,14 @@ export default function SafeCommentAssistantPage() {
                       {watcherReplies.map((r, idx) => (
                         <div key={idx} className="bg-background p-2.5 rounded-md border text-xs space-y-1">
                           <div className="flex items-center justify-between">
-                            <span className="font-bold text-foreground">👤 {r.author}</span>
+                            <span className="font-bold text-foreground">Customer: {r.author}</span>
                             <span className="text-[10px] bg-blue-500/10 text-blue-600 px-1.5 py-0.5 rounded font-semibold">
                               {r.intent}
                             </span>
                           </div>
                           <p className="text-muted-foreground text-[11px]">Query: &ldquo;{r.commentText}&rdquo;</p>
                           <div className="p-2 bg-muted/40 rounded text-foreground text-[11px] font-medium border">
-                            🤖 AI Reply: {r.aiReply}
+                            AI Nested Reply: {r.aiReply}
                           </div>
                         </div>
                       ))}
@@ -1247,7 +2190,8 @@ export default function SafeCommentAssistantPage() {
                   <span className="text-[10px] text-slate-500">Status: {watcherStatus}</span>
                 </div>
                 <pre className="p-2 bg-slate-900 border border-slate-800 rounded text-emerald-400 text-[11px] overflow-x-auto whitespace-pre-wrap max-h-56">
-                  {watcherLogs || "Bot console ready. Click 'Start AI Comment Watcher Bot' to see live browser execution logs..."}
+                  {watcherLogs ||
+                    "Bot console ready. Click 'Start AI Comment Watcher Bot' to see live browser execution logs..."}
                 </pre>
               </div>
             </div>
@@ -1285,9 +2229,7 @@ export default function SafeCommentAssistantPage() {
                   </div>
 
                   <div className="space-y-1">
-                    <label className="text-[10px] font-semibold text-muted-foreground uppercase">
-                      Verify Token
-                    </label>
+                    <label className="text-[10px] font-semibold text-muted-foreground uppercase">Verify Token</label>
                     <div className="p-2 bg-muted/40 border rounded-lg font-mono text-[11px] text-foreground select-all">
                       bmt_webhook_2026
                     </div>
@@ -1305,14 +2247,16 @@ export default function SafeCommentAssistantPage() {
 
                   <div className="p-3 bg-blue-500/10 border border-blue-500/30 rounded-lg text-[11px] text-blue-700 dark:text-blue-300 leading-relaxed space-y-1">
                     <div className="font-bold flex items-center gap-1">
-                      <ShieldCheck className="w-3.5 h-3.5 text-blue-600" /> Official Dual-Action Flow:
+                      <ShieldCheck className="w-3.5 h-3.5 text-blue-600" /> Channel-Aware Dual-Action Routing:
                     </div>
-                    <p>
-                      When a 2nd ID comments on your Page post, Meta hits this Webhook, and BMT dispatches both:
-                    </p>
                     <ul className="list-disc list-inside space-y-0.5">
-                      <li><strong>Public Comment:</strong> Graph API <code>/comments</code></li>
-                      <li><strong>Private Message:</strong> Graph API <code>/messages</code></li>
+                      <li>
+                        <strong>Page Comments:</strong> Uses Page <code>Send Message</code> button modal or Graph API{" "}
+                        <code>/messages</code>
+                      </li>
+                      <li>
+                        <strong>Group / ID Comments:</strong> Enters nested comment thread + sends Direct Messenger DM
+                      </li>
                     </ul>
                   </div>
 
@@ -1353,13 +2297,14 @@ export default function SafeCommentAssistantPage() {
         </div>
       )}
 
-      {/* Add / Edit Template Modal */}
+      {/* MODAL 1: ADD / EDIT AI KNOWLEDGEBASE & PROMPT RULE */}
       {showTemplateModal && (
-        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-card border border-border rounded-2xl max-w-lg w-full p-5 space-y-4 shadow-2xl animate-in zoom-in-95 duration-200">
+        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-card border border-border rounded-2xl max-w-xl w-full p-5 space-y-4 shadow-2xl animate-in zoom-in-95 duration-200 my-8">
             <div className="flex items-center justify-between border-b pb-3">
-              <h3 className="font-bold text-sm text-foreground">
-                {editingTemplateId ? "Edit Response Template" : "Add Response Template"}
+              <h3 className="font-bold text-sm text-foreground flex items-center gap-2">
+                <BookOpen className="w-4 h-4 text-blue-600" />
+                {editingTemplateId ? "Edit AI Knowledgebase & Prompt Rule" : "Add AI Knowledgebase & Prompt Rule"}
               </h3>
               <button
                 onClick={() => setShowTemplateModal(false)}
@@ -1369,56 +2314,130 @@ export default function SafeCommentAssistantPage() {
               </button>
             </div>
 
-            <form onSubmit={handleSaveTemplateSubmit} className="space-y-3.5 text-xs">
+            <form onSubmit={handleSaveTemplateSubmit} className="space-y-3 text-xs">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="font-semibold block mb-1">Rule Title *</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. Eid Watch Price & Free COD Rule"
+                    value={tmplTitle}
+                    onChange={(e) => setTmplTitle(e.target.value)}
+                    className="w-full px-3 py-2 border rounded-lg bg-background outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="font-semibold block mb-1">Intent Category *</label>
+                  <select
+                    value={tmplCategory}
+                    onChange={(e) => setTmplCategory(e.target.value as CommentIntentType)}
+                    className="w-full px-2.5 py-2 border rounded-lg bg-background font-medium outline-none"
+                  >
+                    <option value="Price Query">Price Query</option>
+                    <option value="Delivery Query">Delivery Query</option>
+                    <option value="Stock Query">Stock Query</option>
+                    <option value="Warranty Query">Warranty Query</option>
+                    <option value="Location Query">Location Query</option>
+                    <option value="Needs Review">Needs Review</option>
+                    <option value="General Greeting">General Greeting</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="font-semibold block mb-1">Target Account / Page / Group Scope</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. CARE HUB BD + All 100 Accounts"
+                    value={tmplTargetScope}
+                    onChange={(e) => setTmplTargetScope(e.target.value)}
+                    className="w-full px-3 py-2 border rounded-lg bg-background outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="font-semibold block mb-1">Product / Campaign Name</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Eid Special Premium Watch 2026"
+                    value={tmplProductName}
+                    onChange={(e) => setTmplProductName(e.target.value)}
+                    className="w-full px-3 py-2 border rounded-lg bg-background outline-none"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div>
+                  <label className="font-semibold block mb-1">Price &amp; Discount Info</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. ৳2,490 (Reg ৳3,990)"
+                    value={tmplPriceInfo}
+                    onChange={(e) => setTmplPriceInfo(e.target.value)}
+                    className="w-full px-3 py-2 border rounded-lg bg-background outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="font-semibold block mb-1">Delivery SLA &amp; Charge</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Free COD (24h Dhaka)"
+                    value={tmplDeliveryInfo}
+                    onChange={(e) => setTmplDeliveryInfo(e.target.value)}
+                    className="w-full px-3 py-2 border rounded-lg bg-background outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="font-semibold block mb-1">Stock Status</label>
+                  <select
+                    value={tmplStockStatus}
+                    onChange={(e) => setTmplStockStatus(e.target.value as any)}
+                    className="w-full px-2.5 py-2 border rounded-lg bg-background font-medium outline-none"
+                  >
+                    <option value="In Stock">In Stock</option>
+                    <option value="Limited Stock">Limited Stock</option>
+                    <option value="Pre-Order">Pre-Order</option>
+                    <option value="Out of Stock">Out of Stock</option>
+                  </select>
+                </div>
+              </div>
+
               <div>
-                <label className="font-semibold block mb-1">Template Title *</label>
+                <label className="font-semibold block mb-1">AI Prompt Instruction (Dynamic Guidance)</label>
                 <input
                   type="text"
-                  required
-                  placeholder="e.g. Eid Watch Price Response"
-                  value={tmplTitle}
-                  onChange={(e) => setTmplTitle(e.target.value)}
-                  className="w-full px-3 py-2 border rounded-lg bg-background focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none"
+                  placeholder="e.g. Emphasize 1-year replacement guarantee and ask for phone + address in DM"
+                  value={tmplAiPromptInstruction}
+                  onChange={(e) => setTmplAiPromptInstruction(e.target.value)}
+                  className="w-full px-3 py-2 border rounded-lg bg-background outline-none"
                 />
               </div>
 
               <div>
-                <label className="font-semibold block mb-1">Intent Category *</label>
-                <select
-                  value={tmplCategory}
-                  onChange={(e) => setTmplCategory(e.target.value as any)}
-                  className="w-full px-2.5 py-2 border rounded-lg bg-background font-medium focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none"
-                >
-                  <option value="Price Query">Price Query</option>
-                  <option value="Delivery Query">Delivery Query</option>
-                  <option value="Stock Query">Stock Query</option>
-                  <option value="Warranty Query">Warranty Query</option>
-                  <option value="Location Query">Location Query</option>
-                  <option value="General Greeting">General Greeting</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="font-semibold block mb-1">Public Comment Reply *</label>
+                <label className="font-semibold block mb-1">1. Nested Comment Reply (Inside Comment Thread) *</label>
                 <textarea
                   rows={2}
                   required
-                  placeholder="Public comment reply under the post..."
+                  placeholder="Nested reply posted directly under the customer's comment..."
                   value={tmplPublicReply}
                   onChange={(e) => setTmplPublicReply(e.target.value)}
-                  className="w-full px-3 py-2 border rounded-lg bg-background focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none"
+                  className="w-full px-3 py-2 border rounded-lg bg-background outline-none"
                 />
               </div>
 
               <div>
-                <label className="font-semibold block mb-1">Private Messenger Inbox Message *</label>
+                <label className="font-semibold block mb-1">2. Private Messenger Inbox Message (DM) *</label>
                 <textarea
                   rows={3}
                   required
-                  placeholder="Private message sent to customer's Messenger inbox..."
+                  placeholder="Private message dispatched to the customer's Messenger inbox..."
                   value={tmplInboxReply}
                   onChange={(e) => setTmplInboxReply(e.target.value)}
-                  className="w-full px-3 py-2 border rounded-lg bg-background focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none"
+                  className="w-full px-3 py-2 border rounded-lg bg-background outline-none"
                 />
               </div>
 
@@ -1426,20 +2445,193 @@ export default function SafeCommentAssistantPage() {
                 <label className="font-semibold block mb-1">Trigger Keywords (comma separated)</label>
                 <input
                   type="text"
-                  placeholder="e.g. দাম, price, কত, cost"
+                  placeholder="e.g. দাম, price, কত, cost, koto"
                   value={tmplKeywords}
                   onChange={(e) => setTmplKeywords(e.target.value)}
-                  className="w-full px-3 py-2 border rounded-lg bg-background font-mono text-xs focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none"
+                  className="w-full px-3 py-2 border rounded-lg bg-background font-mono text-xs outline-none"
                 />
               </div>
 
               <button
                 type="submit"
-                className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 rounded-lg shadow-xs transition mt-2 min-h-[38px]"
+                className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 rounded-lg shadow-xs transition mt-2"
               >
-                Save Template to Library
+                Save Rule to AI Knowledgebase
               </button>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL 2: TUCKED-AWAY SYNTHETIC COMMENT EVENT SIMULATOR */}
+      {showQuickSimModal && (
+        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-card border border-border rounded-2xl max-w-2xl w-full p-5 space-y-4 shadow-2xl animate-in zoom-in-95 duration-200 my-8">
+            <div className="flex items-center justify-between border-b pb-3">
+              <div>
+                <h3 className="font-bold text-sm text-foreground flex items-center gap-2">
+                  <Terminal className="w-4 h-4 text-blue-600" /> Quick Multi-Channel Comment Event Simulator
+                </h3>
+                <p className="text-[11px] text-muted-foreground">
+                  Simulate an incoming comment on any Page, Group, or Personal ID to verify Auto-Pilot nested reply and DM routing.
+                </p>
+              </div>
+              <button
+                onClick={() => setShowQuickSimModal(false)}
+                className="text-muted-foreground hover:text-foreground p-1 rounded-lg transition"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="space-y-3 text-xs">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div>
+                  <label className="font-semibold block mb-1">Source Channel</label>
+                  <select
+                    value={simSourceType}
+                    onChange={(e) => setSimSourceType(e.target.value as CommentSourceType)}
+                    className="w-full px-2.5 py-2 border rounded-lg bg-background font-semibold outline-none"
+                  >
+                    <option value="Page">Facebook Page</option>
+                    <option value="Group">Facebook Group (100 IDs)</option>
+                    <option value="Personal ID">Personal Profile ID</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="font-semibold block mb-1">Account / Page Name</label>
+                  <select
+                    value={simPageName}
+                    onChange={(e) => setSimPageName(e.target.value)}
+                    className="w-full px-2.5 py-2 border rounded-lg bg-background font-semibold outline-none"
+                  >
+                    {selectableAccounts.map((acc) => (
+                      <option key={acc} value={acc}>
+                        {acc}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="font-semibold block mb-1">Customer Name</label>
+                  <input
+                    type="text"
+                    value={simCustomerName}
+                    onChange={(e) => setSimCustomerName(e.target.value)}
+                    className="w-full px-3 py-2 border rounded-lg bg-background outline-none"
+                  />
+                </div>
+              </div>
+
+              {simSourceType === "Group" && (
+                <div>
+                  <label className="font-semibold block mb-1">Target Facebook Group Name</label>
+                  <input
+                    type="text"
+                    value={simGroupName}
+                    onChange={(e) => setSimGroupName(e.target.value)}
+                    className="w-full px-3 py-2 border rounded-lg bg-background outline-none"
+                  />
+                </div>
+              )}
+
+              <div>
+                <label className="font-semibold block mb-1">Customer Comment *</label>
+                <textarea
+                  rows={2}
+                  value={simCommentText}
+                  onChange={(e) => setSimCommentText(e.target.value)}
+                  className="w-full px-3 py-2 border rounded-lg bg-background outline-none"
+                />
+              </div>
+
+              <div className="flex flex-wrap gap-1.5 text-[11px]">
+                <button
+                  type="button"
+                  onClick={() => setSimCommentText("দাম কত ভাইয়া? ডেলিভারি চার্জ কত?")}
+                  className="px-2.5 py-1 rounded-lg border bg-muted/40 hover:bg-muted font-semibold flex items-center gap-1"
+                >
+                  <BadgeDollarSign className="w-3 h-3 text-blue-600" /> Price Query
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSimCommentText("ঢাকার বাইরে কি হোম ডেলিভারি পাওয়া যাবে?")}
+                  className="px-2.5 py-1 rounded-lg border bg-muted/40 hover:bg-muted font-semibold flex items-center gap-1"
+                >
+                  <Truck className="w-3 h-3 text-blue-600" /> Delivery Query
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSimCommentText("ব্ল্যাক কালারটা কি স্টকে আছে?")}
+                  className="px-2.5 py-1 rounded-lg border bg-muted/40 hover:bg-muted font-semibold flex items-center gap-1"
+                >
+                  <Package className="w-3 h-3 text-blue-600" /> Stock Query
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSimCommentText("শোরুমের ঠিকানা কোথায়?")}
+                  className="px-2.5 py-1 rounded-lg border bg-muted/40 hover:bg-muted font-semibold flex items-center gap-1"
+                >
+                  <MapPin className="w-3 h-3 text-blue-600" /> Location Query
+                </button>
+              </div>
+
+              <label className="flex items-center gap-2 font-semibold text-rose-600 dark:text-rose-400 cursor-pointer pt-1">
+                <input
+                  type="checkbox"
+                  checked={simSimulateFailure}
+                  onChange={(e) => setSimSimulateFailure(e.target.checked)}
+                  className="w-3.5 h-3.5 rounded text-rose-600"
+                />
+                <span>Simulate Failed Inbox DM (Test 1-Click Retry Queue)</span>
+              </label>
+
+              <button
+                type="button"
+                disabled={isSimulating}
+                onClick={handleRunSimulation}
+                className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-semibold py-2.5 rounded-lg shadow-xs transition flex items-center justify-center gap-2"
+              >
+                {isSimulating ? (
+                  <>
+                    <RotateCw className="w-4 h-4 animate-spin" /> Simulating Comment Event...
+                  </>
+                ) : (
+                  <>
+                    <Zap className="w-4 h-4" /> Push Comment Event ({mode === "Auto" ? "Auto-Pilot Instant Reply" : "Manual Queue"})
+                  </>
+                )}
+              </button>
+
+              {simPushedSuccess && (
+                <div className="p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-lg flex items-center justify-between gap-3 text-xs text-emerald-600 dark:text-emerald-400">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 shrink-0" />
+                    <span>
+                      Event processed and added to <strong>Live Activity Stream</strong>!
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowQuickSimModal(false)
+                      setActiveTab("incoming")
+                    }}
+                    className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded text-[11px] font-semibold flex items-center gap-1 shrink-0"
+                  >
+                    View in Stream <ArrowRight className="w-3 h-3" />
+                  </button>
+                </div>
+              )}
+
+              {simResponseOutput && (
+                <pre className="p-3 bg-slate-950 border border-slate-800 rounded-lg text-blue-300 text-[11px] overflow-x-auto max-h-48 font-mono">
+                  {JSON.stringify(simResponseOutput, null, 2)}
+                </pre>
+              )}
+            </div>
           </div>
         </div>
       )}

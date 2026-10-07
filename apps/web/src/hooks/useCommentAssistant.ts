@@ -2,18 +2,42 @@
 
 import { useState, useEffect, useCallback } from "react"
 
+export type CommentSourceType = "Page" | "Group" | "Personal ID"
+
+export type CommentIntentType =
+  | "Price Query"
+  | "Delivery Query"
+  | "Stock Query"
+  | "Warranty Query"
+  | "Location Query"
+  | "General Greeting"
+  | "Needs Review"
+
 export interface CommentItem {
   id: string
   commentId: string
   postId: string
   postTitle: string
+  postUrl?: string
+  postThumbnail?: string
   pageName: string
+  accountId?: string
+  accountName?: string
+  sourceType?: CommentSourceType
+  groupName?: string
   userName: string
   userAvatar?: string
   userComment: string
-  intent: "Price Query" | "Delivery Query" | "Stock Query" | "Warranty Query" | "Location Query" | "General Greeting"
+  intent: CommentIntentType
   receivedAt: string
-  status: "Pending" | "Replied" | "Ignored"
+  status: "Pending" | "Replied" | "Failed" | "Ignored"
+  nestedReplyStatus?: "Sent" | "Pending" | "Failed"
+  inboxStatus?: "Sent" | "Pending" | "Failed" | "Skipped"
+  inboxDeliveryMethod?: "Official Graph API" | "Page Send Message Modal" | "Direct Messenger Bot"
+  failureReason?: string
+  retryCount?: number
+  latencyMs?: number
+  replyMode?: "Auto" | "Manual"
   publicReply?: string
   privateInboxMessage?: string
   repliedAt?: string
@@ -22,8 +46,14 @@ export interface CommentItem {
 
 export interface CommentLibraryTemplate {
   id: string
-  category: "Price Query" | "Delivery Query" | "Stock Query" | "Warranty Query" | "Location Query" | "General Greeting"
+  category: CommentIntentType
   title: string
+  targetScope?: string
+  productName?: string
+  priceInfo?: string
+  deliveryInfo?: string
+  stockStatus?: "In Stock" | "Limited Stock" | "Pre-Order" | "Out of Stock"
+  aiPromptInstruction?: string
   publicReply: string
   privateInboxReply: string
   keywords: string[]
@@ -37,6 +67,8 @@ export interface CommentReplyLog {
   customerName: string
   postTitle: string
   pageName: string
+  sourceType?: CommentSourceType
+  groupName?: string
   customerQuery: string
   publicReply: string
   privateInboxReply?: string
@@ -48,6 +80,7 @@ export interface CommentReplyLog {
 const STORAGE_KEY_COMMENTS = "bmt_webhook_comments"
 const STORAGE_KEY_LIBRARY = "bmt_comment_library"
 const STORAGE_KEY_LOGS = "bmt_comment_reply_logs"
+const STORAGE_KEY_SCHEMA_VERSION = "bmt_comment_assistant_schema_v2"
 
 const sanitizeText = (text: string): string => {
   return text
@@ -60,61 +93,115 @@ export const DEFAULT_LIBRARY_TEMPLATES: CommentLibraryTemplate[] = [
   {
     id: "tmpl-price-1",
     category: "Price Query",
-    title: "Standard Eid Discount Price & Inbox Trigger",
-    publicReply: "ধন্যবাদ ভাইয়া! প্রিমিয়াম কালেকশনের স্পেশাল অফার প্রাইজ ইনবক্সে পাঠানো হয়েছে। দয়া করে ইনবক্স চেক করুন।",
-    privateInboxReply: "আসসালামু আলাইকুম! আমাদের প্রিমিয়াম ওয়াচটির রেগুলার মূল্য ৩,৯৯০ টাকা, তবে ঈদ ধামাকা অফারে পাচ্ছেন মাত্র ২,৪৯০ টাকায় (সারাদেশে ফ্রি ক্যাশ অন ডেলিভারি)! অর্ডার করতে এখনই আপনার নাম, পূর্ণ ঠিকানা ও মোবাইল নম্বর দিন।",
-    keywords: ["দাম", "price", "কত", "taka", "টাকা", "cost", "দাম কত"],
-    usesCount: 184,
+    title: "Eid Special Watch — Dynamic Price & Order Prompt",
+    targetScope: "CARE HUB BD (Page) + All Groups",
+    productName: "Eid Special Premium Watch Collection 2026",
+    priceInfo: "৳2,490 (Regular ৳3,990 — 38% OFF)",
+    deliveryInfo: "Free Nationwide Cash on Delivery (24h Dhaka, 48h Outside)",
+    stockStatus: "In Stock",
+    aiPromptInstruction:
+      "Reply inside the user's comment confirming inbox dispatch, then send full offer price (৳2,490) and ask for Name, Full Address, and Mobile Number in Messenger.",
+    publicReply:
+      "ধন্যবাদ ভাইয়া! প্রিমিয়াম কালেকশনের স্পেশাল অফার প্রাইজ আপনার ইনবক্সে পাঠানো হয়েছে। দয়া করে মেসেঞ্জার চেক করুন।",
+    privateInboxReply:
+      "আসসালামু আলাইকুম! আমাদের প্রিমিয়াম ওয়াচটির রেগুলার মূল্য ৩,৯৯০ টাকা, তবে ঈদ ধামাকা অফারে পাচ্ছেন মাত্র ২,৪৯০ টাকায় (সারাদেশে ফ্রি ক্যাশ অন ডেলিভারি)! অর্ডার করতে এখনই আপনার নাম, পূর্ণ ঠিকানা ও মোবাইল নম্বর দিন।",
+    keywords: ["দাম", "price", "কত", "taka", "টাকা", "cost", "দাম কত", "koto", "dam"],
+    usesCount: 412,
     createdAt: new Date().toISOString(),
   },
   {
     id: "tmpl-del-2",
     category: "Delivery Query",
-    title: "Nationwide Cash on Delivery Assurance",
-    publicReply: "জি ভাইয়া, আমরা সারাদেশে ক্যাশ অন ডেলিভারি দিচ্ছি। ডেলিভারি সংক্রান্ত বিস্তারিত তথ্য ইনবক্সে চেক করুন।",
-    privateInboxReply: "জি সম্মানিত গ্রাহক! ঢাকা সিটিতে ২৪ ঘণ্টার মধ্যে এবং ঢাকার বাইরে ৪৮ ঘণ্টার মধ্যে ক্যাশ অন ডেলিভারি পাবেন। ডেলিভারি ম্যানের সামনে প্রোডাক্ট দেখে চেক করে মূল্য পরিশোধ করতে পারবেন।",
-    keywords: ["ডেলিভারি", "delivery", "home delivery", "ক্যাশ অন", "ঢাকার বাইরে", "চার্জ"],
-    usesCount: 142,
+    title: "Nationwide Cash on Delivery & Inspection Rule",
+    targetScope: "All 100 Accounts (Pages, Groups & IDs)",
+    productName: "All Active Catalog Products",
+    priceInfo: "Delivery Charge: ৳0 (Free COD Campaign)",
+    deliveryInfo: "Dhaka City: 24 Hours | Outside Dhaka: 48-72 Hours (Steadfast/Pathao)",
+    stockStatus: "In Stock",
+    aiPromptInstruction:
+      "Assure customer that 100% Cash on Delivery is available across Bangladesh and they can inspect the product in front of the delivery rider before paying.",
+    publicReply:
+      "জি ভাইয়া, আমরা সারাদেশে ক্যাশ অন ডেলিভারি দিচ্ছি। ডেলিভারি সংক্রান্ত বিস্তারিত তথ্য আপনার ইনবক্সে পাঠানো হয়েছে।",
+    privateInboxReply:
+      "জি সম্মানিত গ্রাহক! ঢাকা সিটিতে ২৪ ঘণ্টার মধ্যে এবং ঢাকার বাইরে ৪৮ ঘণ্টার মধ্যে ক্যাশ অন ডেলিভারি পাবেন। ডেলিভারি ম্যানের সামনে প্রোডাক্ট দেখে চেক করে মূল্য পরিশোধ করতে পারবেন।",
+    keywords: ["ডেলিভারি", "delivery", "home delivery", "ক্যাশ অন", "ঢাকার বাইরে", "চার্জ", "charge", "cod"],
+    usesCount: 289,
     createdAt: new Date().toISOString(),
   },
   {
     id: "tmpl-stock-3",
     category: "Stock Query",
-    title: "Limited Stock & Booking Urgency",
-    publicReply: "প্রোডাক্টটির সীমিত স্টক এভেইলেবল আছে ভাইয়া! স্টক শেষ হওয়ার আগেই বুকিং করতে ইনবক্স চেক করুন।",
-    privateInboxReply: "জি প্রোডাক্টটি এই মুহূর্তে আমাদের স্টকে আছে, তবে মাত্র ১২টি পিস অবশিষ্ট রয়েছে। আপনি চাইলে এখনই আপনার বুকিং কনফার্ম করতে পারেন। ধন্যবাদ!",
-    keywords: ["স্টক", "stock", "available", "আছে কি", "কালার", "color"],
-    usesCount: 96,
+    title: "Color Variants & Live Stock Urgency Rule",
+    targetScope: "All 100 Accounts (Pages, Groups & IDs)",
+    productName: "Premium Watch & Smart Gadgets",
+    priceInfo: "৳2,490 (Combo 2 pcs: ৳4,500)",
+    deliveryInfo: "Instant Dispatch from Dhaka Hub",
+    stockStatus: "Limited Stock",
+    aiPromptInstruction:
+      "Confirm color availability (Black, Silver, Rose Gold) and mention limited stock urgency to encourage immediate booking in Messenger.",
+    publicReply:
+      "প্রোডাক্টটির সবগুলো কালার বর্তমানে সীমিত স্টকে এভেইলেবল আছে ভাইয়া! স্টক শেষ হওয়ার আগেই বুকিং করতে ইনবক্স চেক করুন।",
+    privateInboxReply:
+      "জি প্রোডাক্টটি এই মুহূর্তে আমাদের স্টকে আছে (ব্ল্যাক, সিলভার ও রোজ গোল্ড কালার), তবে মাত্র ১২টি পিস অবশিষ্ট রয়েছে। এখনই বুকিং কনফার্ম করতে আপনার নাম, ঠিকানা ও ফোন নম্বর দিন।",
+    keywords: ["স্টক", "stock", "available", "আছে কি", "কালার", "color", "ache", "ase"],
+    usesCount: 196,
     createdAt: new Date().toISOString(),
   },
   {
     id: "tmpl-war-4",
     category: "Warranty Query",
-    title: "Official Brand Replacement Guarantee",
-    publicReply: "জি সম্মানিত কাস্টমার, প্রতিটি প্রডাক্টে পাচ্ছেন ১ বছরের অফিসিয়াল রিপ্লেসমেন্ট ওয়ারেন্টি! বিস্তারিত ইনবক্সে দেওয়া হলো।",
-    privateInboxReply: "আমাদের প্রতিটি অথেনটিক প্রডাক্টের সাথে পাবেন অফিসিয়াল ১ বছরের রিপ্লেসমেন্ট কার্ড। যেকোনো সমস্যায় ৭ দিনের মধ্যে ফ্রি এক্সচেঞ্জ সুবিধা রয়েছে।",
-    keywords: ["ওয়ারেন্টি", "warranty", "গ্যারান্টি", "guarantee", "নষ্ট হলে"],
-    usesCount: 78,
+    title: "Official 1-Year Brand Replacement Guarantee",
+    targetScope: "CARE HUB BD + Gadget Group Accounts",
+    productName: "Electronics & Watch Catalog",
+    priceInfo: "Includes Free Official Warranty Card",
+    deliveryInfo: "7-Day Instant Free Exchange on Any Defect",
+    stockStatus: "In Stock",
+    aiPromptInstruction:
+      "Highlight 1-year official replacement warranty and 7-day easy exchange policy so the customer feels 100% confident ordering.",
+    publicReply:
+      "জি সম্মানিত কাস্টমার, প্রতিটি প্রডাক্টে পাচ্ছেন ১ বছরের অফিসিয়াল রিপ্লেসমেন্ট ওয়ারেন্টি! বিস্তারিত ইনবক্সে দেওয়া হলো।",
+    privateInboxReply:
+      "আমাদের প্রতিটি অথেনটিক প্রডাক্টের সাথে পাবেন অফিসিয়াল ১ বছরের রিপ্লেসমেন্ট ওয়ারেন্টি কার্ড। যেকোনো সমস্যায় ৭ দিনের মধ্যে ফ্রি এক্সচেঞ্জ সুবিধা রয়েছে।",
+    keywords: ["ওয়ারেন্টি", "warranty", "গ্যারান্টি", "guarantee", "নষ্ট হলে", "অরিজিনাল"],
+    usesCount: 138,
     createdAt: new Date().toISOString(),
   },
   {
     id: "tmpl-loc-5",
     category: "Location Query",
-    title: "Showroom Address & Direct Order Link",
-    publicReply: "আমাদের ঢাকা শোরুমের পূর্ণ ঠিকানা ও গুগল ম্যাপ লিংক ইনবক্সে পাঠানো হয়েছে ভাইয়া।",
-    privateInboxReply: "আমাদের হেড অফিস ও আউটলেট: শপ #৪০৮, লেভেল ৪, যমুনা ফিউচার পার্ক, কুড়িল, ঢাকা। অনলাইনে অর্ডার করতে ভিজিট করুন: https://bmt.link/store",
-    keywords: ["ঠিকানা", "location", "দোকান", "শোরুম", "কোথায়", "address"],
-    usesCount: 52,
+    title: "Showroom Address & Direct Online Booking",
+    targetScope: "All 100 Accounts (Pages, Groups & IDs)",
+    productName: "Physical Outlet & Online Store",
+    priceInfo: "Same Offer Price Online & In-Store",
+    deliveryInfo: "Jamuna Future Park Level 4, Shop #408",
+    stockStatus: "In Stock",
+    aiPromptInstruction:
+      "Provide the Jamuna Future Park showroom address and offer home delivery if the customer prefers not to visit in person.",
+    publicReply:
+      "আমাদের ঢাকা শোরুমের পূর্ণ ঠিকানা ও গুগল ম্যাপ লিংক আপনার ইনবক্সে পাঠানো হয়েছে ভাইয়া।",
+    privateInboxReply:
+      "আমাদের হেড অফিস ও আউটলেট: শপ #৪০৮, লেভেল ৪, যমুনা ফিউচার পার্ক, কুড়িল, ঢাকা। আপনি চাইলে শোরুমে এসে অথবা ঘরে বসে ক্যাশ অন ডেলিভারিতেও নিতে পারেন!",
+    keywords: ["ঠিকানা", "location", "দোকান", "শোরুম", "কোথায়", "address", "shop"],
+    usesCount: 94,
     createdAt: new Date().toISOString(),
   },
   {
     id: "tmpl-gen-6",
     category: "General Greeting",
-    title: "Friendly Welcome & Assistant Introduction",
-    publicReply: "আসসালামু আলাইকুম! বিস্তারিত তথ্য আপনার ইনবক্সে মেসেজ করা হয়েছে, দয়া করে মেসেঞ্জার চেক করুন।",
-    privateInboxReply: "স্বাগতম! আপনি আমাদের পণ্যটি সম্পর্কে জানতে চাওয়ায় ধন্যবাদ। যেকোনো তথ্য বা অর্ডারের জন্য আমাদের জানাতে পারেন, আমরা তাৎক্ষণিক সহায়তা করছি।",
-    keywords: ["hi", "hello", "হাই", "হ্যালো", "details", "info", "জানতে চাই"],
-    usesCount: 110,
+    title: "Friendly AI Concierge & Catalog Overview",
+    targetScope: "All 100 Accounts (Pages, Groups & IDs)",
+    productName: "General Store Inquiry",
+    priceInfo: "Dynamic Catalog Pricing",
+    deliveryInfo: "Nationwide COD",
+    stockStatus: "In Stock",
+    aiPromptInstruction:
+      "Greet politely in Bengali, confirm an inbox message was sent, and ask how we can help with their order.",
+    publicReply:
+      "আসসালামু আলাইকুম! বিস্তারিত তথ্য আপনার ইনবক্সে মেসেজ করা হয়েছে, দয়া করে মেসেঞ্জার চেক করুন।",
+    privateInboxReply:
+      "স্বাগতম! আমাদের পোস্টে কমেন্ট করার জন্য ধন্যবাদ। প্রোডাক্টের ছবি, অফার প্রাইজ এবং অর্ডারের যেকোনো তথ্যের জন্য এখানে রিপ্লাই দিন, আমরা তাৎক্ষণিক সহায়তা করছি।",
+    keywords: ["hi", "hello", "হাই", "হ্যালো", "details", "info", "জানতে চাই", "interested", "দরকার"],
+    usesCount: 215,
     createdAt: new Date().toISOString(),
   },
 ]
@@ -125,49 +212,224 @@ export const DEFAULT_WEBHOOK_COMMENTS: CommentItem[] = [
     commentId: "cmt_98234123_4021",
     postId: "post_892168940637389_1020304050",
     postTitle: "Eid Special Premium Watch Collection Offer 2026",
+    postUrl: "https://www.facebook.com/892168940637389/posts/1020304050",
+    postThumbnail: "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=120&auto=format&fit=crop&q=80",
     pageName: "CARE HUB BD",
+    accountId: "page-care-hub",
+    accountName: "CARE HUB BD",
+    sourceType: "Page",
     userName: "Tanvir Ahmed",
     userAvatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80",
     userComment: "দাম কত ভাইয়া? ঢাকার বাইরে ডেলিভারি চার্জ কত পরবে?",
     intent: "Price Query",
-    receivedAt: "1 min ago (Webhook Detected)",
-    status: "Pending",
+    receivedAt: "Just now",
+    status: "Replied",
+    nestedReplyStatus: "Sent",
+    inboxStatus: "Sent",
+    inboxDeliveryMethod: "Page Send Message Modal",
+    latencyMs: 1850,
+    replyMode: "Auto",
+    publicReply: "ধন্যবাদ ভাইয়া! প্রিমিয়াম কালেকশনের স্পেশাল অফার প্রাইজ আপনার ইনবক্সে পাঠানো হয়েছে। দয়া করে মেসেঞ্জার চেক করুন।",
+    privateInboxMessage:
+      "আসসালামু আলাইকুম! আমাদের প্রিমিয়াম ওয়াচটির রেগুলার মূল্য ৩,৯৯০ টাকা, তবে ঈদ ধামাকা অফারে পাচ্ছেন মাত্র ২,৪৯০ টাকায় (সারাদেশে ফ্রি ক্যাশ অন ডেলিভারি)! অর্ডার করতে এখনই আপনার নাম, পূর্ণ ঠিকানা ও মোবাইল নম্বর দিন।",
+    repliedAt: new Date(Date.now() - 45 * 1000).toISOString(),
     suggestions: [
-      "ধন্যবাদ ভাইয়া! প্রিমিয়াম কালেকশনের স্পেশাল অফার প্রাইজ ইনবক্সে পাঠানো হয়েছে। দয়া করে ইনবক্স চেক করুন।",
-      "আসসালামু আলাইকুম! ওয়াচটির প্রাইজ মাত্র ২,৪৯০ টাকা (সারাদেশে ফ্রি ডেলিভারি)। ইনবক্স চেক করুন ভাইয়া।",
-      "ভাইয়া ওয়াচটির দাম ২,৪৯০ টাকা। আপনার ঠিকানা ও ফোন নম্বর ইনবক্সে পাঠিয়ে অর্ডার কনফার্ম করুন।",
+      "ধন্যবাদ ভাইয়া! প্রিমিয়াম কালেকশনের স্পেশাল অফার প্রাইজ আপনার ইনবক্সে পাঠানো হয়েছে। দয়া করে মেসেঞ্জার চেক করুন।",
+      "আসসালামু আলাইকুম! ওয়াচটির প্রাইজ মাত্র ২,৪৯০ টাকা (সারাদেশে ফ্রি ডেলিভারি)। ইনবক্স চেক করুন ভাইয়া।",
     ],
   },
   {
     id: "cm-102",
     commentId: "cmt_87123982_5032",
-    postId: "post_892168940637389_1020304050",
-    pageName: "CARE HUB BD",
+    postId: "post_grp_dhaka_buy_sell_8821",
+    postTitle: "অরিজিনাল স্টেইনলেস স্টিল প্রিমিয়াম ঘড়ি — ঈদ কালেকশন",
+    postUrl: "https://www.facebook.com/groups/dhakabuyandsell/posts/88210391",
+    postThumbnail: "https://images.unsplash.com/photo-1524805444758-089113d48a6d?w=120&auto=format&fit=crop&q=80",
+    pageName: "Tariqul Islam (Dhaka Marketplace Lead)",
+    accountId: "acc-101",
+    accountName: "Tariqul Islam (Dhaka Marketplace Lead)",
+    sourceType: "Group",
+    groupName: "Dhaka Buy and Sell Official",
     userName: "Nusrat Jahan",
     userAvatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&auto=format&fit=crop&q=80",
-    userComment: "ঢাকার বাইরে কি ক্যাশ অন ডেলিভারি হবে? প্রোডাক্ট হাতে পাওয়ার পর টাকা দিতে পারব?",
+    userComment: "ঢাকার বাইরে কি ক্যাশ অন ডেলিভারি হবে? প্রোডাক্ট হাতে পাওয়ার পর টাকা দিতে পারব?",
     intent: "Delivery Query",
-    receivedAt: "4 mins ago (Webhook Detected)",
-    status: "Pending",
+    receivedAt: "2 mins ago",
+    status: "Replied",
+    nestedReplyStatus: "Sent",
+    inboxStatus: "Sent",
+    inboxDeliveryMethod: "Direct Messenger Bot",
+    latencyMs: 2400,
+    replyMode: "Auto",
+    publicReply: "জি আপু, আমরা পুরো বাংলাদেশে ক্যাশ অন ডেলিভারিতে প্রোডাক্ট পাঠিয়ে থাকি। অর্ডার করতে ইনবক্স চেক করুন।",
+    privateInboxMessage:
+      "জি সম্মানিত গ্রাহক! ঢাকা সিটিতে ২৪ ঘণ্টার মধ্যে এবং ঢাকার বাইরে ৪৮ ঘণ্টার মধ্যে ক্যাশ অন ডেলিভারি পাবেন। ডেলিভারি ম্যানের সামনে প্রোডাক্ট দেখে চেক করে মূল্য পরিশোধ করতে পারবেন।",
+    repliedAt: new Date(Date.now() - 2 * 60 * 1000).toISOString(),
     suggestions: [
-      "জি আপু, আমরা পুরো বাংলাদেশে ক্যাশ অন ডেলিভারিতে প্রোডাক্ট পাঠিয়ে থাকি। অর্ডার করতে ইনবক্স চেক করুন।",
-      "হ্যাঁ আপু! প্রোডাক্ট হাতে পেয়ে দেখে মূল্য পরিশোধ করতে পারবেন। বিস্তারিত তথ্য ইনবক্সে মেসেজ করা হয়েছে।",
+      "জি আপু, আমরা পুরো বাংলাদেশে ক্যাশ অন ডেলিভারিতে প্রোডাক্ট পাঠিয়ে থাকি। অর্ডার করতে ইনবক্স চেক করুন।",
+      "হ্যাঁ আপু! প্রোডাক্ট হাতে পেয়ে দেখে মূল্য পরিশোধ করতে পারবেন। বিস্তারিত তথ্য ইনবক্সে মেসেজ করা হয়েছে।",
     ],
   },
   {
     id: "cm-103",
     commentId: "cmt_76123491_6043",
-    postId: "post_892168940637389_1020304050",
-    pageName: "CARE HUB BD",
+    postId: "post_grp_gadget_hub_7712",
+    postTitle: "Smart Watch Ultra Series — 1 Year Replacement Guarantee",
+    postUrl: "https://www.facebook.com/groups/bdsmartgadget/posts/77129384",
+    postThumbnail: "https://images.unsplash.com/photo-1546868871-7041f2a55e12?w=120&auto=format&fit=crop&q=80",
+    pageName: "Kamrul Hasan (Gadgets & Tech Poster)",
+    accountId: "acc-102",
+    accountName: "Kamrul Hasan (Gadgets & Tech Poster)",
+    sourceType: "Group",
+    groupName: "BD Smart Gadget & Electronics Hub",
     userName: "Mahfuzur Rahman",
     userAvatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&auto=format&fit=crop&q=80",
-    userComment: "ব্ল্যাক কালারটা কি স্টকে এভেইলেবল আছে? সাথে কোনো ওয়ারেন্টি থাকবে?",
+    userComment: "ব্ল্যাক কালারটা কি স্টকে এভেইলেবল আছে? সাথে কোনো ওয়ারেন্টি থাকবে?",
     intent: "Stock Query",
-    receivedAt: "12 mins ago (Webhook Detected)",
+    receivedAt: "4 mins ago",
     status: "Pending",
+    nestedReplyStatus: "Pending",
+    inboxStatus: "Pending",
+    inboxDeliveryMethod: "Direct Messenger Bot",
     suggestions: [
-      "জি ভাইয়া, ব্ল্যাক কালার এভেইলেবল আছে এবং ১ বছরের অফিসিয়াল ব্র্যান্ড ওয়ারেন্টি রয়েছে! বিস্তারিত ইনবক্সে দেওয়া হলো।",
+      "জি ভাইয়া, ব্ল্যাক কালার এভেইলেবল আছে এবং ১ বছরের অফিসিয়াল ব্র্যান্ড ওয়ারেন্টি রয়েছে! বিস্তারিত ইনবক্সে দেওয়া হলো।",
       "প্রোডাক্টটির ব্ল্যাক কালার স্টকে আছে। সীমিত স্টক, দ্রুত ইনবক্স চেক করে বুকিং কনফার্ম করুন।",
+    ],
+  },
+  {
+    id: "cm-104",
+    commentId: "cmt_65192837_7054",
+    postId: "post_892168940637389_1020304050",
+    postTitle: "Eid Special Premium Watch Collection Offer 2026",
+    postUrl: "https://www.facebook.com/892168940637389/posts/1020304050",
+    postThumbnail: "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=120&auto=format&fit=crop&q=80",
+    pageName: "CARE HUB BD",
+    accountId: "page-care-hub",
+    accountName: "CARE HUB BD",
+    sourceType: "Page",
+    userName: "Rafiqul Islam",
+    userComment: "ভাইয়া আমি ২টা ঘড়ি একসাথে নিতে চাই, আমাকে ইনবক্সে মেসেজ দেন প্লিজ, আমার ইনবক্স থেকে মেসেজ যাচ্ছে না।",
+    intent: "Price Query",
+    receivedAt: "6 mins ago",
+    status: "Failed",
+    nestedReplyStatus: "Sent",
+    inboxStatus: "Failed",
+    inboxDeliveryMethod: "Page Send Message Modal",
+    failureReason: "Messenger DOM modal timeout (Network jitter) — 1-Click Retry ready",
+    retryCount: 1,
+    publicReply: "ধন্যবাদ ভাইয়া! ২টি ঘড়ির কম্বো অফার প্রাইজ আপনার ইনবক্সে পাঠানো হচ্ছে।",
+    privateInboxMessage:
+      "আসসালামু আলাইকুম ভাইয়া! ২টি প্রিমিয়াম ওয়াচ একসাথে নিলে কম্বো অফারে পাচ্ছেন মাত্র ৪,৫০০ টাকায় (ফ্রি ডেলিভারি)। আপনার নাম, ঠিকানা ও মোবাইল নম্বর দিন।",
+    suggestions: [
+      "ধন্যবাদ ভাইয়া! ২টি ঘড়ির কম্বো অফার প্রাইজ আপনার ইনবক্সে পাঠানো হয়েছে। দয়া করে মেসেজ রিকোয়েস্ট চেক করুন।",
+    ],
+  },
+  {
+    id: "cm-105",
+    commentId: "cmt_54182736_8065",
+    postId: "post_id_rasidul_9912",
+    postTitle: "আজকের স্পেশাল ঘড়ির লাইভ রিভিউ ও আনবক্সিং",
+    postUrl: "https://www.facebook.com/rasidul/posts/99128374",
+    postThumbnail: "https://images.unsplash.com/photo-1522335789203-aabd1fc54bc9?w=120&auto=format&fit=crop&q=80",
+    pageName: "Rasidul (Personal ID)",
+    accountId: "acc-rasidul",
+    accountName: "Rasidul (Personal ID)",
+    sourceType: "Personal ID",
+    userName: "Sabbir Hossain",
+    userComment: "দাম কত ভাইয়া? অরিজিনাল বক্স সাথে থাকবে তো?",
+    intent: "Price Query",
+    receivedAt: "9 mins ago",
+    status: "Replied",
+    nestedReplyStatus: "Sent",
+    inboxStatus: "Sent",
+    inboxDeliveryMethod: "Direct Messenger Bot",
+    latencyMs: 2100,
+    replyMode: "Auto",
+    publicReply: "জি ভাইয়া, অরিজিনাল প্রিমিয়াম বক্স ও ওয়ারেন্টি কার্ড সাথে থাকবে! অফার প্রাইজ ইনবক্সে পাঠানো হয়েছে।",
+    privateInboxMessage:
+      "আসসালামু আলাইকুম! অরিজিনাল বক্স ও ১ বছরের ওয়ারেন্টি কার্ডসহ স্পেশাল প্রাইজ মাত্র ২,৪৯০ টাকা। অর্ডার করতে নাম, ঠিকানা ও ফোন নম্বর দিন।",
+    repliedAt: new Date(Date.now() - 9 * 60 * 1000).toISOString(),
+    suggestions: [
+      "জি ভাইয়া, অরিজিনাল প্রিমিয়াম বক্স ও ওয়ারেন্টি কার্ড সাথে থাকবে! অফার প্রাইজ ইনবক্সে পাঠানো হয়েছে।",
+    ],
+  },
+  {
+    id: "cm-106",
+    commentId: "cmt_43172635_9076",
+    postId: "post_grp_organic_food_6610",
+    postTitle: "খাঁটি সুন্দরবনের প্রাকৃতিক চাকের মধু — ১০০% গ্যারান্টি",
+    postUrl: "https://www.facebook.com/groups/pureorganicfoodbd/posts/66102938",
+    postThumbnail: "https://images.unsplash.com/photo-1587049352847-4a222e784d38?w=120&auto=format&fit=crop&q=80",
+    pageName: "Farhana Akter (Organic Food & Boutique)",
+    accountId: "acc-103",
+    accountName: "Farhana Akter (Organic Food & Boutique)",
+    sourceType: "Group",
+    groupName: "Pure & Organic Food BD",
+    userName: "Sharmin Sultana",
+    userComment: "১ কেজি মধুর দাম কত আপু? মিরপুরে কবে ডেলিভারি দিতে পারবেন?",
+    intent: "Price Query",
+    receivedAt: "14 mins ago",
+    status: "Pending",
+    nestedReplyStatus: "Pending",
+    inboxStatus: "Pending",
+    inboxDeliveryMethod: "Direct Messenger Bot",
+    suggestions: [
+      "ধন্যবাদ আপু! ১ কেজি খাঁটি মধুর অফার প্রাইজ এবং মিরপুরে ২৪ ঘণ্টায় ডেলিভারির বিস্তারিত ইনবক্সে পাঠিয়েছি।",
+      "জি আপু, আগামীকালই মিরপুরে হোম ডেলিভারি পাবেন! বিস্তারিত জানতে ইনবক্স চেক করুন।",
+    ],
+  },
+  {
+    id: "cm-107",
+    commentId: "cmt_32162534_1087",
+    postId: "post_892168940637389_1020304050",
+    postTitle: "Eid Special Premium Watch Collection Offer 2026",
+    postUrl: "https://www.facebook.com/892168940637389/posts/1020304050",
+    postThumbnail: "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=120&auto=format&fit=crop&q=80",
+    pageName: "CARE HUB BD",
+    accountId: "page-care-hub",
+    accountName: "CARE HUB BD",
+    sourceType: "Page",
+    userName: "Mehedi Hasan",
+    userComment: "আপনাদের শোরুমের ঠিকানা কোথায়? সরাসরি এসে দেখে নিতে চাই।",
+    intent: "Location Query",
+    receivedAt: "18 mins ago",
+    status: "Replied",
+    nestedReplyStatus: "Sent",
+    inboxStatus: "Sent",
+    inboxDeliveryMethod: "Official Graph API",
+    latencyMs: 1420,
+    replyMode: "Auto",
+    publicReply: "আমাদের ঢাকা শোরুমের পূর্ণ ঠিকানা ও গুগল ম্যাপ লিংক আপনার ইনবক্সে পাঠানো হয়েছে ভাইয়া।",
+    privateInboxMessage:
+      "আমাদের হেড অফিস ও আউটলেট: শপ #৪০৮, লেভেল ৪, যমুনা ফিউচার পার্ক, কুড়িল, ঢাকা। সরাসরি শোরুমে এসে দেখে নেওয়ার আমন্ত্রণ রইল!",
+    repliedAt: new Date(Date.now() - 18 * 60 * 1000).toISOString(),
+    suggestions: [
+      "আমাদের ঢাকা শোরুমের পূর্ণ ঠিকানা ও গুগল ম্যাপ লিংক আপনার ইনবক্সে পাঠানো হয়েছে ভাইয়া।",
+    ],
+  },
+  {
+    id: "cm-108",
+    commentId: "cmt_21152433_2098",
+    postId: "post_grp_mirpur_wholesale_5519",
+    postTitle: "পাইকারি দামে প্রিমিয়াম পাঞ্জাবি ও ঘড়ি কম্বো",
+    postUrl: "https://www.facebook.com/groups/mirpurwholesale/posts/55192837",
+    postThumbnail: "https://images.unsplash.com/photo-1509941943102-10c232535736?w=120&auto=format&fit=crop&q=80",
+    pageName: "Tariqul Islam (Dhaka Marketplace Lead)",
+    accountId: "acc-101",
+    accountName: "Tariqul Islam (Dhaka Marketplace Lead)",
+    sourceType: "Group",
+    groupName: "Mirpur Wholesale Marketplace",
+    userName: "Jahidul Islam",
+    userComment: "ভাই গত সপ্তাহে অর্ডার করেছিলাম কিন্তু কুরিয়ার থেকে এখনো কল দেয়নি, একটু চেক করবেন?",
+    intent: "Needs Review",
+    receivedAt: "22 mins ago",
+    status: "Pending",
+    nestedReplyStatus: "Pending",
+    inboxStatus: "Pending",
+    inboxDeliveryMethod: "Direct Messenger Bot",
+    suggestions: [
+      "আন্তরিকভাবে দুঃখিত ভাইয়া! আপনার অর্ডার নম্বর বা মোবাইল নম্বরটি ইনবক্সে দিন, আমরা এখনই কুরিয়ার ট্র্যাকিং চেক করে আপডেট জানাচ্ছি।",
+      "ভাইয়া আমরা আপনার ইনবক্সে মেসেজ দিয়েছি, দয়া করে আপনার ফোন নম্বরটি দিন যাতে দ্রুত সমাধান করতে পারি।",
     ],
   },
 ]
@@ -176,45 +438,113 @@ export const INITIAL_REPLY_LOGS: CommentReplyLog[] = [
   {
     id: "log-rep-1",
     commentId: "cmt_98234123_4021",
-    customerName: "Sajid Hasan",
+    customerName: "Tanvir Ahmed",
     postTitle: "Eid Special Premium Watch Collection Offer 2026",
     pageName: "CARE HUB BD",
-    customerQuery: "দাম কত?",
-    publicReply: "ধন্যবাদ ভাইয়া! প্রিমিয়াম কালেকশনের স্পেশাল অফার প্রাইজ ইনবক্সে পাঠানো হয়েছে।",
-    privateInboxReply: "আসসালামু আলাইকুম! ওয়াচটির প্রাইজ মাত্র ২,৪৯০ টাকা (সারাদেশে ফ্রি ডেলিভারি)।",
+    sourceType: "Page",
+    customerQuery: "দাম কত ভাইয়া? ঢাকার বাইরে ডেলিভারি চার্জ কত পরবে?",
+    publicReply: "ধন্যবাদ ভাইয়া! প্রিমিয়াম কালেকশনের স্পেশাল অফার প্রাইজ আপনার ইনবক্সে পাঠানো হয়েছে। দয়া করে মেসেঞ্জার চেক করুন।",
+    privateInboxReply: "আসসালামু আলাইকুম! আমাদের প্রিমিয়াম ওয়াচটির রেগুলার মূল্য ৩,৯৯০ টাকা, তবে ঈদ ধামাকা অফারে পাচ্ছেন মাত্র ২,৪৯০ টাকায় (সারাদেশে ফ্রি ক্যাশ অন ডেলিভারি)!",
     status: "Success",
-    graphApiResponse: "HTTP 200 OK — CommentReplyId: 1020304050_991, MsgId: m_mid_9921",
-    timestamp: new Date(Date.now() - 35 * 60 * 1000).toISOString(),
+    graphApiResponse: "Nested Reply OK (1.8s) + Page Send Message Modal Dispatched",
+    timestamp: new Date(Date.now() - 45 * 1000).toISOString(),
+  },
+  {
+    id: "log-rep-2",
+    commentId: "cmt_87123982_5032",
+    customerName: "Nusrat Jahan",
+    postTitle: "অরিজিনাল স্টেইনলেস স্টিল প্রিমিয়াম ঘড়ি — ঈদ কালেকশন",
+    pageName: "Tariqul Islam (Dhaka Marketplace Lead)",
+    sourceType: "Group",
+    groupName: "Dhaka Buy and Sell Official",
+    customerQuery: "ঢাকার বাইরে কি ক্যাশ অন ডেলিভারি হবে? প্রোডাক্ট হাতে পাওয়ার পর টাকা দিতে পারব?",
+    publicReply: "জি আপু, আমরা পুরো বাংলাদেশে ক্যাশ অন ডেলিভারিতে প্রোডাক্ট পাঠিয়ে থাকি। অর্ডার করতে ইনবক্স চেক করুন।",
+    privateInboxReply: "জি সম্মানিত গ্রাহক! ঢাকা সিটিতে ২৪ ঘণ্টার মধ্যে এবং ঢাকার বাইরে ৪৮ ঘণ্টার মধ্যে ক্যাশ অন ডেলিভারি পাবেন।",
+    status: "Success",
+    graphApiResponse: "Group Nested Comment Reply OK + Direct Messenger Bot Sent",
+    timestamp: new Date(Date.now() - 2 * 60 * 1000).toISOString(),
+  },
+  {
+    id: "log-rep-3",
+    commentId: "cmt_65192837_7054",
+    customerName: "Rafiqul Islam",
+    postTitle: "Eid Special Premium Watch Collection Offer 2026",
+    pageName: "CARE HUB BD",
+    sourceType: "Page",
+    customerQuery: "ভাইয়া আমি ২টা ঘড়ি একসাথে নিতে চাই, আমাকে ইনবক্সে মেসেজ দেন প্লিজ",
+    publicReply: "ধন্যবাদ ভাইয়া! ২টি ঘড়ির কম্বো অফার প্রাইজ আপনার ইনবক্সে পাঠানো হচ্ছে।",
+    privateInboxReply: undefined,
+    status: "Failed",
+    graphApiResponse: "Nested Reply OK — Private Inbox Modal Timeout (Queued for 1-Click Retry)",
+    timestamp: new Date(Date.now() - 6 * 60 * 1000).toISOString(),
   },
 ]
 
+const MAX_STORED_COMMENTS = 200
+const MAX_STORED_LOGS = 500
+const DEFAULT_POST_THUMBNAIL = "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=120&auto=format&fit=crop&q=80"
+
+function safeSetLocalStorage(key: string, data: unknown, fallbackSlice?: () => unknown) {
+  if (typeof window === "undefined") return
+  try {
+    localStorage.setItem(key, JSON.stringify(data))
+  } catch (e) {
+    if (fallbackSlice) {
+      try {
+        localStorage.setItem(key, JSON.stringify(fallbackSlice()))
+      } catch (innerErr) {
+        console.error(`Failed to persist ${key} after quota trim`, innerErr)
+      }
+    } else {
+      console.error(`Failed to persist ${key}`, e)
+    }
+  }
+}
+
+function normalizeCommentItem(c: CommentItem): CommentItem {
+  const isReplied = c.status === "Replied"
+  const isFailed = c.status === "Failed"
+  return {
+    ...c,
+    postThumbnail: c.postThumbnail || DEFAULT_POST_THUMBNAIL,
+    sourceType: c.sourceType || (c.pageName?.includes("Group") ? "Group" : c.pageName?.includes("ID") ? "Personal ID" : "Page"),
+    accountName: c.accountName || c.pageName || "CARE HUB BD",
+    accountId: c.accountId || "page-care-hub",
+    nestedReplyStatus: c.nestedReplyStatus || (isReplied ? "Sent" : isFailed ? "Sent" : "Pending"),
+    inboxStatus: c.inboxStatus || (isReplied ? (c.privateInboxMessage ? "Sent" : "Skipped") : isFailed ? "Failed" : "Pending"),
+    inboxDeliveryMethod:
+      c.inboxDeliveryMethod ||
+      (c.sourceType === "Group" || c.sourceType === "Personal ID" ? "Direct Messenger Bot" : "Page Send Message Modal"),
+    publicReply: c.publicReply ? sanitizeText(c.publicReply) : undefined,
+    privateInboxMessage: c.privateInboxMessage ? sanitizeText(c.privateInboxMessage) : undefined,
+    suggestions: (c.suggestions || []).map(sanitizeText),
+  }
+}
+
 export function useCommentAssistant() {
-  const [comments, setComments] = useState<CommentItem[]>([])
-  const [library, setLibrary] = useState<CommentLibraryTemplate[]>([])
-  const [logs, setLogs] = useState<CommentReplyLog[]>([])
+  const [comments, setComments] = useState<CommentItem[]>(DEFAULT_WEBHOOK_COMMENTS)
+  const [library, setLibrary] = useState<CommentLibraryTemplate[]>(DEFAULT_LIBRARY_TEMPLATES)
+  const [logs, setLogs] = useState<CommentReplyLog[]>(INITIAL_REPLY_LOGS)
   const [isLoaded, setIsLoaded] = useState(false)
 
-  // Load from localStorage
-  useEffect(() => {
+  const loadFromStorage = useCallback(() => {
+    if (typeof window === "undefined") return
     try {
+      const currentSchema = localStorage.getItem(STORAGE_KEY_SCHEMA_VERSION)
+      const isUpgraded = currentSchema === "2.0"
+
       const storedComments = localStorage.getItem(STORAGE_KEY_COMMENTS)
-      if (storedComments) {
+      if (storedComments && isUpgraded) {
         const parsed = JSON.parse(storedComments) as CommentItem[]
-        const sanitized = parsed.map((c) => ({
-          ...c,
-          publicReply: c.publicReply ? sanitizeText(c.publicReply) : undefined,
-          privateInboxMessage: c.privateInboxMessage ? sanitizeText(c.privateInboxMessage) : undefined,
-          suggestions: (c.suggestions || []).map(sanitizeText),
-        }))
+        const sanitized = parsed.slice(0, MAX_STORED_COMMENTS).map(normalizeCommentItem)
         setComments(sanitized)
-        localStorage.setItem(STORAGE_KEY_COMMENTS, JSON.stringify(sanitized))
-      } else {
+      } else if (!isUpgraded) {
         setComments(DEFAULT_WEBHOOK_COMMENTS)
-        localStorage.setItem(STORAGE_KEY_COMMENTS, JSON.stringify(DEFAULT_WEBHOOK_COMMENTS))
+        safeSetLocalStorage(STORAGE_KEY_COMMENTS, DEFAULT_WEBHOOK_COMMENTS)
       }
 
       const storedLib = localStorage.getItem(STORAGE_KEY_LIBRARY)
-      if (storedLib) {
+      if (storedLib && isUpgraded) {
         const parsed = JSON.parse(storedLib) as CommentLibraryTemplate[]
         const sanitized = parsed.map((t) => ({
           ...t,
@@ -222,26 +552,26 @@ export function useCommentAssistant() {
           privateInboxReply: sanitizeText(t.privateInboxReply),
         }))
         setLibrary(sanitized)
-        localStorage.setItem(STORAGE_KEY_LIBRARY, JSON.stringify(sanitized))
-      } else {
+      } else if (!isUpgraded) {
         setLibrary(DEFAULT_LIBRARY_TEMPLATES)
-        localStorage.setItem(STORAGE_KEY_LIBRARY, JSON.stringify(DEFAULT_LIBRARY_TEMPLATES))
+        safeSetLocalStorage(STORAGE_KEY_LIBRARY, DEFAULT_LIBRARY_TEMPLATES)
       }
 
       const storedLogs = localStorage.getItem(STORAGE_KEY_LOGS)
-      if (storedLogs) {
+      if (storedLogs && isUpgraded) {
         const parsed = JSON.parse(storedLogs) as CommentReplyLog[]
-        const sanitized = parsed.map((l) => ({
+        const sanitized = parsed.slice(0, MAX_STORED_LOGS).map((l) => ({
           ...l,
           publicReply: sanitizeText(l.publicReply),
           privateInboxReply: l.privateInboxReply ? sanitizeText(l.privateInboxReply) : undefined,
         }))
         setLogs(sanitized)
-        localStorage.setItem(STORAGE_KEY_LOGS, JSON.stringify(sanitized))
-      } else {
+      } else if (!isUpgraded) {
         setLogs(INITIAL_REPLY_LOGS)
-        localStorage.setItem(STORAGE_KEY_LOGS, JSON.stringify(INITIAL_REPLY_LOGS))
+        safeSetLocalStorage(STORAGE_KEY_LOGS, INITIAL_REPLY_LOGS)
       }
+
+      localStorage.setItem(STORAGE_KEY_SCHEMA_VERSION, "2.0")
     } catch (e) {
       console.error("Error loading comment assistant data", e)
       setComments(DEFAULT_WEBHOOK_COMMENTS)
@@ -252,16 +582,32 @@ export function useCommentAssistant() {
     }
   }, [])
 
-  // Functional Persistence Helpers
+  // Load from localStorage with v2 schema upgrade & multi-tab storage listener
+  useEffect(() => {
+    loadFromStorage()
+
+    const handleStorageEvent = (e: StorageEvent) => {
+      if (
+        !e.key ||
+        e.key === STORAGE_KEY_COMMENTS ||
+        e.key === STORAGE_KEY_LIBRARY ||
+        e.key === STORAGE_KEY_LOGS
+      ) {
+        loadFromStorage()
+      }
+    }
+
+    window.addEventListener("storage", handleStorageEvent)
+    return () => window.removeEventListener("storage", handleStorageEvent)
+  }, [loadFromStorage])
+
+  // Functional Persistence Helpers with bounded size & quota safety
   const saveComments = useCallback(
     (updater: CommentItem[] | ((prev: CommentItem[]) => CommentItem[])) => {
       setComments((prev) => {
-        const next = typeof updater === "function" ? updater(prev) : updater
-        try {
-          localStorage.setItem(STORAGE_KEY_COMMENTS, JSON.stringify(next))
-        } catch (e) {
-          console.error("Failed to save comments", e)
-        }
+        const rawNext = typeof updater === "function" ? updater(prev) : updater
+        const next = rawNext.slice(0, MAX_STORED_COMMENTS)
+        safeSetLocalStorage(STORAGE_KEY_COMMENTS, next, () => next.slice(0, 50))
         return next
       })
     },
@@ -272,11 +618,7 @@ export function useCommentAssistant() {
     (updater: CommentLibraryTemplate[] | ((prev: CommentLibraryTemplate[]) => CommentLibraryTemplate[])) => {
       setLibrary((prev) => {
         const next = typeof updater === "function" ? updater(prev) : updater
-        try {
-          localStorage.setItem(STORAGE_KEY_LIBRARY, JSON.stringify(next))
-        } catch (e) {
-          console.error("Failed to save library", e)
-        }
+        safeSetLocalStorage(STORAGE_KEY_LIBRARY, next)
         return next
       })
     },
@@ -286,78 +628,253 @@ export function useCommentAssistant() {
   const saveLogs = useCallback(
     (updater: CommentReplyLog[] | ((prev: CommentReplyLog[]) => CommentReplyLog[])) => {
       setLogs((prev) => {
-        const next = typeof updater === "function" ? updater(prev) : updater
-        try {
-          localStorage.setItem(STORAGE_KEY_LOGS, JSON.stringify(next))
-        } catch (e) {
-          console.error("Failed to save logs", e)
-        }
+        const rawNext = typeof updater === "function" ? updater(prev) : updater
+        const next = rawNext.slice(0, MAX_STORED_LOGS)
+        safeSetLocalStorage(STORAGE_KEY_LOGS, next, () => next.slice(0, 100))
         return next
       })
     },
     []
   )
 
-  // Intent Classifier Helper based on keywords
+  // Intent Classifier Helper based on custom library keywords + built-in rules
   const detectIntent = useCallback(
-    (commentText: string): CommentItem["intent"] => {
+    (commentText: string): CommentIntentType => {
       const lower = commentText.toLowerCase()
-      if (lower.includes("দাম") || lower.includes("price") || lower.includes("কত") || lower.includes("টাকা") || lower.includes("cost")) {
+
+      // First check urgent complaint / complex review triggers
+      if (
+        lower.includes("সমস্যা") ||
+        lower.includes("অভিযোগ") ||
+        lower.includes("ফেইক") ||
+        lower.includes("কল দেয়নি") ||
+        lower.includes("পাইনি") ||
+        lower.includes("দেরি")
+      ) {
+        // Check if user defined a custom rule with matching keyword first
+        const customNeedsReview = library.find(
+          (t) =>
+            t.category === "Needs Review" &&
+            t.keywords.some((kw) => kw.trim() && lower.includes(kw.trim().toLowerCase()))
+        )
+        if (customNeedsReview) return "Needs Review"
+        return "Needs Review"
+      }
+
+      // Check custom AI Knowledgebase rules by user-defined trigger keywords
+      for (const tmpl of library) {
+        if (
+          tmpl.keywords &&
+          tmpl.keywords.some((kw) => kw.trim().length > 0 && lower.includes(kw.trim().toLowerCase()))
+        ) {
+          return tmpl.category
+        }
+      }
+
+      if (
+        lower.includes("দাম") ||
+        lower.includes("price") ||
+        lower.includes("কত") ||
+        lower.includes("টাকা") ||
+        lower.includes("cost") ||
+        lower.includes("koto") ||
+        lower.includes("dam")
+      ) {
         return "Price Query"
       }
-      if (lower.includes("ডেলিভারি") || lower.includes("delivery") || lower.includes("কুরিয়ার") || lower.includes("চার্জ")) {
+      if (
+        lower.includes("ডেলিভারি") ||
+        lower.includes("delivery") ||
+        lower.includes("কুরিয়ার") ||
+        lower.includes("কুরিয়ার") ||
+        lower.includes("চার্জ") ||
+        lower.includes("cod")
+      ) {
         return "Delivery Query"
       }
-      if (lower.includes("স্টক") || lower.includes("stock") || lower.includes("আছে") || lower.includes("কালার") || lower.includes("color")) {
+      if (
+        lower.includes("স্টক") ||
+        lower.includes("stock") ||
+        lower.includes("আছে") ||
+        lower.includes("কালার") ||
+        lower.includes("color") ||
+        lower.includes("ache")
+      ) {
         return "Stock Query"
       }
-      if (lower.includes("ওয়ারেন্টি") || lower.includes("warranty") || lower.includes("গ্যারান্টি") || lower.includes("guarantee")) {
+      if (
+        lower.includes("ওয়ারেন্টি") ||
+        lower.includes("warranty") ||
+        lower.includes("গ্যারান্টি") ||
+        lower.includes("guarantee")
+      ) {
         return "Warranty Query"
       }
-      if (lower.includes("ঠিকানা") || lower.includes("location") || lower.includes("শোরুম") || lower.includes("দোকান") || lower.includes("address")) {
+      if (
+        lower.includes("ঠিকানা") ||
+        lower.includes("location") ||
+        lower.includes("শোরুম") ||
+        lower.includes("দোকান") ||
+        lower.includes("address")
+      ) {
         return "Location Query"
       }
       return "General Greeting"
     },
-    []
+    [library]
+  )
+
+  // Find best matching AI Knowledgebase template by intent, keyword match, and account/page scope
+  const findMatchingTemplate = useCallback(
+    (intent: CommentIntentType, commentText?: string, accountOrPageName?: string): CommentLibraryTemplate | undefined => {
+      const candidates = library.filter((t) => t.category === intent)
+      if (candidates.length === 0) return library[0]
+
+      const lowerText = (commentText || "").toLowerCase()
+      const lowerAcc = (accountOrPageName || "").toLowerCase()
+
+      let best = candidates[0]
+      let bestScore = -1
+
+      for (const tmpl of candidates) {
+        let score = 0
+        if (lowerText && tmpl.keywords.some((k) => k.trim() && lowerText.includes(k.trim().toLowerCase()))) {
+          score += 3
+        }
+        if (lowerAcc && tmpl.targetScope && tmpl.targetScope.toLowerCase().includes(lowerAcc)) {
+          score += 2
+        }
+        if (score > bestScore) {
+          bestScore = score
+          best = tmpl
+        }
+      }
+      return best
+    },
+    [library]
+  )
+
+  const incrementTemplateUsage = useCallback(
+    (templateId?: string) => {
+      if (!templateId) return
+      saveLibrary((prev) =>
+        prev.map((t) => (t.id === templateId ? { ...t, usesCount: (t.usesCount || 0) + 1 } : t))
+      )
+    },
+    [saveLibrary]
   )
 
   // Add simulated or incoming webhook comment
   const addIncomingComment = useCallback(
-    (comment: Omit<CommentItem, "id" | "receivedAt" | "status" | "suggestions" | "intent">) => {
+    (
+      comment: Omit<CommentItem, "id" | "receivedAt" | "status" | "suggestions" | "intent"> & {
+        autoReplyNow?: boolean
+        simulateFailure?: boolean
+        sendInbox?: boolean
+        customPublicReply?: string
+        customInboxReply?: string
+      }
+    ) => {
       const detectedIntent = detectIntent(comment.userComment)
+      const bestTemplate = findMatchingTemplate(
+        detectedIntent,
+        comment.userComment,
+        comment.accountName || comment.pageName
+      )
       const matchingTemplates = library.filter((t) => t.category === detectedIntent)
-      const suggestions = matchingTemplates.length > 0
-        ? matchingTemplates.map((t) => t.publicReply)
-        : [
-            "ধন্যবাদ ভাইয়া! বিস্তারিত তথ্য ইনবক্সে পাঠানো হয়েছে।",
-            "আসসালামু আলাইকুম! বিস্তারিত জানতে ইনবক্স মেসেজ চেক করুন।",
-          ]
+
+      const defaultPublic =
+        comment.customPublicReply ||
+        bestTemplate?.publicReply ||
+        "ধন্যবাদ ভাইয়া! বিস্তারিত তথ্য আপনার ইনবক্সে পাঠানো হয়েছে।"
+      const defaultInbox =
+        comment.customInboxReply ||
+        bestTemplate?.privateInboxReply ||
+        "আসসালামু আলাইকুম! প্রোডাক্টটির স্পেশাল অফার প্রাইজ ২,৪৯০ টাকা। অর্ডার করতে আপনার নাম, ঠিকানা ও মোবাইল নম্বর দিন।"
+
+      const suggestions =
+        matchingTemplates.length > 0
+          ? matchingTemplates.map((t) => t.publicReply)
+          : [
+              defaultPublic,
+              "আসসালামু আলাইকুম! বিস্তারিত জানতে ইনবক্স মেসেজ চেক করুন।",
+            ]
+
+      const sourceType: CommentSourceType =
+        comment.sourceType ||
+        (comment.groupName ? "Group" : comment.pageName.includes("ID") ? "Personal ID" : "Page")
+
+      const isSimulatedFail = Boolean(comment.simulateFailure)
+      const shouldAuto = Boolean(!isSimulatedFail && comment.autoReplyNow && detectedIntent !== "Needs Review")
+      const shouldSendInbox = comment.sendInbox !== undefined ? Boolean(comment.sendInbox) : true
+
+      if ((shouldAuto || isSimulatedFail) && bestTemplate?.id) {
+        incrementTemplateUsage(bestTemplate.id)
+      }
 
       const newComment: CommentItem = {
         ...comment,
-        id: `cm-${Date.now()}`,
+        id: `cm-${Date.now()}-${Math.random().toString(36).slice(2, 5)}`,
+        postThumbnail: comment.postThumbnail || DEFAULT_POST_THUMBNAIL,
+        sourceType,
+        accountName: comment.accountName || comment.pageName,
+        accountId: comment.accountId || "page-care-hub",
         intent: detectedIntent,
-        receivedAt: "Just now (Webhook Detected)",
-        status: "Pending",
+        receivedAt: "Just now",
+        status: isSimulatedFail ? "Failed" : shouldAuto ? "Replied" : "Pending",
+        nestedReplyStatus: isSimulatedFail || shouldAuto ? "Sent" : "Pending",
+        inboxStatus: isSimulatedFail
+          ? "Failed"
+          : shouldAuto
+          ? shouldSendInbox
+            ? "Sent"
+            : "Skipped"
+          : "Pending",
+        inboxDeliveryMethod:
+          comment.inboxDeliveryMethod ||
+          (sourceType === "Page" ? "Page Send Message Modal" : "Direct Messenger Bot"),
+        failureReason: isSimulatedFail
+          ? "Messenger DOM modal timeout / Rate-limit — 1-Click Retry ready"
+          : undefined,
+        latencyMs: shouldAuto ? Math.floor(1400 + Math.random() * 1100) : undefined,
+        replyMode: shouldAuto || isSimulatedFail ? "Auto" : undefined,
+        publicReply: isSimulatedFail || shouldAuto ? defaultPublic : undefined,
+        privateInboxMessage:
+          isSimulatedFail || (shouldAuto && shouldSendInbox) ? defaultInbox : undefined,
+        repliedAt: shouldAuto ? new Date().toISOString() : undefined,
         suggestions,
       }
 
       saveComments((prev) => [newComment, ...prev])
       return newComment
     },
-    [detectIntent, library, saveComments]
+    [detectIntent, findMatchingTemplate, incrementTemplateUsage, library, saveComments]
   )
 
   // Mark Comment as Replied
   const markReplied = useCallback(
-    (commentId: string, publicReply: string, privateInboxMessage?: string) => {
+    (
+      commentId: string,
+      publicReply: string,
+      privateInboxMessage?: string,
+      options?: {
+        replyMode?: "Auto" | "Manual"
+        inboxDeliveryMethod?: CommentItem["inboxDeliveryMethod"]
+        latencyMs?: number
+      }
+    ) => {
       saveComments((prev) =>
         prev.map((c) =>
           c.id === commentId
             ? {
                 ...c,
                 status: "Replied",
+                nestedReplyStatus: "Sent",
+                inboxStatus: privateInboxMessage ? "Sent" : "Skipped",
+                inboxDeliveryMethod: options?.inboxDeliveryMethod || c.inboxDeliveryMethod || "Page Send Message Modal",
+                failureReason: undefined,
+                replyMode: options?.replyMode || "Manual",
+                latencyMs: options?.latencyMs || c.latencyMs || 1650,
                 publicReply,
                 privateInboxMessage,
                 repliedAt: new Date().toISOString(),
@@ -367,6 +884,62 @@ export function useCommentAssistant() {
       )
     },
     [saveComments]
+  )
+
+  // Retry a Failed Comment / Inbox Delivery (deterministic synchronous return)
+  const retryFailedComment = useCallback(
+    (commentId: string, customPublicReply?: string, customInboxReply?: string) => {
+      const existing = comments.find((c) => c.id === commentId)
+      const resolvedPub =
+        customPublicReply ||
+        existing?.publicReply ||
+        existing?.suggestions?.[0] ||
+        "ধন্যবাদ ভাইয়া! ইনবক্স চেক করুন।"
+      const resolvedInb =
+        customInboxReply ||
+        existing?.privateInboxMessage ||
+        "আসসালামু আলাইকুম! আপনার কাঙ্ক্ষিত প্রোডাক্টটির বিস্তারিত তথ্য ও অফার প্রাইজ পাঠানো হলো।"
+
+      const retriedSnapshot: CommentItem | null = existing
+        ? {
+            ...existing,
+            status: "Replied",
+            nestedReplyStatus: "Sent",
+            inboxStatus: "Sent",
+            failureReason: undefined,
+            retryCount: (existing.retryCount || 0) + 1,
+            latencyMs: 1520,
+            publicReply: resolvedPub,
+            privateInboxMessage: resolvedInb,
+            repliedAt: new Date().toISOString(),
+          }
+        : null
+
+      saveComments((prev) =>
+        prev.map((c) => {
+          if (c.id !== commentId) return c
+          const pub = customPublicReply || c.publicReply || c.suggestions[0] || "ধন্যবাদ ভাইয়া! ইনবক্স চেক করুন।"
+          const inb =
+            customInboxReply ||
+            c.privateInboxMessage ||
+            "আসসালামু আলাইকুম! আপনার কাঙ্ক্ষিত প্রোডাক্টটির বিস্তারিত তথ্য ও অফার প্রাইজ পাঠানো হলো।"
+          return {
+            ...c,
+            status: "Replied",
+            nestedReplyStatus: "Sent",
+            inboxStatus: "Sent",
+            failureReason: undefined,
+            retryCount: (c.retryCount || 0) + 1,
+            latencyMs: 1520,
+            publicReply: pub,
+            privateInboxMessage: inb,
+            repliedAt: new Date().toISOString(),
+          }
+        })
+      )
+      return retriedSnapshot
+    },
+    [comments, saveComments]
   )
 
   // Dismiss / Ignore Comment
@@ -411,7 +984,7 @@ export function useCommentAssistant() {
     (log: Omit<CommentReplyLog, "id" | "timestamp">) => {
       const newLog: CommentReplyLog = {
         ...log,
-        id: `log-rep-${Date.now()}`,
+        id: `log-rep-${Date.now()}-${Math.random().toString(36).slice(2, 5)}`,
         timestamp: new Date().toISOString(),
       }
       saveLogs((prev) => [newLog, ...prev])
@@ -430,8 +1003,11 @@ export function useCommentAssistant() {
     logs,
     isLoaded,
     detectIntent,
+    findMatchingTemplate,
+    incrementTemplateUsage,
     addIncomingComment,
     markReplied,
+    retryFailedComment,
     dismissComment,
     addLibraryTemplate,
     updateLibraryTemplate,
