@@ -651,22 +651,27 @@ export function InboxAssistantCenter({ currentMode }: InboxAssistantCenterProps)
       )}
 
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-border pb-4">
-        <div>
-          <div className="flex items-center space-x-2">
-            <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center text-white shadow-xs">
+      <div className="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-3.5 border-b border-border pb-4">
+        <div className="min-w-0">
+          <div className="flex items-center gap-2.5 flex-wrap sm:flex-nowrap">
+            <div className="w-9 h-9 rounded-xl bg-blue-600/15 border border-blue-500/30 flex items-center justify-center text-blue-500 shrink-0">
               <Bot className="w-5 h-5" />
             </div>
-            <h1 className="text-xl font-black tracking-tight text-foreground">
-              AI Inbox Reply Assistant
-            </h1>
-            <span className="text-[10px] uppercase font-bold px-2.5 py-0.5 rounded-full border bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20">
-              LIVE FACEBOOK MESSENGER BOT ({currentMode})
-            </span>
+            <div className="min-w-0">
+              <div className="flex items-center gap-2">
+                <h1 className="text-lg sm:text-xl font-extrabold tracking-tight text-foreground whitespace-nowrap">
+                  AI Inbox Reply Assistant
+                </h1>
+                <span className="inline-flex items-center gap-1 text-[10px] uppercase font-bold px-2 py-0.5 rounded-md border bg-emerald-500/10 text-emerald-500 border-emerald-500/25 whitespace-nowrap shrink-0">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                  LIVE BOT ({currentMode})
+                </span>
+              </div>
+              <p className="text-xs text-muted-foreground mt-0.5 truncate">
+                ১০০+ পেজ ও আইডির মেসেঞ্জারে প্রোডাক্টের দাম, স্টক ও ফিচার অনুযায়ী ২৪/৭ অটো-রিপ্লাই
+              </p>
+            </div>
           </div>
-          <p className="text-xs text-muted-foreground mt-1 max-w-2xl">
-            আপনার প্রোডাক্টের দাম, স্টক, ভ্যারিয়েন্ট ও বৈশিষ্ট্য দিয়ে AI-কে ট্রেইন করুন—কাস্টমার যেকোনো প্রোডাক্ট সম্পর্কে জিজ্ঞেস করলে ২৪/৭ লাইভ মেসেঞ্জার বট সাথে সাথে সঠিক উত্তর দেবে।
-          </p>
         </div>
 
         {/* Live Facebook Channel Selector & Train AI + 24/7 Bot Buttons */}
@@ -675,7 +680,7 @@ export function InboxAssistantCenter({ currentMode }: InboxAssistantCenterProps)
             type="button"
             data-testid="open-ai-product-training-btn"
             onClick={() => setActiveTab("TRAINING")}
-            className="flex items-center space-x-1.5 px-3.5 py-2 rounded-xl text-xs font-bold bg-violet-600 hover:bg-violet-500 text-white transition shadow-xs cursor-pointer whitespace-nowrap"
+            className="flex items-center space-x-1.5 px-3 py-2 rounded-xl text-xs font-bold bg-violet-600 hover:bg-violet-500 text-white transition shadow-xs cursor-pointer whitespace-nowrap"
           >
             <BrainCircuit className="w-3.5 h-3.5" />
             <span>Train AI Products ({products.length})</span>
@@ -687,7 +692,7 @@ export function InboxAssistantCenter({ currentMode }: InboxAssistantCenterProps)
               type="button"
               data-testid="smart-channel-dropdown-btn"
               onClick={() => setIsChannelDropdownOpen((prev) => !prev)}
-              className="flex items-center justify-between gap-2.5 px-3.5 py-2 rounded-xl border border-border bg-card hover:bg-muted/60 text-foreground text-xs font-semibold outline-none focus:ring-2 focus:ring-blue-500/20 min-w-[270px] sm:min-w-[310px] shadow-xs transition cursor-pointer"
+              className="flex items-center justify-between gap-2 px-3 py-2 rounded-xl border border-border bg-card hover:bg-muted/60 text-foreground text-xs font-semibold outline-none focus:ring-2 focus:ring-blue-500/20 min-w-[235px] sm:min-w-[260px] shadow-xs transition cursor-pointer"
             >
               <div className="flex items-center gap-2 truncate">
                 {activeChannel.sourceType === "ALL" ? (
