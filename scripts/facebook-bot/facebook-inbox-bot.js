@@ -131,15 +131,30 @@ const DEFAULT_PRODUCTS = [
  * - Showroom / Location ("শোরুম কোথায়?")
  * - Order Confirmation (Phone number / Address detection)
  */
-function generateTrainedAiResponse(text, customerName, runtime = {}) {
+function generateTrainedAiResponse(text, customerName, runtime = {}, channelContext = {}) {
   const rawMsg = (text || "").trim();
   const lower = rawMsg.toLowerCase();
   const cleanName = customerName || "স্যার";
 
-  const products =
+  const allProducts =
     Array.isArray(runtime.products) && runtime.products.length > 0
       ? runtime.products
       : DEFAULT_PRODUCTS;
+
+  // Filter products relevant to this specific Page/ID channel (or Global "ALL" products)
+  const channelKey = channelContext.key || "";
+  const channelId = channelContext.id || "";
+  const channelName = (channelContext.name || "").toLowerCase();
+  const channelScopedProducts = allProducts.filter((p) => {
+    if (!p.assignedChannelKey || p.assignedChannelKey === "ALL") return true;
+    return (
+      p.assignedChannelKey === channelKey ||
+      p.assignedChannelKey.includes(channelId) ||
+      (channelName && p.assignedChannelKey.toLowerCase().includes(channelName))
+    );
+  });
+  const products = channelScopedProducts.length > 0 ? channelScopedProducts : allProducts;
+
   const storeProfile = {
     ...DEFAULT_STORE_PROFILE,
     ...(runtime.storeProfile || {}),
@@ -469,6 +484,7 @@ async function runInboxBot(configPath) {
     sourceType = "Page",
     targetId = "61595136714776",
     targetName = "Test Next",
+    monitoredChannels = [],
     mode: initialMode = "AUTO",
     humanDelaySeconds = 4,
     templates = [],
@@ -524,6 +540,10 @@ async function runInboxBot(configPath) {
               ? existingRuntime.products
               : products,
           storeProfile: existingRuntime.storeProfile || storeProfile,
+          monitoredChannels:
+            Array.isArray(monitoredChannels) && monitoredChannels.length > 0
+              ? monitoredChannels
+              : existingRuntime.monitoredChannels || [],
         },
         null,
         2
@@ -548,7 +568,7 @@ async function runInboxBot(configPath) {
         return JSON.parse(fs.readFileSync(runtimeSettingsFile, "utf8"));
       }
     } catch (_) {}
-    return { mode: initialMode, isRunning: true, templates, products, storeProfile };
+    return { mode: initialMode, isRunning: true, templates, products, storeProfile, monitoredChannels };
   }
 
   function popPendingReplies() {
@@ -574,14 +594,15 @@ async function runInboxBot(configPath) {
   }
 
   console.log("==========================================================");
-  console.log("💬 BMT 24/7 Live Facebook Messenger AI Inbox Bot");
-  console.log(`📌 Channel: ${sourceType} — ${targetName} (${targetId || "Profile"})`);
+  console.log("💬 BMT 24/7 Live Facebook Messenger AI Inbox Bot (100-Channel Ready)");
+  console.log(`📌 Channel Mode: ${sourceType} — ${targetName} (${targetId || "Multi-Channel"})`);
   console.log(`🧠 Trained Products Loaded: ${(products || []).length}`);
   console.log(`🤖 Initial Mode: ${initialMode} | 24/7 Continuous Active Monitoring`);
   console.log("==========================================================\n");
 
   const autoRepliedSignatures = new Set();
   const lastBotRepliesByCustomer = new Map();
+  const conversationsByChannel = new Map();
   let liveConversations = [];
   let totalAutoRepliesSent = 0;
 
@@ -595,7 +616,7 @@ async function runInboxBot(configPath) {
     totalAutoRepliesSent,
   });
 
-  const cookies = parseCookies(cookieString);
+  const baseCookies = parseCookies(cookieString);
   const chromeExecutable = findChromePath();
 
   const browser = await puppeteer.launch({
@@ -614,24 +635,46 @@ async function runInboxBot(configPath) {
   const page = await browser.newPage();
   await page.setViewport({ width: 1280, height: 950 });
 
-  const explicitPageId =
-    targetId && /^\d+$/.test(String(targetId).trim()) ? String(targetId).trim() : null;
-  if (explicitPageId && sourceType === "Page") {
-    const filteredCookies = cookies.filter((c) => c.name !== "i_user");
-    filteredCookies.push({
-      name: "i_user",
-      value: explicitPageId,
-      domain: ".facebook.com",
-      path: "/",
-      httpOnly: false,
-      secure: true,
-      sameSite: "Lax",
-    });
-    await page.setCookie(...filteredCookies);
-  } else {
-    const filteredCookies = cookies.filter((c) => c.name !== "i_user");
-    await page.setCookie(...filteredCookies);
+  async function applyChannelSessionCookies(channelObj) {
+    const channelCookies =
+      channelObj && channelObj.cookieString
+        ? parseCookies(channelObj.cookieString)
+        : baseCookies;
+
+    const chanId = channelObj && channelObj.id ? String(channelObj.id).trim() : "";
+    const isNumericPage = channelObj && channelObj.sourceType === "Page" && /^\d+$/.test(chanId);
+
+    // Clear old i_user cookie first so Personal ID or new Page takes effect cleanly
+    try {
+      await page.deleteCookie({ name: "i_user", domain: ".facebook.com", path: "/" });
+    } catch (_) {}
+
+    const filteredCookies = channelCookies.filter((c) => c.name !== "i_user");
+    if (isNumericPage) {
+      filteredCookies.push({
+        name: "i_user",
+        value: chanId,
+        domain: ".facebook.com",
+        path: "/",
+        httpOnly: false,
+        secure: true,
+        sameSite: "Lax",
+      });
+    }
+    if (filteredCookies.length > 0) {
+      await page.setCookie(...filteredCookies);
+    }
   }
+
+  // Initial channel setup
+  let currentActiveChannel = {
+    key: `${sourceType}::${targetId}::${targetName}`,
+    sourceType: sourceType === "ALL" ? "Page" : sourceType,
+    id: sourceType === "ALL" ? "61595136714776" : targetId,
+    name: sourceType === "ALL" ? "Test Next" : targetName,
+  };
+
+  await applyChannelSessionCookies(currentActiveChannel);
 
   try {
     const inboxUrl = "https://www.facebook.com/messages/t/";
@@ -684,8 +727,44 @@ async function runInboxBot(configPath) {
       const isRunning = runtime.isRunning !== false;
       const trainedProductCount = Array.isArray(runtime.products) ? runtime.products.length : 1;
 
+      // Multi-channel rotation when sourceType === "ALL"
+      if (sourceType === "ALL") {
+        const rawList = Array.isArray(runtime.monitoredChannels) && runtime.monitoredChannels.length > 0
+          ? runtime.monitoredChannels
+          : monitoredChannels;
+        // Filter channels that have either a real numeric Page ID or Personal ID
+        const rotatableChannels = rawList.filter(
+          (ch) =>
+            ch &&
+            ch.enabled !== false &&
+            (ch.sourceType === "Personal ID" || (ch.sourceType === "Page" && /^\d+$/.test(String(ch.id || "").trim())))
+        );
+
+        if (rotatableChannels.length > 0) {
+          const nextChan = rotatableChannels[(check - 1) % rotatableChannels.length];
+          if (nextChan && (nextChan.id !== currentActiveChannel.id || nextChan.sourceType !== currentActiveChannel.sourceType)) {
+            console.log(
+              `\n🔄 [100-Channel Multi-Bot Rotation] Switching active Messenger Inbox to: ${nextChan.sourceType} — "${nextChan.name}" (${nextChan.id})`
+            );
+            currentActiveChannel = nextChan;
+            await applyChannelSessionCookies(currentActiveChannel);
+            try {
+              await page.goto(inboxUrl, { waitUntil: "domcontentloaded", timeout: 45000 });
+              await sleep(5500);
+            } catch (rotErr) {
+              console.warn("Channel rotation navigation warning:", rotErr.message);
+            }
+          }
+        }
+      }
+
+      const activeChanName = currentActiveChannel.name || targetName;
+      const activeChanSource = currentActiveChannel.sourceType || sourceType;
+
       console.log(
-        `\n🔍 [24/7 Inbox Scan #${check}] Channel: ${targetName} | Mode: ${currentMode} | Trained Products: ${trainedProductCount}`
+        `\n🔍 [24/7 Inbox Scan #${check}] Active Channel: ${activeChanName} (${
+          sourceType === "ALL" ? "Multi-Channel 24/7 Rotation" : activeChanSource
+        }) | Mode: ${currentMode} | Trained Products: ${trainedProductCount}`
       );
 
       // 1. Process any manual / approved replies queued from the UI
@@ -799,21 +878,29 @@ async function runInboxBot(configPath) {
         console.warn("Scan error:", scanErr.message);
       }
 
-      console.log(`📊 Found ${scannedThreads.length} live Messenger conversation(s).`);
+      console.log(`📊 Found ${scannedThreads.length} live Messenger conversation(s) on "${activeChanName}".`);
 
       const updatedConversations = [];
 
       for (let i = 0; i < scannedThreads.length; i++) {
         const th = scannedThreads[i];
         const lowerCustomer = th.customerName.toLowerCase();
-        const lastBotSnippet = lastBotRepliesByCustomer.get(lowerCustomer);
+        const customerChanKey = `${activeChanName.toLowerCase()}:::${lowerCustomer}`;
+        const lastBotSnippet =
+          lastBotRepliesByCustomer.get(customerChanKey) || lastBotRepliesByCustomer.get(lowerCustomer);
 
         let isReplied =
           th.isRepliedByPage ||
           Boolean(lastBotSnippet && th.cleanPreview.startsWith(lastBotSnippet.slice(0, 25)));
 
-        const aiResult = generateTrainedAiResponse(th.cleanPreview, th.customerName, runtime);
-        const convId = `fb-live-${lowerCustomer.replace(/[^a-z0-9]+/g, "-")}`;
+        const aiResult = generateTrainedAiResponse(
+          th.cleanPreview,
+          th.customerName,
+          runtime,
+          currentActiveChannel
+        );
+        const chanSlug = activeChanName.toLowerCase().replace(/[^a-z0-9]+/g, "-");
+        const convId = `fb-live-${chanSlug}-${lowerCustomer.replace(/[^a-z0-9]+/g, "-")}`;
 
         let lastText = th.cleanPreview;
         const messages = [];
@@ -845,11 +932,11 @@ async function runInboxBot(configPath) {
         }
 
         // 3. If AUTO mode is active and this customer is WAITING_REPLY, send trained AI auto-reply!
-        const sig = `${lowerCustomer}:::${th.cleanPreview.slice(0, 60).toLowerCase()}`;
+        const sig = `${activeChanName.toLowerCase()}:::${lowerCustomer}:::${th.cleanPreview.slice(0, 60).toLowerCase()}`;
         if (isRunning && currentMode === "AUTO" && !isReplied && !autoRepliedSignatures.has(sig)) {
           const autoReplyText = aiResult.suggestions[0];
           console.log(
-            `\n🤖 [TRAINED AI AUTO-REPLY] Customer "${th.customerName}" asked: "${th.cleanPreview}"`
+            `\n🤖 [TRAINED AI AUTO-REPLY | ${activeChanName}] Customer "${th.customerName}" asked: "${th.cleanPreview}"`
           );
           console.log(`   💡 AI Answer: "${autoReplyText}"`);
           console.log(`   ⏳ Applying human-like delay (${Math.min(humanDelaySeconds, 6)}s)...`);
@@ -861,6 +948,7 @@ async function runInboxBot(configPath) {
             await sendTextInActiveThread(page, autoReplyText);
 
             autoRepliedSignatures.add(sig);
+            lastBotRepliesByCustomer.set(customerChanKey, autoReplyText.slice(0, 40));
             lastBotRepliesByCustomer.set(lowerCustomer, autoReplyText.slice(0, 40));
             totalAutoRepliesSent++;
             isReplied = true;
@@ -873,7 +961,9 @@ async function runInboxBot(configPath) {
               status: "SENT",
               graphApiStatus: "SUCCESS_200",
             });
-            console.log(`   ✅ [SUCCESS] Trained AI reply sent to ${th.customerName} on Live Messenger!`);
+            console.log(
+              `   ✅ [SUCCESS] Trained AI reply sent to ${th.customerName} on "${activeChanName}" Live Messenger!`
+            );
           } catch (autoErr) {
             console.warn(`   ⚠️ Auto-reply error for ${th.customerName}: ${autoErr.message}`);
           }
@@ -882,8 +972,8 @@ async function runInboxBot(configPath) {
         updatedConversations.push({
           id: convId,
           customerName: th.customerName,
-          pageName: targetName,
-          platform: sourceType === "Page" ? "Facebook Page" : "Messenger",
+          pageName: activeChanName,
+          platform: activeChanSource === "Page" ? "Facebook Page" : "Messenger",
           category: aiResult.category,
           unreadCount: isReplied ? 0 : 1,
           lastMessageText: lastText,
@@ -895,14 +985,19 @@ async function runInboxBot(configPath) {
       }
 
       if (updatedConversations.length > 0) {
-        liveConversations = updatedConversations;
+        conversationsByChannel.set(activeChanName, updatedConversations);
+        const merged = [];
+        for (const list of conversationsByChannel.values()) {
+          merged.push(...list);
+        }
+        liveConversations = merged;
       }
 
       updateStatus({
         status: "WATCHING",
         sourceType,
         targetId,
-        targetName,
+        targetName: sourceType === "ALL" ? `All Active Channels (Now: ${activeChanName})` : activeChanName,
         mode: currentMode,
         checkCount: check,
         totalAutoRepliesSent,

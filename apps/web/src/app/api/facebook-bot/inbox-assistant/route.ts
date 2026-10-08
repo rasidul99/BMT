@@ -49,6 +49,7 @@ export async function POST(req: NextRequest) {
         ...(Array.isArray(body.templates) ? { templates: body.templates } : {}),
         ...(Array.isArray(body.products) ? { products: body.products } : {}),
         ...(body.storeProfile ? { storeProfile: body.storeProfile } : {}),
+        ...(Array.isArray(body.monitoredChannels) ? { monitoredChannels: body.monitoredChannels } : {}),
         updatedAt: new Date().toISOString(),
       }
       fs.writeFileSync(runtimeSettingsFile, JSON.stringify(nextRuntime, null, 2), "utf8")
@@ -60,6 +61,7 @@ export async function POST(req: NextRequest) {
       sourceType = "Page",
       targetId = "61595136714776",
       targetName = "Test Next",
+      monitoredChannels = [],
       mode = "AUTO",
       humanDelaySeconds = 4,
       templates = [],
@@ -85,6 +87,9 @@ export async function POST(req: NextRequest) {
         ...(Array.isArray(templates) && templates.length > 0 ? { templates } : {}),
         ...(Array.isArray(products) && products.length > 0 ? { products } : {}),
         ...(storeProfile ? { storeProfile } : {}),
+        ...(Array.isArray(monitoredChannels) && monitoredChannels.length > 0
+          ? { monitoredChannels }
+          : {}),
         updatedAt: new Date().toISOString(),
       }
       fs.writeFileSync(runtimeSettingsFile, JSON.stringify(mergedRuntime, null, 2), "utf8")
@@ -154,6 +159,7 @@ export async function POST(req: NextRequest) {
       sourceType: String(sourceType || "Page").trim(),
       targetId: String(targetId || "61595136714776").trim(),
       targetName: String(targetName || "Test Next").trim(),
+      monitoredChannels: Array.isArray(monitoredChannels) ? monitoredChannels : [],
       cookieString: typeof body.cookieString === "string" ? body.cookieString.trim() : undefined,
       mode: mode === "MANUAL" ? "MANUAL" : "AUTO",
       humanDelaySeconds: Number(humanDelaySeconds) || 4,

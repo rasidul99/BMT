@@ -18,6 +18,7 @@ export interface TrainedProduct {
   whyGoodFeatures: string
   warrantyInfo: string
   isDefaultProduct?: boolean
+  assignedChannelKey?: string
 }
 
 export interface StoreKnowledgeProfile {

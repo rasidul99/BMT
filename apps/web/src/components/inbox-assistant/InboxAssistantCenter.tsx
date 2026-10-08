@@ -25,6 +25,9 @@ import {
   Package,
   Edit3,
   BrainCircuit,
+  ChevronDown,
+  Globe,
+  Layers,
 } from "lucide-react"
 import {
   useInboxAssistant,
@@ -34,11 +37,23 @@ import {
   generatePreviewTrainedAnswer,
 } from "../../hooks/useInboxAssistant"
 import { useFacebookAccounts } from "../../hooks/useFacebookAccounts"
-import { getPageRegistry } from "../../lib/fb-page-registry"
+import { getPageRegistry, upsertPage } from "../../lib/fb-page-registry"
 
 interface InboxAssistantCenterProps {
   currentMode: "SAFE" | "ADVANCED"
 }
+
+export interface InboxChannelItem {
+  key: string
+  sourceType: "Page" | "Personal ID" | "ALL"
+  id: string
+  name: string
+  label: string
+  cookieString?: string
+  enabled?: boolean
+}
+
+const CUSTOM_CHANNELS_STORAGE_KEY = "bmt_inbox_custom_channels_v1"
 
 export function InboxAssistantCenter({ currentMode }: InboxAssistantCenterProps) {
   const {
@@ -73,10 +88,25 @@ export function InboxAssistantCenter({ currentMode }: InboxAssistantCenterProps)
   const [replyInput, setReplyInput] = useState("")
   const [toastMessage, setToastMessage] = useState<string | null>(null)
 
-  // Channel selector for Live Messenger Bot (Page or Personal ID)
+  // Channel selector for Live Messenger Bot (Page, Personal ID, or ALL_CHANNELS)
   const [selectedChannelKey, setSelectedChannelKey] = useState<string>(
     "Page::61595136714776::Test Next"
   )
+
+  // Smart Searchable Channel Dropdown State
+  const [isChannelDropdownOpen, setIsChannelDropdownOpen] = useState(false)
+  const [channelSearchQuery, setChannelSearchQuery] = useState("")
+  const [channelTypeFilter, setChannelTypeFilter] = useState<"ALL" | "Page" | "Personal ID">("ALL")
+  const channelDropdownRef = useRef<HTMLDivElement>(null)
+  const channelSearchInputRef = useRef<HTMLInputElement>(null)
+
+  // Custom added Pages & Personal IDs (up to 100+)
+  const [customChannels, setCustomChannels] = useState<InboxChannelItem[]>([])
+  const [isAddChannelModalOpen, setIsAddChannelModalOpen] = useState(false)
+  const [newChannelType, setNewChannelType] = useState<"Page" | "Personal ID">("Page")
+  const [newChannelName, setNewChannelName] = useState("")
+  const [newChannelId, setNewChannelId] = useState("")
+  const [newChannelCookie, setNewChannelCookie] = useState("")
 
   // Live Messenger Bot Watcher State
   const [activeJobId, setActiveJobId] = useState<string | null>(null)
@@ -109,6 +139,7 @@ export function InboxAssistantCenter({ currentMode }: InboxAssistantCenterProps)
   const [prodWhyGood, setProdWhyGood] = useState("")
   const [prodWarranty, setProdWarranty] = useState("")
   const [prodIsDefault, setProdIsDefault] = useState(false)
+  const [prodAssignedChannelKey, setProdAssignedChannelKey] = useState<string>("ALL")
 
   // Store Policy Editable State
   const [deliveryPolicyInput, setDeliveryPolicyInput] = useState(storeProfile.deliveryPolicy)
@@ -128,6 +159,37 @@ export function InboxAssistantCenter({ currentMode }: InboxAssistantCenterProps)
     setHelplineInput(storeProfile.helplineNumber)
   }, [storeProfile])
 
+  // Load custom channels from localStorage
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(CUSTOM_CHANNELS_STORAGE_KEY)
+      if (saved) {
+        const parsed = JSON.parse(saved)
+        if (Array.isArray(parsed)) setCustomChannels(parsed)
+      }
+    } catch {}
+  }, [])
+
+  // Close Smart Channel Dropdown on outside click
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (
+        channelDropdownRef.current &&
+        !channelDropdownRef.current.contains(e.target as Node)
+      ) {
+        setIsChannelDropdownOpen(false)
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside)
+    return () => document.removeEventListener("mousedown", handleClickOutside)
+  }, [])
+
+  useEffect(() => {
+    if (isChannelDropdownOpen) {
+      setTimeout(() => channelSearchInputRef.current?.focus(), 60)
+    }
+  }, [isChannelDropdownOpen])
+
   const showToast = (msg: string) => {
     setToastMessage(msg)
     setTimeout(() => setToastMessage(null), 3500)
@@ -145,6 +207,7 @@ export function InboxAssistantCenter({ currentMode }: InboxAssistantCenterProps)
     setProdWhyGood("")
     setProdWarranty("১ বছরের অফিসিয়াল ওয়ারেন্টি")
     setProdIsDefault(products.length === 0)
+    setProdAssignedChannelKey("ALL")
     setIsProductModalOpen(true)
   }
 
@@ -160,6 +223,7 @@ export function InboxAssistantCenter({ currentMode }: InboxAssistantCenterProps)
     setProdWhyGood(prod.whyGoodFeatures)
     setProdWarranty(prod.warrantyInfo)
     setProdIsDefault(Boolean(prod.isDefaultProduct))
+    setProdAssignedChannelKey(prod.assignedChannelKey || "ALL")
     setIsProductModalOpen(true)
   }
 
@@ -179,6 +243,7 @@ export function InboxAssistantCenter({ currentMode }: InboxAssistantCenterProps)
         whyGoodFeatures: prodWhyGood.trim(),
         warrantyInfo: prodWarranty.trim(),
         isDefaultProduct: prodIsDefault,
+        assignedChannelKey: prodAssignedChannelKey,
       })
       showToast(`"${prodName.trim()}" প্রোডাক্টের AI ট্রেনিং আপডেট হয়ে লাইভ মেসেঞ্জার বটে সিঙ্ক হয়েছে!`)
     } else {
@@ -193,6 +258,7 @@ export function InboxAssistantCenter({ currentMode }: InboxAssistantCenterProps)
         whyGoodFeatures: prodWhyGood.trim(),
         warrantyInfo: prodWarranty.trim(),
         isDefaultProduct: prodIsDefault,
+        assignedChannelKey: prodAssignedChannelKey,
       })
       showToast(`নতুন প্রোডাক্ট "${prodName.trim()}" AI বটে যুক্ত ও সিঙ্ক করা হয়েছে!`)
     }
@@ -211,21 +277,16 @@ export function InboxAssistantCenter({ currentMode }: InboxAssistantCenterProps)
     showToast("স্টোর ও ডেলিভারি পলিসি লাইভ মেসেঞ্জার AI বটে সেভ হয়েছে!")
   }
 
-  // Dynamic connected Facebook Pages & Personal IDs
+  // Dynamic connected Facebook Pages & Personal IDs (supports 100+ channels)
   const channelOptions = useMemo(() => {
-    const list: {
-      key: string
-      sourceType: "Page" | "Personal ID"
-      id: string
-      name: string
-      label: string
-    }[] = [
+    const list: InboxChannelItem[] = [
       {
         key: "Page::61595136714776::Test Next",
         sourceType: "Page",
         id: "61595136714776",
         name: "Test Next",
         label: "Page: Test Next (61595136714776)",
+        enabled: true,
       },
       {
         key: "Page::892168940637389::CARE HUB BD",
@@ -233,6 +294,7 @@ export function InboxAssistantCenter({ currentMode }: InboxAssistantCenterProps)
         id: "892168940637389",
         name: "CARE HUB BD",
         label: "Page: CARE HUB BD (892168940637389)",
+        enabled: true,
       },
       {
         key: "Personal ID::acc-rasidul::Rasidul (Personal ID)",
@@ -240,6 +302,7 @@ export function InboxAssistantCenter({ currentMode }: InboxAssistantCenterProps)
         id: "acc-rasidul",
         name: "Rasidul (Personal ID)",
         label: "Personal ID: Rasidul",
+        enabled: true,
       },
     ]
 
@@ -252,11 +315,25 @@ export function InboxAssistantCenter({ currentMode }: InboxAssistantCenterProps)
           id: entry.pageId,
           name: entry.pageName,
           label: `Page: ${entry.pageName} (${entry.pageId})`,
+          enabled: true,
         })
       }
     })
 
     fleetAccounts.forEach((acc) => {
+      // Include each connected Personal ID from the 100-Account Fleet
+      if (acc.id && acc.name && !list.some((item) => item.id === acc.id || item.name === acc.name)) {
+        list.push({
+          key: `Personal ID::${acc.id}::${acc.name}`,
+          sourceType: "Personal ID",
+          id: acc.id,
+          name: acc.name,
+          label: `Personal ID: ${acc.name} (${acc.id})`,
+          cookieString: acc.cookieString,
+          enabled: true,
+        })
+      }
+      // Include all connected Pages under each fleet account
       if (acc.connectedPages) {
         acc.connectedPages.forEach((pg) => {
           if (!list.some((item) => item.id === pg.pageId)) {
@@ -266,24 +343,124 @@ export function InboxAssistantCenter({ currentMode }: InboxAssistantCenterProps)
               id: pg.pageId,
               name: pg.pageName,
               label: `Page: ${pg.pageName} (${pg.pageId})`,
+              cookieString: acc.cookieString,
+              enabled: true,
             })
           }
         })
       }
     })
 
+    customChannels.forEach((ch) => {
+      if (!list.some((item) => item.key === ch.key || item.id === ch.id)) {
+        list.push({ ...ch, enabled: true })
+      }
+    })
+
     return list
-  }, [fleetAccounts])
+  }, [fleetAccounts, customChannels])
+
+  const allChannelsMasterOption: InboxChannelItem = useMemo(
+    () => ({
+      key: "ALL_CHANNELS",
+      sourceType: "ALL",
+      id: "ALL",
+      name: `All Active Pages & IDs (${channelOptions.length})`,
+      label: `🌐 All Active Pages & IDs (${channelOptions.length}টি চ্যানেল — 24/7 AI)`,
+      enabled: true,
+    }),
+    [channelOptions.length]
+  )
 
   const activeChannel = useMemo(() => {
+    if (selectedChannelKey === "ALL_CHANNELS") return allChannelsMasterOption
     return channelOptions.find((c) => c.key === selectedChannelKey) || channelOptions[0]
-  }, [channelOptions, selectedChannelKey])
+  }, [channelOptions, selectedChannelKey, allChannelsMasterOption])
+
+  const filteredDropdownChannels = useMemo(() => {
+    const q = channelSearchQuery.trim().toLowerCase()
+    return channelOptions.filter((ch) => {
+      if (channelTypeFilter !== "ALL" && ch.sourceType !== channelTypeFilter) return false
+      if (!q) return true
+      return (
+        ch.name.toLowerCase().includes(q) ||
+        ch.id.toLowerCase().includes(q) ||
+        ch.label.toLowerCase().includes(q)
+      )
+    })
+  }, [channelOptions, channelSearchQuery, channelTypeFilter])
+
+  const pageChannelsCount = useMemo(
+    () => channelOptions.filter((c) => c.sourceType === "Page").length,
+    [channelOptions]
+  )
+  const personalIdChannelsCount = useMemo(
+    () => channelOptions.filter((c) => c.sourceType === "Personal ID").length,
+    [channelOptions]
+  )
+
+  const handleAddNewChannel = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!newChannelName.trim()) return
+
+    const cleanName = newChannelName.trim()
+    const cleanId =
+      newChannelId.trim() ||
+      (newChannelType === "Page" ? `page-${Date.now()}` : `id-${Date.now()}`)
+    const newItem: InboxChannelItem = {
+      key: `${newChannelType}::${cleanId}::${cleanName}`,
+      sourceType: newChannelType,
+      id: cleanId,
+      name: cleanName,
+      label: `${newChannelType}: ${cleanName} (${cleanId})`,
+      cookieString: newChannelCookie.trim() || undefined,
+      enabled: true,
+    }
+
+    const updatedCustom = [...customChannels.filter((c) => c.id !== cleanId), newItem]
+    setCustomChannels(updatedCustom)
+    try {
+      localStorage.setItem(CUSTOM_CHANNELS_STORAGE_KEY, JSON.stringify(updatedCustom))
+    } catch {}
+
+    if (newChannelType === "Page") {
+      try {
+        upsertPage({
+          pageId: cleanId,
+          pageName: cleanName,
+          accessToken: "",
+          tokenExpiry: Date.now() + 86400000 * 60,
+          category: "E-Commerce",
+          isActive: true,
+        })
+      } catch {}
+    }
+
+    // Sync updated monitoredChannels with running 24/7 bot immediately
+    const nextAllChannels = [...channelOptions, newItem]
+    fetch("/api/facebook-bot/inbox-assistant", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "UPDATE_RUNTIME",
+        monitoredChannels: nextAllChannels,
+      }),
+    }).catch(() => {})
+
+    setNewChannelName("")
+    setNewChannelId("")
+    setNewChannelCookie("")
+    setIsAddChannelModalOpen(false)
+    showToast(
+      `নতুন ${newChannelType} "${cleanName}" যুক্ত হয়েছে এবং ২৪/৭ মেসেঞ্জার AI বটের তালিকায় সিঙ্ক হয়েছে!`
+    )
+  }
 
   // Start or Connect to 24/7 Live Facebook Messenger Bot
   const handleStartLiveInboxBot = async (options?: {
     reuseIfActive?: boolean
     silent?: boolean
-    customChannel?: { sourceType: "Page" | "Personal ID"; id: string; name: string }
+    customChannel?: InboxChannelItem
   }) => {
     const channel = options?.customChannel || activeChannel
     setIsStartingBot(true)
@@ -294,15 +471,17 @@ export function InboxAssistantCenter({ currentMode }: InboxAssistantCenterProps)
       showToast(`Launching 24/7 Live Facebook Messenger Bot for "${channel.name}"...`)
     }
 
-    let resolvedCookie = ""
-    try {
-      const accWithCookie = fleetAccounts.find(
-        (a) => a.cookieString && a.cookieString.includes("c_user=") && a.cookieString.includes("xs=")
-      )
-      if (accWithCookie?.cookieString) {
-        resolvedCookie = accWithCookie.cookieString
-      }
-    } catch {}
+    let resolvedCookie = channel.cookieString || ""
+    if (!resolvedCookie) {
+      try {
+        const accWithCookie = fleetAccounts.find(
+          (a) => a.cookieString && a.cookieString.includes("c_user=") && a.cookieString.includes("xs=")
+        )
+        if (accWithCookie?.cookieString) {
+          resolvedCookie = accWithCookie.cookieString
+        }
+      } catch {}
+    }
 
     try {
       const res = await fetch("/api/facebook-bot/inbox-assistant", {
@@ -312,6 +491,7 @@ export function InboxAssistantCenter({ currentMode }: InboxAssistantCenterProps)
           sourceType: channel.sourceType,
           targetId: channel.id,
           targetName: channel.name,
+          monitoredChannels: channelOptions,
           cookieString: resolvedCookie || undefined,
           mode: settings.mode,
           humanDelaySeconds: settings.humanDelaySeconds,
@@ -501,24 +681,245 @@ export function InboxAssistantCenter({ currentMode }: InboxAssistantCenterProps)
             <span>Train AI Products ({products.length})</span>
           </button>
 
-          <select
-            value={selectedChannelKey}
-            onChange={(e) => {
-              const nextKey = e.target.value
-              setSelectedChannelKey(nextKey)
-              const found = channelOptions.find((c) => c.key === nextKey)
-              if (found) {
-                handleStartLiveInboxBot({ reuseIfActive: false, customChannel: found })
-              }
-            }}
-            className="px-3 py-2 rounded-xl border border-border bg-card text-foreground text-xs font-semibold outline-none focus:ring-2 focus:ring-blue-500/20"
-          >
-            {channelOptions.map((ch) => (
-              <option key={ch.key} value={ch.key}>
-                {ch.label}
-              </option>
-            ))}
-          </select>
+          {/* Smart Searchable 100+ Page & Personal ID Dropdown */}
+          <div ref={channelDropdownRef} className="relative">
+            <button
+              type="button"
+              data-testid="smart-channel-dropdown-btn"
+              onClick={() => setIsChannelDropdownOpen((prev) => !prev)}
+              className="flex items-center justify-between gap-2.5 px-3.5 py-2 rounded-xl border border-border bg-card hover:bg-muted/60 text-foreground text-xs font-semibold outline-none focus:ring-2 focus:ring-blue-500/20 min-w-[270px] sm:min-w-[310px] shadow-xs transition cursor-pointer"
+            >
+              <div className="flex items-center gap-2 truncate">
+                {activeChannel.sourceType === "ALL" ? (
+                  <span className="px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 text-[10px] font-black uppercase shrink-0 flex items-center gap-1">
+                    <Globe className="w-3 h-3" />
+                    ALL 24/7
+                  </span>
+                ) : activeChannel.sourceType === "Page" ? (
+                  <span className="px-1.5 py-0.5 rounded bg-blue-500/15 text-blue-600 dark:text-blue-400 border border-blue-500/30 text-[10px] font-black uppercase shrink-0">
+                    PAGE
+                  </span>
+                ) : (
+                  <span className="px-1.5 py-0.5 rounded bg-violet-500/15 text-violet-600 dark:text-violet-400 border border-violet-500/30 text-[10px] font-black uppercase shrink-0">
+                    ID
+                  </span>
+                )}
+                <span className="truncate font-bold">{activeChannel.name}</span>
+                {activeChannel.sourceType !== "ALL" && (
+                  <span className="text-[10px] text-muted-foreground font-mono truncate max-w-[110px]">
+                    ({activeChannel.id})
+                  </span>
+                )}
+              </div>
+              <ChevronDown
+                className={`w-4 h-4 text-muted-foreground shrink-0 transition-transform ${
+                  isChannelDropdownOpen ? "rotate-180" : ""
+                }`}
+              />
+            </button>
+
+            {isChannelDropdownOpen && (
+              <div
+                data-testid="smart-channel-dropdown-menu"
+                className="absolute right-0 mt-2 w-[350px] sm:w-[410px] rounded-2xl border border-border bg-card shadow-2xl z-50 overflow-hidden animate-in fade-in zoom-in-95"
+              >
+                {/* Search Input Header */}
+                <div className="p-3 border-b border-border bg-muted/30 space-y-2.5">
+                  <div className="relative">
+                    <Search className="w-3.5 h-3.5 text-muted-foreground absolute left-3 top-1/2 -translate-y-1/2" />
+                    <input
+                      ref={channelSearchInputRef}
+                      type="text"
+                      data-testid="smart-channel-search-input"
+                      placeholder="Search 100+ Pages or Personal IDs by name or ID..."
+                      value={channelSearchQuery}
+                      onChange={(e) => setChannelSearchQuery(e.target.value)}
+                      className="w-full pl-8 pr-8 py-2 rounded-xl border border-border bg-background text-xs font-medium text-foreground outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
+                    />
+                    {channelSearchQuery && (
+                      <button
+                        type="button"
+                        onClick={() => setChannelSearchQuery("")}
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Filter Tabs inside Dropdown */}
+                  <div className="flex items-center justify-between gap-1">
+                    <div className="flex items-center gap-1">
+                      <button
+                        type="button"
+                        onClick={() => setChannelTypeFilter("ALL")}
+                        className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition cursor-pointer ${
+                          channelTypeFilter === "ALL"
+                            ? "bg-blue-600 text-white"
+                            : "bg-background border border-border text-muted-foreground hover:text-foreground"
+                        }`}
+                      >
+                        All ({channelOptions.length})
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setChannelTypeFilter("Page")}
+                        className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition cursor-pointer ${
+                          channelTypeFilter === "Page"
+                            ? "bg-blue-600 text-white"
+                            : "bg-background border border-border text-muted-foreground hover:text-foreground"
+                        }`}
+                      >
+                        Pages ({pageChannelsCount})
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setChannelTypeFilter("Personal ID")}
+                        className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition cursor-pointer ${
+                          channelTypeFilter === "Personal ID"
+                            ? "bg-blue-600 text-white"
+                            : "bg-background border border-border text-muted-foreground hover:text-foreground"
+                        }`}
+                      >
+                        Personal IDs ({personalIdChannelsCount})
+                      </button>
+                    </div>
+                    <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400">
+                      100+ Ready
+                    </span>
+                  </div>
+                </div>
+
+                {/* Master Option: All Active Pages & IDs (Multi-Channel 24/7 AI) */}
+                <div className="p-2 border-b border-border bg-emerald-500/5">
+                  <button
+                    type="button"
+                    data-testid="select-all-channels-option"
+                    onClick={() => {
+                      setSelectedChannelKey("ALL_CHANNELS")
+                      setIsChannelDropdownOpen(false)
+                      handleStartLiveInboxBot({
+                        reuseIfActive: false,
+                        customChannel: allChannelsMasterOption,
+                      })
+                    }}
+                    className={`w-full text-left p-2.5 rounded-xl border transition flex items-center justify-between gap-2 cursor-pointer ${
+                      selectedChannelKey === "ALL_CHANNELS"
+                        ? "bg-emerald-500/15 border-emerald-500/40 text-foreground"
+                        : "bg-background/70 border-border/60 hover:bg-muted/60 text-foreground"
+                    }`}
+                  >
+                    <div className="flex items-start gap-2.5 min-w-0">
+                      <div className="w-7 h-7 rounded-lg bg-emerald-600 text-white flex items-center justify-center shrink-0 mt-0.5">
+                        <Layers className="w-4 h-4" />
+                      </div>
+                      <div className="min-w-0">
+                        <div className="text-xs font-black flex items-center gap-1.5">
+                          <span>All Active Pages &amp; IDs ({channelOptions.length})</span>
+                          <span className="px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-[9px] font-black uppercase">
+                            24/7 Multi-Bot
+                          </span>
+                        </div>
+                        <p className="text-[10px] text-muted-foreground truncate">
+                          যুক্ত করা ১০০টি পেজ ও আইডির সকল মেসেজে AI স্বয়ংক্রিয়ভাবে রিপ্লাই দেবে
+                        </p>
+                      </div>
+                    </div>
+                    {selectedChannelKey === "ALL_CHANNELS" && (
+                      <Check className="w-4 h-4 text-emerald-500 shrink-0" />
+                    )}
+                  </button>
+                </div>
+
+                {/* Scrollable Search Results List */}
+                <div className="max-h-64 overflow-y-auto divide-y divide-border/50 p-1.5">
+                  {filteredDropdownChannels.length === 0 ? (
+                    <div className="py-8 px-4 text-center space-y-2">
+                      <p className="text-xs font-bold text-muted-foreground">
+                        &ldquo;{channelSearchQuery}&rdquo; নামে কোনো পেজ বা আইডি পাওয়া যায়নি
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setNewChannelName(channelSearchQuery)
+                          setIsChannelDropdownOpen(false)
+                          setIsAddChannelModalOpen(true)
+                        }}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-600 text-white text-[11px] font-bold hover:bg-blue-500 transition cursor-pointer"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                        <span>Add &ldquo;{channelSearchQuery}&rdquo; as New Page/ID</span>
+                      </button>
+                    </div>
+                  ) : (
+                    filteredDropdownChannels.map((ch) => {
+                      const isSelected = selectedChannelKey === ch.key
+                      return (
+                        <button
+                          key={ch.key}
+                          type="button"
+                          onClick={() => {
+                            setSelectedChannelKey(ch.key)
+                            setIsChannelDropdownOpen(false)
+                            handleStartLiveInboxBot({
+                              reuseIfActive: false,
+                              customChannel: ch,
+                            })
+                          }}
+                          className={`w-full text-left px-3 py-2.5 rounded-xl transition flex items-center justify-between gap-2 cursor-pointer ${
+                            isSelected
+                              ? "bg-blue-500/10 text-blue-600 dark:text-blue-400 font-bold"
+                              : "hover:bg-muted/60 text-foreground"
+                          }`}
+                        >
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <span
+                              className={`px-1.5 py-0.5 rounded text-[9px] font-black uppercase shrink-0 border ${
+                                ch.sourceType === "Page"
+                                  ? "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20"
+                                  : "bg-violet-500/10 text-violet-600 dark:text-violet-400 border-violet-500/20"
+                              }`}
+                            >
+                              {ch.sourceType === "Page" ? "PAGE" : "ID"}
+                            </span>
+                            <div className="min-w-0">
+                              <div className="text-xs font-bold truncate">{ch.name}</div>
+                              <div className="text-[10px] text-muted-foreground font-mono truncate">
+                                ID: {ch.id}
+                              </div>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2 shrink-0">
+                            <span className="w-2 h-2 rounded-full bg-emerald-500" title="24/7 Ready" />
+                            {isSelected && <Check className="w-4 h-4 text-blue-500" />}
+                          </div>
+                        </button>
+                      )
+                    })
+                  )}
+                </div>
+
+                {/* Dropdown Footer: Add New Page / Personal ID (Up to 100+) */}
+                <div className="p-2.5 border-t border-border bg-muted/40 flex items-center justify-between gap-2">
+                  <span className="text-[10px] text-muted-foreground font-medium">
+                    Showing {filteredDropdownChannels.length} of {channelOptions.length} channels
+                  </span>
+                  <button
+                    type="button"
+                    data-testid="open-add-channel-modal-btn"
+                    onClick={() => {
+                      setIsChannelDropdownOpen(false)
+                      setIsAddChannelModalOpen(true)
+                    }}
+                    className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-[11px] font-bold transition shadow-xs cursor-pointer"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>+ Add Page / Personal ID</span>
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
 
           <button
             type="button"
@@ -1711,17 +2112,35 @@ export function InboxAssistantCenter({ currentMode }: InboxAssistantCenterProps)
                   />
                 </div>
 
-                <div className="flex items-center pt-5">
-                  <label className="flex items-center gap-2 cursor-pointer font-semibold text-foreground">
-                    <input
-                      type="checkbox"
-                      checked={prodIsDefault}
-                      onChange={(e) => setProdIsDefault(e.target.checked)}
-                      className="rounded accent-violet-600"
-                    />
-                    <span>এটিকে মেইন/ডিফল্ট প্রোডাক্ট হিসেবে সেট করুন</span>
+                <div className="space-y-1">
+                  <label className="font-bold text-foreground">
+                    কোন পেজ / আইডির জন্য প্রযোজ্য? (Target Page / ID)
                   </label>
+                  <select
+                    value={prodAssignedChannelKey}
+                    onChange={(e) => setProdAssignedChannelKey(e.target.value)}
+                    className="w-full px-3 py-2 border border-border rounded-lg bg-background text-xs outline-none focus:border-violet-500"
+                  >
+                    <option value="ALL">🌐 All 100+ Pages &amp; Personal IDs (সকল পেজ ও আইডি)</option>
+                    {channelOptions.map((ch) => (
+                      <option key={ch.key} value={ch.key}>
+                        {ch.label}
+                      </option>
+                    ))}
+                  </select>
                 </div>
+              </div>
+
+              <div className="flex items-center pt-1">
+                <label className="flex items-center gap-2 cursor-pointer font-semibold text-foreground">
+                  <input
+                    type="checkbox"
+                    checked={prodIsDefault}
+                    onChange={(e) => setProdIsDefault(e.target.checked)}
+                    className="rounded accent-violet-600"
+                  />
+                  <span>এটিকে মেইন/ডিফল্ট প্রোডাক্ট হিসেবে সেট করুন</span>
+                </label>
               </div>
 
               <div className="pt-3 border-t border-border flex items-center justify-end space-x-2">
@@ -1737,6 +2156,120 @@ export function InboxAssistantCenter({ currentMode }: InboxAssistantCenterProps)
                   className="px-4 py-2 rounded-lg bg-violet-600 hover:bg-violet-500 text-white font-bold text-xs shadow-xs transition cursor-pointer"
                 >
                   Save &amp; Train Live AI Bot
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ======================================================== */}
+      {/* MODAL: ADD NEW FACEBOOK PAGE OR PERSONAL ID (UP TO 100+) */}
+      {/* ======================================================== */}
+      {isAddChannelModalOpen && (
+        <div className="fixed inset-0 z-50 bg-black/65 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-card border border-border rounded-2xl w-full max-w-md shadow-2xl p-6 space-y-4 animate-in fade-in zoom-in-95">
+            <div className="flex items-center justify-between border-b border-border pb-3">
+              <div className="flex items-center space-x-2">
+                <Layers className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                <h3 className="font-bold text-base text-foreground">
+                  Add Facebook Page or Personal ID
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsAddChannelModalOpen(false)}
+                className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground transition"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleAddNewChannel} className="space-y-3.5 text-xs">
+              <div className="space-y-1">
+                <label className="font-bold text-foreground">চ্যানেলের ধরন (Channel Type)</label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setNewChannelType("Page")}
+                    className={`py-2 px-3 rounded-xl border font-bold text-xs transition cursor-pointer ${
+                      newChannelType === "Page"
+                        ? "bg-blue-600 text-white border-blue-600"
+                        : "bg-background border-border text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    Facebook Page
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setNewChannelType("Personal ID")}
+                    className={`py-2 px-3 rounded-xl border font-bold text-xs transition cursor-pointer ${
+                      newChannelType === "Personal ID"
+                        ? "bg-violet-600 text-white border-violet-600"
+                        : "bg-background border-border text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    Personal ID
+                  </button>
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <label className="font-bold text-foreground">
+                  {newChannelType === "Page" ? "পেজের নাম (Page Name) *" : "আইডির নাম (Profile Name) *"}
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder={newChannelType === "Page" ? "যেমন: Fashion Hub BD" : "যেমন: Rasidul Islam"}
+                  value={newChannelName}
+                  onChange={(e) => setNewChannelName(e.target.value)}
+                  className="w-full px-3 py-2 border border-border rounded-lg bg-background text-xs outline-none focus:border-blue-500"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="font-bold text-foreground">
+                  {newChannelType === "Page"
+                    ? "Numeric Page ID (যেমন: 61595136714776) *"
+                    : "Profile / Account ID (যেমন: 100081643483232) *"}
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder={newChannelType === "Page" ? "61595136714776" : "100081643483232"}
+                  value={newChannelId}
+                  onChange={(e) => setNewChannelId(e.target.value)}
+                  className="w-full px-3 py-2 border border-border rounded-lg bg-background text-xs font-mono outline-none focus:border-blue-500"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="font-bold text-foreground">
+                  আলাদা সেশন কুকি (ঐচ্ছিক — না দিলে মেইন অ্যাকাউন্টের কুকি ব্যবহার হবে)
+                </label>
+                <input
+                  type="text"
+                  placeholder="c_user=...; xs=... (অন্য আইডির ক্ষেত্রে প্রয়োজন হলে দিন)"
+                  value={newChannelCookie}
+                  onChange={(e) => setNewChannelCookie(e.target.value)}
+                  className="w-full px-3 py-2 border border-border rounded-lg bg-background text-xs font-mono outline-none focus:border-blue-500"
+                />
+              </div>
+
+              <div className="pt-2 border-t border-border flex items-center justify-end space-x-2">
+                <button
+                  type="button"
+                  onClick={() => setIsAddChannelModalOpen(false)}
+                  className="px-4 py-2 rounded-lg border border-border hover:bg-muted font-semibold text-xs transition"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs shadow-xs transition cursor-pointer"
+                >
+                  Add &amp; Sync with 24/7 AI Bot
                 </button>
               </div>
             </form>
