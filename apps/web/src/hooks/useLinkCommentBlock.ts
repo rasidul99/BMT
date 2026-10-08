@@ -18,6 +18,22 @@ export interface BlockedCommentLog {
   latencyMs: number
 }
 
+export interface ShieldMonitoredPost {
+  id: string
+  postUrl: string
+  postTitle: string
+  postThumbnail?: string
+  sourceType: "Personal ID" | "Page" | "Group"
+  targetId: string
+  targetName: string
+  actionType: "AUTO_DELETE" | "HIDE_COMMENT"
+  status: "Active" | "Paused"
+  watcherJobId?: string
+  watcherStatus?: "IDLE" | "WATCHING" | "AUTH_ERROR" | "ERROR" | "COMPLETED"
+  deletedCount: number
+  createdAt: string
+}
+
 export interface ShieldRuleSettings {
   isShieldActive: boolean
   actionType: "AUTO_DELETE" | "HIDE_COMMENT"
@@ -30,6 +46,7 @@ export interface ShieldRuleSettings {
 
 const STORAGE_KEY_SETTINGS = "bmt_link_shield_settings"
 const STORAGE_KEY_LOGS = "bmt_link_shield_logs"
+const STORAGE_KEY_POSTS = "bmt_link_shield_posts_v1"
 
 const DEFAULT_SETTINGS: ShieldRuleSettings = {
   isShieldActive: true,
@@ -54,9 +71,9 @@ const DEFAULT_SETTINGS: ShieldRuleSettings = {
   ],
   notifyOnDelete: true,
   monitoredPages: [
+    "Test Next",
+    "CARE HUB BD",
     "Fashion Hub Official",
-    "Tech Gadgets BD",
-    "Organic Foods Bangladesh",
   ],
 }
 
@@ -67,7 +84,7 @@ const INITIAL_LOGS: BlockedCommentLog[] = [
     postId: "post_101",
     postTitle: "Eid Special Premium Watch Collection Offer 2026",
     senderName: "Spam Deals Bot",
-    pageOrAccountName: "Fashion Hub Official",
+    pageOrAccountName: "Test Next",
     commentText: "Get 90% discount right now! Click here: https://fake-phishing-deals.site/free-watch",
     detectedLinks: ["https://fake-phishing-deals.site/free-watch"],
     detectedAt: "2 mins ago",
@@ -81,7 +98,7 @@ const INITIAL_LOGS: BlockedCommentLog[] = [
     postId: "post_102",
     postTitle: "Top 5 Gaming Laptops in 2026 - Best Specs",
     senderName: "Crypto Signal Pro",
-    pageOrAccountName: "Tech Gadgets BD",
+    pageOrAccountName: "CARE HUB BD",
     commentText: "Join our official telegram for daily crypto profit: t.me/crypto_scam_vip",
     detectedLinks: ["t.me/crypto_scam_vip"],
     detectedAt: "14 mins ago",
@@ -95,7 +112,7 @@ const INITIAL_LOGS: BlockedCommentLog[] = [
     postId: "post_101",
     postTitle: "Eid Special Premium Watch Collection Offer 2026",
     senderName: "Verified Moderator",
-    pageOrAccountName: "Fashion Hub Official",
+    pageOrAccountName: "Test Next",
     commentText: "Visit our verified site for warranty details: https://bmt.link/warranty-check",
     detectedLinks: ["https://bmt.link/warranty-check"],
     detectedAt: "28 mins ago",
@@ -103,45 +120,18 @@ const INITIAL_LOGS: BlockedCommentLog[] = [
     graphApiStatus: "SUCCESS_200",
     latencyMs: 110,
   },
-  {
-    id: "log-4",
-    commentId: "fb_cmt_665123904",
-    postId: "post_103",
-    postTitle: "Fresh Organic Sundarban Honey Arrival",
-    senderName: "Affiliate Hijacker",
-    pageOrAccountName: "Organic Foods Bangladesh",
-    commentText: "Same honey available at 50% cheaper price: bit.ly/competitor-cheaper-honey",
-    detectedLinks: ["bit.ly/competitor-cheaper-honey"],
-    detectedAt: "1 hour ago",
-    actionTaken: "AUTO_DELETED",
-    graphApiStatus: "SUCCESS_200",
-    latencyMs: 760,
-  },
-  {
-    id: "log-5",
-    commentId: "fb_cmt_554123905",
-    postId: "post_102",
-    postTitle: "Top 5 Gaming Laptops in 2026 - Best Specs",
-    senderName: "Spammer Account 99",
-    pageOrAccountName: "Tech Gadgets BD",
-    commentText: "Contact my WhatsApp for cheap wholesale gadgets: wa.me/8801700000000",
-    detectedLinks: ["wa.me/8801700000000"],
-    detectedAt: "2 hours ago",
-    actionTaken: "AUTO_DELETED",
-    graphApiStatus: "SUCCESS_200",
-    latencyMs: 890,
-  },
 ]
 
 // URL & Domain Extraction Regex
-const URL_REGEX = /(https?:\/\/[^\s]+|www\.[^\s]+|[a-zA-Z0-9-]+\.(?:com|net|org|io|me|xyz|app|site|live|shop|store|online|info|biz|bd|co|in|uk|us|ru|top|pro|tv)(?:\/[^\s]*)?)/gi
+const URL_REGEX = /(https?:\/\/[^\s]+|www\.[^\s]+|[a-zA-Z0-9-]+\.(?:com|net|org|io|me|xyz|app|site|live|shop|store|online|info|biz|bd|co|in|uk|us|ru|top|pro|tv|link|ly)(?:\/[^\s]*)?)/gi
 
 export function useLinkCommentBlock() {
   const [settings, setSettings] = useState<ShieldRuleSettings>(DEFAULT_SETTINGS)
   const [logs, setLogs] = useState<BlockedCommentLog[]>([])
+  const [shieldPosts, setShieldPosts] = useState<ShieldMonitoredPost[]>([])
   const [isLoaded, setIsLoaded] = useState(false)
 
-  // Initialize from LocalStorage
+  // Initialize from LocalStorage (and auto-import active real Facebook posts from Comment Assistant if present)
   useEffect(() => {
     if (typeof window === "undefined") return
 
@@ -156,6 +146,57 @@ export function useLinkCommentBlock() {
         setLogs(JSON.parse(savedLogs))
       } else {
         setLogs(INITIAL_LOGS)
+      }
+
+      let loadedPosts: ShieldMonitoredPost[] = []
+      const savedPosts = localStorage.getItem(STORAGE_KEY_POSTS)
+      if (savedPosts) {
+        loadedPosts = JSON.parse(savedPosts)
+      }
+
+      // Also sync any real user posts from Comment Assistant (bmt_monitored_posts_v3) so user doesn't have to re-paste
+      const caPostsRaw = localStorage.getItem("bmt_monitored_posts_v3")
+      if (caPostsRaw) {
+        try {
+          const caPosts = JSON.parse(caPostsRaw)
+          if (Array.isArray(caPosts)) {
+            const realCaPosts = caPosts.filter(
+              (p: any) =>
+                p &&
+                p.postUrl &&
+                !String(p.id).startsWith("mp-10") &&
+                !String(p.id).startsWith("mp-default-") &&
+                !String(p.postUrl).includes("892168940637389/posts/1020304050")
+            )
+            for (const cp of realCaPosts) {
+              const norm = String(cp.postUrl).trim().toLowerCase().replace(/\/+$/, "")
+              const exists = loadedPosts.some(
+                (lp) => lp.postUrl.trim().toLowerCase().replace(/\/+$/, "") === norm
+              )
+              if (!exists) {
+                loadedPosts.unshift({
+                  id: `sp-${cp.id}`,
+                  postUrl: cp.postUrl,
+                  postTitle: cp.postTitle || "Facebook Post",
+                  postThumbnail: cp.postThumbnail,
+                  sourceType: cp.sourceType || "Page",
+                  targetId: cp.targetId || "61595136714776",
+                  targetName: cp.targetName || cp.accountName || "Facebook Page",
+                  actionType: "AUTO_DELETE",
+                  status: "Active",
+                  watcherStatus: "IDLE",
+                  deletedCount: 0,
+                  createdAt: cp.createdAt || "Just now",
+                })
+              }
+            }
+          }
+        } catch {}
+      }
+
+      setShieldPosts(loadedPosts)
+      if (loadedPosts.length > 0) {
+        localStorage.setItem(STORAGE_KEY_POSTS, JSON.stringify(loadedPosts))
       }
     } catch {
       setSettings(DEFAULT_SETTINGS)
@@ -181,6 +222,102 @@ export function useLinkCommentBlock() {
     }
   }, [])
 
+  // Save Shield Posts
+  const saveShieldPosts = useCallback((nextPosts: ShieldMonitoredPost[]) => {
+    setShieldPosts(nextPosts)
+    if (typeof window !== "undefined") {
+      localStorage.setItem(STORAGE_KEY_POSTS, JSON.stringify(nextPosts))
+    }
+  }, [])
+
+  const addShieldPost = useCallback(
+    (payload: {
+      postUrl: string
+      postTitle: string
+      postThumbnail?: string
+      sourceType: "Personal ID" | "Page" | "Group"
+      targetId: string
+      targetName: string
+      actionType?: "AUTO_DELETE" | "HIDE_COMMENT"
+    }) => {
+      const cleanUrl = payload.postUrl.trim()
+      const norm = cleanUrl.toLowerCase().replace(/\/+$/, "")
+      const existing = shieldPosts.find(
+        (p) => p.postUrl.trim().toLowerCase().replace(/\/+$/, "") === norm
+      )
+      if (existing) {
+        const updated: ShieldMonitoredPost = {
+          ...existing,
+          ...payload,
+          postUrl: cleanUrl,
+          actionType: payload.actionType || existing.actionType,
+        }
+        const next = shieldPosts.map((p) => (p.id === existing.id ? updated : p))
+        saveShieldPosts(next)
+        return updated
+      }
+
+      const created: ShieldMonitoredPost = {
+        id: `sp-${Date.now()}`,
+        postUrl: cleanUrl,
+        postTitle: payload.postTitle.trim() || "Facebook Post",
+        postThumbnail: payload.postThumbnail,
+        sourceType: payload.sourceType,
+        targetId: payload.targetId,
+        targetName: payload.targetName,
+        actionType: payload.actionType || settings.actionType,
+        status: "Active",
+        watcherStatus: "IDLE",
+        deletedCount: 0,
+        createdAt: "Just now",
+      }
+      const next = [created, ...shieldPosts]
+      saveShieldPosts(next)
+      return created
+    },
+    [shieldPosts, settings.actionType, saveShieldPosts]
+  )
+
+  const updateShieldPost = useCallback(
+    (id: string, partial: Partial<ShieldMonitoredPost>) => {
+      setShieldPosts((prev) => {
+        const next = prev.map((p) => (p.id === id ? { ...p, ...partial } : p))
+        if (typeof window !== "undefined") {
+          localStorage.setItem(STORAGE_KEY_POSTS, JSON.stringify(next))
+        }
+        return next
+      })
+    },
+    []
+  )
+
+  const deleteShieldPost = useCallback(
+    (id: string) => {
+      const next = shieldPosts.filter((p) => p.id !== id)
+      saveShieldPosts(next)
+    },
+    [shieldPosts, saveShieldPosts]
+  )
+
+  // Prepend live incidents reported by the real Facebook Link Shield Bot
+  const prependLiveIncidents = useCallback((incoming: BlockedCommentLog[]) => {
+    if (!incoming || incoming.length === 0) return
+    setLogs((prev) => {
+      const existingKeys = new Set(
+        prev.map((l) => `${l.senderName}:::${l.commentText.slice(0, 40)}`)
+      )
+      const brandNew = incoming.filter(
+        (inc) => !existingKeys.has(`${inc.senderName}:::${inc.commentText.slice(0, 40)}`)
+      )
+      if (brandNew.length === 0) return prev
+      const next = [...brandNew, ...prev]
+      if (typeof window !== "undefined") {
+        localStorage.setItem(STORAGE_KEY_LOGS, JSON.stringify(next))
+      }
+      return next
+    })
+  }, [])
+
   // Toggle Shield
   const toggleShield = useCallback(() => {
     saveSettings({
@@ -203,7 +340,12 @@ export function useLinkCommentBlock() {
   // Add Whitelist Domain
   const addWhitelistedDomain = useCallback(
     (domain: string) => {
-      const cleaned = domain.trim().toLowerCase().replace(/^https?:\/\//, "").replace(/^www\./, "").replace(/\/.*$/, "")
+      const cleaned = domain
+        .trim()
+        .toLowerCase()
+        .replace(/^https?:\/\//, "")
+        .replace(/^www\./, "")
+        .replace(/\/.*$/, "")
       if (!cleaned || settings.whitelistedDomains.includes(cleaned)) return
       saveSettings({
         ...settings,
@@ -279,14 +421,6 @@ export function useLinkCommentBlock() {
         return { detectedLinks: [], action: "NONE", reason: "Shield is paused" }
       }
 
-      // Check if page is monitored
-      if (
-        settings.monitoredPages.length > 0 &&
-        !settings.monitoredPages.includes(pageOrAccountName)
-      ) {
-        return { detectedLinks: [], action: "NONE", reason: "Page not in monitored list" }
-      }
-
       // 1. Link matching
       const matches = commentText.match(URL_REGEX) || []
       const detectedLinks = Array.from(new Set(matches))
@@ -297,7 +431,11 @@ export function useLinkCommentBlock() {
       )
 
       if (detectedLinks.length === 0 && !containsBlacklisted) {
-        return { detectedLinks: [], action: "NONE", reason: "Clean comment, no link or blacklisted terms found" }
+        return {
+          detectedLinks: [],
+          action: "NONE",
+          reason: "Clean comment, no link or blacklisted terms found",
+        }
       }
 
       // 3. Whitelist check
@@ -341,8 +479,7 @@ export function useLinkCommentBlock() {
       }
 
       // 4. Trigger Auto-Delete or Hide
-      const action =
-        settings.actionType === "AUTO_DELETE" ? "AUTO_DELETED" : "HIDDEN"
+      const action = settings.actionType === "AUTO_DELETE" ? "AUTO_DELETED" : "HIDDEN"
       const latencyMs = Math.floor(Math.random() * 400) + 700
 
       const newLog: BlockedCommentLog = {
@@ -354,9 +491,7 @@ export function useLinkCommentBlock() {
         pageOrAccountName,
         commentText,
         detectedLinks:
-          detectedLinks.length > 0
-            ? detectedLinks
-            : ["Blacklisted Keyword Detected"],
+          detectedLinks.length > 0 ? detectedLinks : ["Blacklisted Keyword Detected"],
         detectedAt: "Just now",
         actionTaken: action,
         graphApiStatus: "SUCCESS_200",
@@ -370,8 +505,8 @@ export function useLinkCommentBlock() {
         action,
         reason:
           action === "AUTO_DELETED"
-            ? "Auto-deleted via Graph API DELETE /{comment-id}"
-            : "Hidden via Graph API POST /{comment-id}?is_hidden=true",
+            ? "Auto-deleted via Live Facebook Shield"
+            : "Hidden via Live Facebook Shield",
       }
     },
     [settings, logs, saveLogs]
@@ -398,9 +533,7 @@ export function useLinkCommentBlock() {
     const totalBlocked = totalDeleted + totalHidden
     const avgLatency =
       logs.length > 0
-        ? Math.round(
-            logs.reduce((acc, curr) => acc + curr.latencyMs, 0) / logs.length
-          )
+        ? Math.round(logs.reduce((acc, curr) => acc + curr.latencyMs, 0) / logs.length)
         : 780
 
     return {
@@ -417,6 +550,7 @@ export function useLinkCommentBlock() {
     isLoaded,
     settings,
     logs,
+    shieldPosts,
     metrics,
     toggleShield,
     updateSettings,
@@ -425,6 +559,10 @@ export function useLinkCommentBlock() {
     addBlacklistedKeyword,
     removeBlacklistedKeyword,
     toggleMonitoredPage,
+    addShieldPost,
+    updateShieldPost,
+    deleteShieldPost,
+    prependLiveIncidents,
     processIncomingComment,
     deleteLog,
     clearAllLogs,
