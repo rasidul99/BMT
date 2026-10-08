@@ -945,7 +945,7 @@ export function useCommentAssistant() {
         postId: resolvedPostId,
         postUrl: postData.postUrl.trim(),
         postTitle: postData.postTitle.trim() || `${postData.targetName} — Monitored Post`,
-        postThumbnail: postData.postThumbnail || DEFAULT_POST_THUMBNAIL,
+        postThumbnail: postData.postThumbnail || undefined,
         customPublicReply: sanitizeText(postData.customPublicReply),
         customInboxMessage: sanitizeText(postData.customInboxMessage),
         status: postData.status || "Active",

@@ -104,9 +104,10 @@ export default function SafeCommentAssistantPage() {
   const [selectedIntentFilter, setSelectedIntentFilter] = useState<string>("ALL")
   const [streamSearchQuery, setStreamSearchQuery] = useState<string>("")
 
-  // Monitored Posts Tab Filter State
+  // Monitored Posts Tab Filter & View State
   const [postsSourceFilter, setPostsSourceFilter] = useState<"ALL" | CommentSourceType>("ALL")
   const [postsSearchQuery, setPostsSearchQuery] = useState<string>("")
+  const [postsViewMode, setPostsViewMode] = useState<"table" | "cards">("table")
 
   // "+ Add Post" / Edit Monitored Post Modal State (Step-by-Step User Journey)
   const [showAddPostModal, setShowAddPostModal] = useState(false)
@@ -117,6 +118,9 @@ export default function SafeCommentAssistantPage() {
   const [selectedPostAccountName, setSelectedPostAccountName] = useState<string>("Rasidul (Personal ID)")
   const [postLinkInput, setPostLinkInput] = useState<string>("")
   const [postTitleInput, setPostTitleInput] = useState<string>("")
+  const [postThumbnailPreview, setPostThumbnailPreview] = useState<string>("")
+  const [postFetchedTitle, setPostFetchedTitle] = useState<string>("")
+  const [isFetchingPostPreview, setIsFetchingPostPreview] = useState<boolean>(false)
   const [postReplyMode, setPostReplyMode] = useState<"template" | "custom">("template")
   const [selectedPostTemplateId, setSelectedPostTemplateId] = useState<string>("tmpl-price-1")
   const [isTemplateDropdownOpen, setIsTemplateDropdownOpen] = useState<boolean>(false)
@@ -610,6 +614,8 @@ export default function SafeCommentAssistantPage() {
     setEditingPostId(null)
     setPostLinkInput("")
     setPostTitleInput("")
+    setPostThumbnailPreview("")
+    setPostFetchedTitle("")
     setPostReplyMode("template")
     setPostSendPrivateInbox(true)
     const defaultTmpl = library[0]
@@ -630,6 +636,8 @@ export default function SafeCommentAssistantPage() {
     setSelectedPostAccountName(post.accountName)
     setPostLinkInput(post.postUrl)
     setPostTitleInput(post.postTitle)
+    setPostThumbnailPreview(post.postThumbnail || "")
+    setPostFetchedTitle(post.postTitle || "")
     setPostReplyMode(post.replyConfigMode)
     setSelectedPostTemplateId(post.templateId || library[0]?.id || "")
     setPostCustomPublicReply(post.customPublicReply)
@@ -638,23 +646,144 @@ export default function SafeCommentAssistantPage() {
     setShowAddPostModal(true)
   }
 
-  const handleSaveMonitoredPostSubmit = (e: React.FormEvent) => {
+  // Live fetch real Facebook post image & title when user pastes URL in "+ Add Post" modal
+  useEffect(() => {
+    const trimmed = postLinkInput.trim()
+    if (!showAddPostModal || !trimmed.startsWith("http")) {
+      return
+    }
+
+    let cancelled = false
+    const timer = setTimeout(async () => {
+      try {
+        setIsFetchingPostPreview(true)
+        const res = await fetch("/api/facebook-bot/post-preview", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ url: trimmed }),
+        })
+        const data = await res.json()
+        if (!cancelled && data?.success) {
+          if (data.thumbnailUrl) {
+            setPostThumbnailPreview(data.thumbnailUrl)
+          }
+          if (data.postTitle) {
+            setPostFetchedTitle(data.postTitle)
+            setPostTitleInput((prev) =>
+              !prev.trim() || prev.includes("Eid Special Premium Watch") ? data.postTitle : prev
+            )
+          }
+        }
+      } catch {
+      } finally {
+        if (!cancelled) setIsFetchingPostPreview(false)
+      }
+    }, 300)
+
+    return () => {
+      cancelled = true
+      clearTimeout(timer)
+    }
+  }, [postLinkInput, showAddPostModal])
+
+  // Auto-heal existing saved posts that have the old placeholder watch thumbnail or duplicate URLs
+  const healedPostIdsRef = React.useRef<Set<string>>(new Set())
+  useEffect(() => {
+    if (!monitoredPosts || monitoredPosts.length === 0) return
+
+    // 1. Remove exact duplicate postUrls added accidentally
+    const seenUrls = new Set<string>()
+    for (const p of monitoredPosts) {
+      const normUrl = (p.postUrl || "").trim().toLowerCase().replace(/\/+$/, "")
+      if (normUrl && seenUrls.has(normUrl)) {
+        deleteMonitoredPost(p.id)
+        return
+      }
+      if (normUrl) seenUrls.add(normUrl)
+    }
+
+    // 2. Fetch real thumbnail & title for any real Facebook post still showing the old default watch image
+    monitoredPosts.forEach((p) => {
+      const isDefaultWatch =
+        !p.postThumbnail || p.postThumbnail.includes("photo-1523275335684-37898b6baf30")
+      const isRealFbShare =
+        p.postUrl &&
+        p.postUrl.startsWith("http") &&
+        (p.postUrl.includes("/share/") || p.postUrl.includes("story_fbid") || p.postUrl.includes("pfbid"))
+
+      if ((isDefaultWatch && isRealFbShare) && !healedPostIdsRef.current.has(p.id)) {
+        healedPostIdsRef.current.add(p.id)
+        fetch("/api/facebook-bot/post-preview", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ url: p.postUrl }),
+        })
+          .then((r) => r.json())
+          .then((data) => {
+            if (data?.success && (data.thumbnailUrl || data.postTitle)) {
+              updateMonitoredPost(p.id, {
+                ...(data.thumbnailUrl ? { postThumbnail: data.thumbnailUrl } : {}),
+                ...(data.postTitle &&
+                (!p.postTitle || p.postTitle.includes("Eid Special Premium Watch"))
+                  ? { postTitle: data.postTitle }
+                  : {}),
+              })
+            }
+          })
+          .catch(() => null)
+      }
+    })
+  }, [monitoredPosts, deleteMonitoredPost, updateMonitoredPost])
+
+  const handleSaveMonitoredPostSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     const cleanUrl = postLinkInput.trim()
     if (!cleanUrl) return alert("Please paste the Facebook Post Link (URL).")
     if (!postCustomPublicReply.trim()) return alert("Please enter or select a Comment Reply.")
 
+    let finalThumbnail = postThumbnailPreview
+    let finalFetchedTitle = postFetchedTitle
+
+    if (!finalThumbnail && cleanUrl.startsWith("http")) {
+      try {
+        setIsFetchingPostPreview(true)
+        const res = await fetch("/api/facebook-bot/post-preview", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ url: cleanUrl }),
+        })
+        const data = await res.json()
+        if (data?.success) {
+          if (data.thumbnailUrl) finalThumbnail = data.thumbnailUrl
+          if (data.postTitle) finalFetchedTitle = data.postTitle
+        }
+      } catch {
+      } finally {
+        setIsFetchingPostPreview(false)
+      }
+    }
+
     const chosenTmpl = postReplyMode === "template" ? library.find((t) => t.id === selectedPostTemplateId) : undefined
     const resolvedTitle =
       postTitleInput.trim() ||
-      chosenTmpl?.productName ||
+      finalFetchedTitle ||
       `${selectedTargetName} — Facebook ${postSourceTab} Post`
 
     try {
-      if (editingPostId) {
-        updateMonitoredPost(editingPostId, {
+      const existingByUrl = !editingPostId
+        ? monitoredPosts.find(
+            (p) =>
+              p.postUrl.trim().toLowerCase().replace(/\/+$/, "") ===
+              cleanUrl.toLowerCase().replace(/\/+$/, "")
+          )
+        : undefined
+      const targetEditId = editingPostId || existingByUrl?.id || null
+
+      if (targetEditId) {
+        updateMonitoredPost(targetEditId, {
           postUrl: cleanUrl,
           postTitle: resolvedTitle,
+          ...(finalThumbnail ? { postThumbnail: finalThumbnail } : {}),
           sourceType: postSourceTab,
           targetId: selectedTargetId,
           targetName: selectedTargetName,
@@ -667,11 +796,12 @@ export default function SafeCommentAssistantPage() {
           customInboxMessage: postCustomInboxMessage.trim(),
           sendPrivateInbox: postSendPrivateInbox,
         })
-        setPostSavedToast(`Updated monitored post under ${selectedTargetName}`)
+        setPostSavedToast(`Updated post "${resolvedTitle}" under ${selectedTargetName}`)
       } else {
         addMonitoredPost({
           postUrl: cleanUrl,
           postTitle: resolvedTitle,
+          postThumbnail: finalThumbnail || undefined,
           sourceType: postSourceTab,
           targetId: selectedTargetId,
           targetName: selectedTargetName,
@@ -684,7 +814,7 @@ export default function SafeCommentAssistantPage() {
           customInboxMessage: postCustomInboxMessage.trim(),
           sendPrivateInbox: postSendPrivateInbox,
         })
-        setPostSavedToast(`Added post under ${selectedTargetName} (${postSourceTab}) — Active Monitoring!`)
+        setPostSavedToast(`Saved "${resolvedTitle}" under ${selectedTargetName} — Active Monitoring!`)
       }
       setShowAddPostModal(false)
       setEditingPostId(null)
@@ -2262,20 +2392,50 @@ export default function SafeCommentAssistantPage() {
                 ))}
               </div>
 
-              {/* Search Monitored Posts */}
-              <div className="relative w-full md:w-80">
-                <Search className="w-3.5 h-3.5 text-muted-foreground absolute left-3 top-2.5" />
-                <input
-                  type="text"
-                  placeholder="Search post title, URL, ID, page, or group..."
-                  value={postsSearchQuery}
-                  onChange={(e) => setPostsSearchQuery(e.target.value)}
-                  className="w-full pl-8 pr-3 py-1.5 border rounded-lg bg-background text-xs focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none"
-                />
+              {/* Search Monitored Posts & View Toggle */}
+              <div className="flex items-center gap-2 w-full md:w-auto">
+                <div className="relative flex-1 md:w-80">
+                  <Search className="w-3.5 h-3.5 text-muted-foreground absolute left-3 top-2.5" />
+                  <input
+                    type="text"
+                    placeholder="Search post title, URL, ID, page, or group..."
+                    value={postsSearchQuery}
+                    onChange={(e) => setPostsSearchQuery(e.target.value)}
+                    className="w-full pl-8 pr-3 py-1.5 border rounded-lg bg-background text-xs focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none"
+                  />
+                </div>
+                <div className="inline-flex items-center bg-muted p-0.5 rounded-lg border shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => setPostsViewMode("table")}
+                    title="Table View"
+                    aria-label="Table View"
+                    className={`p-1.5 rounded-md transition flex items-center justify-center ${
+                      postsViewMode === "table"
+                        ? "bg-background shadow-xs text-blue-600"
+                        : "text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    <LayoutList className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPostsViewMode("cards")}
+                    title="Cards View"
+                    aria-label="Cards View"
+                    className={`p-1.5 rounded-md transition flex items-center justify-center ${
+                      postsViewMode === "cards"
+                        ? "bg-background shadow-xs text-blue-600"
+                        : "text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    <LayoutGrid className="w-3.5 h-3.5" />
+                  </button>
+                </div>
               </div>
             </div>
 
-            {/* Monitored Posts Grid */}
+            {/* Monitored Posts Table / Grid */}
             {filteredMonitoredPosts.length === 0 ? (
               <div className="p-10 text-center space-y-3 border rounded-xl bg-muted/10">
                 <div className="text-sm font-bold text-foreground">No monitored posts found</div>
@@ -2289,6 +2449,179 @@ export default function SafeCommentAssistantPage() {
                 >
                   <Plus className="w-4 h-4 stroke-[2.5]" /> Add First Post
                 </button>
+              </div>
+            ) : postsViewMode === "table" ? (
+              <div className="border rounded-xl bg-card overflow-hidden shadow-xs">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left border-collapse text-xs">
+                    <thead>
+                      <tr className="border-b bg-muted/40 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                        <th className="py-2.5 px-3">Post &amp; Link</th>
+                        <th className="py-2.5 px-3">Channel / Page</th>
+                        <th className="py-2.5 px-3">1. Comment Reply</th>
+                        <th className="py-2.5 px-3">2. Inbox Message (DM)</th>
+                        <th className="py-2.5 px-3 text-right">Status &amp; Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border/60">
+                      {filteredMonitoredPosts.map((post) => {
+                        const postComments = comments.filter((c) => doesCommentMatchMonitoredPost(c, post))
+                        const postRepliedCount = postComments.filter((c) => c.status === "Replied").length
+                        const postInboxCount = postComments.filter((c) => c.inboxStatus === "Sent").length
+                        const isActive = post.status === "Active"
+
+                        return (
+                          <tr
+                            key={post.id}
+                            className={`transition hover:bg-muted/20 ${
+                              !isActive ? "opacity-75 bg-muted/10" : ""
+                            }`}
+                          >
+                            {/* Column 1: Thumbnail + Post Title + Link */}
+                            <td className="py-3 px-3 align-top max-w-[290px]">
+                              <div className="flex items-start gap-2.5">
+                                {post.postThumbnail ? (
+                                  <img
+                                    src={post.postThumbnail}
+                                    alt={post.postTitle}
+                                    className="w-11 h-11 rounded-lg object-cover border shrink-0 bg-muted"
+                                  />
+                                ) : (
+                                  <div className="w-11 h-11 rounded-lg border bg-blue-500/10 text-blue-600 flex items-center justify-center shrink-0">
+                                    <Link2 className="w-4 h-4" />
+                                  </div>
+                                )}
+                                <div className="min-w-0 space-y-1">
+                                  <div className="font-bold text-foreground text-xs leading-snug line-clamp-1">
+                                    {post.postTitle}
+                                  </div>
+                                  <a
+                                    href={post.postUrl}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="inline-flex items-center gap-1 text-[11px] text-blue-600 hover:underline font-mono truncate max-w-[210px]"
+                                  >
+                                    <Link2 className="w-3 h-3 shrink-0" />
+                                    <span className="truncate">{post.postUrl}</span>
+                                    <ExternalLink className="w-2.5 h-2.5 shrink-0" />
+                                  </a>
+                                  <div className="flex items-center gap-2 text-[10px] font-semibold text-muted-foreground">
+                                    <span>{postComments.length} Comments</span>
+                                    <span className="text-emerald-600">• {postRepliedCount} Replied</span>
+                                    <span className="text-blue-600">• {postInboxCount} DMs</span>
+                                  </div>
+                                </div>
+                              </div>
+                            </td>
+
+                            {/* Column 2: Source Badge + Target Page/ID/Group */}
+                            <td className="py-3 px-3 align-top whitespace-nowrap">
+                              <div className="space-y-1">
+                                <div className="flex items-center gap-1.5">
+                                  {getSourceBadge(post.sourceType)}
+                                  <span className="font-bold text-foreground text-xs">
+                                    {post.targetName}
+                                  </span>
+                                </div>
+                                {post.sourceType === "Group" && post.accountName && (
+                                  <div className="text-[10px] text-muted-foreground">
+                                    ID: <strong className="text-foreground">{post.accountName}</strong>
+                                  </div>
+                                )}
+                                <div className="text-[10px] text-muted-foreground">
+                                  {post.replyConfigMode === "template"
+                                    ? `Template: ${post.templateTitle || "AI Rule"}`
+                                    : "Custom Reply & DM"}
+                                </div>
+                              </div>
+                            </td>
+
+                            {/* Column 3: Configured Nested Comment Reply */}
+                            <td className="py-3 px-3 align-top max-w-[230px]">
+                              <p className="text-muted-foreground text-[11px] leading-relaxed line-clamp-2">
+                                {post.customPublicReply}
+                              </p>
+                            </td>
+
+                            {/* Column 4: Configured Inbox DM */}
+                            <td className="py-3 px-3 align-top max-w-[230px]">
+                              <p className="text-muted-foreground text-[11px] leading-relaxed line-clamp-2">
+                                {post.customInboxMessage}
+                              </p>
+                              <span
+                                className={`inline-block mt-1 px-1.5 py-0.5 rounded text-[9px] font-bold ${
+                                  post.autoSendInbox
+                                    ? "bg-emerald-500/10 text-emerald-600"
+                                    : "bg-muted text-muted-foreground"
+                                }`}
+                              >
+                                {post.autoSendInbox ? "Auto-DM Enabled" : "Comment Only"}
+                              </span>
+                            </td>
+
+                            {/* Column 5: Status & Actions */}
+                            <td className="py-3 px-3 align-top text-right whitespace-nowrap">
+                              <div className="flex flex-col items-end gap-1.5">
+                                <span
+                                  className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${
+                                    isActive
+                                      ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/20"
+                                      : "bg-amber-500/10 text-amber-600 border-amber-500/20"
+                                  }`}
+                                >
+                                  {isActive ? "● Active" : "Paused"}
+                                </span>
+                                <div className="flex items-center gap-1">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleTriggerLiveWatcherForPost(post)}
+                                    disabled={isRunningLiveTest}
+                                    className="px-2 py-1 rounded-md bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white font-bold text-[10px] inline-flex items-center gap-1 transition"
+                                    title="Watch Live & Auto-Reply on Facebook"
+                                  >
+                                    <Radio className="w-3 h-3" /> Watch Live
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleSimulatePostComment(post)}
+                                    className="px-2 py-1 rounded-md border bg-background hover:bg-muted font-semibold text-foreground text-[10px] inline-flex items-center gap-1 transition"
+                                    title="Simulate a customer comment on this post"
+                                  >
+                                    <Sparkles className="w-3 h-3 text-blue-600" /> Test
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => toggleMonitoredPostStatus(post.id)}
+                                    className="p-1 rounded-md border bg-background hover:bg-muted text-muted-foreground hover:text-foreground transition"
+                                    title={isActive ? "Pause Auto-Reply" : "Resume Auto-Reply"}
+                                  >
+                                    {isActive ? <Pause className="w-3 h-3" /> : <Play className="w-3 h-3 text-emerald-600" />}
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => startEditMonitoredPost(post)}
+                                    className="p-1 rounded-md border bg-background hover:bg-muted text-muted-foreground hover:text-foreground transition"
+                                    title="Edit Post"
+                                  >
+                                    <Edit3 className="w-3 h-3" />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => deleteMonitoredPost(post.id)}
+                                    className="p-1 rounded-md border bg-background hover:bg-rose-50 hover:text-rose-600 text-muted-foreground transition"
+                                    title="Delete Post"
+                                  >
+                                    <Trash2 className="w-3 h-3" />
+                                  </button>
+                                </div>
+                              </div>
+                            </td>
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             ) : (
               <div className="grid gap-4 md:grid-cols-2">
@@ -3252,6 +3585,41 @@ export default function SafeCommentAssistantPage() {
                     />
                   </div>
                 </div>
+
+                {/* Live Facebook Post Thumbnail & Title Preview */}
+                {(isFetchingPostPreview || postThumbnailPreview || postFetchedTitle) && (
+                  <div className="flex items-center gap-2.5 p-2 rounded-lg border bg-muted/30 text-xs">
+                    {isFetchingPostPreview ? (
+                      <div className="w-10 h-10 rounded-md border bg-muted flex items-center justify-center shrink-0">
+                        <RefreshCw className="w-3.5 h-3.5 text-blue-600 animate-spin" />
+                      </div>
+                    ) : postThumbnailPreview ? (
+                      <img
+                        src={postThumbnailPreview}
+                        alt={postTitleInput || postFetchedTitle || "Post preview"}
+                        className="w-10 h-10 rounded-md object-cover border shrink-0 bg-muted"
+                      />
+                    ) : (
+                      <div className="w-10 h-10 rounded-md border bg-blue-500/10 text-blue-600 flex items-center justify-center shrink-0">
+                        <CheckCircle2 className="w-4 h-4" />
+                      </div>
+                    )}
+                    <div className="min-w-0 flex-1">
+                      <div className="font-bold text-foreground truncate text-xs">
+                        {isFetchingPostPreview
+                          ? "Fetching real Facebook post image & title..."
+                          : postTitleInput || postFetchedTitle || "Facebook Post Connected"}
+                      </div>
+                      <div className="text-[10px] text-emerald-600 font-semibold truncate">
+                        {isFetchingPostPreview
+                          ? "Connecting to Facebook post..."
+                          : postThumbnailPreview
+                            ? "✓ Real Facebook Post Image & Title Loaded"
+                            : "✓ Facebook Post Title Loaded"}
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* STEP 4: CONFIGURE COMMENT REPLY & PRIVATE INBOX MESSAGE */}
