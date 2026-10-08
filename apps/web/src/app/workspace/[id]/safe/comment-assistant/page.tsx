@@ -2550,12 +2550,12 @@ export default function SafeCommentAssistantPage() {
                               </p>
                               <span
                                 className={`inline-block mt-1 px-1.5 py-0.5 rounded text-[9px] font-bold ${
-                                  post.autoSendInbox
+                                  post.sendPrivateInbox
                                     ? "bg-emerald-500/10 text-emerald-600"
                                     : "bg-muted text-muted-foreground"
                                 }`}
                               >
-                                {post.autoSendInbox ? "Auto-DM Enabled" : "Comment Only"}
+                                {post.sendPrivateInbox ? "Auto-DM Enabled" : "Comment Only"}
                               </span>
                             </td>
 
@@ -2574,20 +2574,19 @@ export default function SafeCommentAssistantPage() {
                                 <div className="flex items-center gap-1">
                                   <button
                                     type="button"
-                                    onClick={() => handleTriggerLiveWatcherForPost(post)}
-                                    disabled={isRunningLiveTest}
-                                    className="px-2 py-1 rounded-md bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white font-bold text-[10px] inline-flex items-center gap-1 transition"
+                                    onClick={() => handleStartWatcherForPost(post)}
+                                    className="px-2 py-1 rounded-md bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[10px] inline-flex items-center gap-1 transition"
                                     title="Watch Live & Auto-Reply on Facebook"
                                   >
-                                    <Radio className="w-3 h-3" /> Watch Live
+                                    <Play className="w-3 h-3 fill-current" /> Watch Live
                                   </button>
                                   <button
                                     type="button"
-                                    onClick={() => handleSimulatePostComment(post)}
+                                    onClick={() => handleSimulateCommentOnPost(post)}
                                     className="px-2 py-1 rounded-md border bg-background hover:bg-muted font-semibold text-foreground text-[10px] inline-flex items-center gap-1 transition"
                                     title="Simulate a customer comment on this post"
                                   >
-                                    <Sparkles className="w-3 h-3 text-blue-600" /> Test
+                                    <Zap className="w-3 h-3 text-blue-600" /> Test
                                   </button>
                                   <button
                                     type="button"
