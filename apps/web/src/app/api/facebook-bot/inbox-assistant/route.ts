@@ -33,7 +33,7 @@ export async function POST(req: NextRequest) {
       })
     }
 
-    // 2. Dynamically update runtime mode (AUTO vs MANUAL, isRunning, templates)
+    // 2. Dynamically update runtime mode, trained products, storeProfile, and templates
     if (body.action === "UPDATE_RUNTIME") {
       const runtimeSettingsFile = path.join(tempDir, "inbox-runtime-settings.json")
       let current: any = {}
@@ -47,6 +47,8 @@ export async function POST(req: NextRequest) {
         ...(body.mode ? { mode: body.mode } : {}),
         ...(typeof body.isRunning === "boolean" ? { isRunning: body.isRunning } : {}),
         ...(Array.isArray(body.templates) ? { templates: body.templates } : {}),
+        ...(Array.isArray(body.products) ? { products: body.products } : {}),
+        ...(body.storeProfile ? { storeProfile: body.storeProfile } : {}),
         updatedAt: new Date().toISOString(),
       }
       fs.writeFileSync(runtimeSettingsFile, JSON.stringify(nextRuntime, null, 2), "utf8")
@@ -59,13 +61,34 @@ export async function POST(req: NextRequest) {
       targetId = "61595136714776",
       targetName = "Test Next",
       mode = "AUTO",
-      humanDelaySeconds = 5,
+      humanDelaySeconds = 4,
       templates = [],
+      products = [],
+      storeProfile = undefined,
       checkIntervalSeconds = 8,
       maxChecks = 86400,
       headless = false,
       reuseIfActive = false,
     } = body
+
+    // Always sync latest trained products & storeProfile to runtime settings even when reusing active bot!
+    const runtimeSettingsFile = path.join(tempDir, "inbox-runtime-settings.json")
+    try {
+      let currentRuntime: any = {}
+      if (fs.existsSync(runtimeSettingsFile)) {
+        currentRuntime = JSON.parse(fs.readFileSync(runtimeSettingsFile, "utf8"))
+      }
+      const mergedRuntime = {
+        ...currentRuntime,
+        mode: mode === "MANUAL" ? "MANUAL" : "AUTO",
+        isRunning: true,
+        ...(Array.isArray(templates) && templates.length > 0 ? { templates } : {}),
+        ...(Array.isArray(products) && products.length > 0 ? { products } : {}),
+        ...(storeProfile ? { storeProfile } : {}),
+        updatedAt: new Date().toISOString(),
+      }
+      fs.writeFileSync(runtimeSettingsFile, JSON.stringify(mergedRuntime, null, 2), "utf8")
+    } catch {}
 
     const activeLockFile = path.join(tempDir, "inbox-active-lock.json")
     if (reuseIfActive && fs.existsSync(activeLockFile)) {
@@ -133,8 +156,10 @@ export async function POST(req: NextRequest) {
       targetName: String(targetName || "Test Next").trim(),
       cookieString: typeof body.cookieString === "string" ? body.cookieString.trim() : undefined,
       mode: mode === "MANUAL" ? "MANUAL" : "AUTO",
-      humanDelaySeconds: Number(humanDelaySeconds) || 5,
+      humanDelaySeconds: Number(humanDelaySeconds) || 4,
       templates: Array.isArray(templates) ? templates : [],
+      products: Array.isArray(products) && products.length > 0 ? products : undefined,
+      storeProfile: storeProfile || undefined,
       checkIntervalSeconds: Number(checkIntervalSeconds) || 8,
       maxChecks: Number(maxChecks) || 86400,
       headless: Boolean(headless),

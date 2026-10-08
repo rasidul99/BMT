@@ -1,9 +1,9 @@
 /**
  * BMT 24/7 Live Facebook Messenger & Business Suite Inbox Assistant Bot
- * Connects directly to real Facebook Messenger / Meta Business Suite Inbox,
- * syncs real customer conversations into the BMT Inbox Assistant dashboard,
- * dispatches manual/approved replies typed in the dashboard directly to Facebook Messenger,
- * and automatically replies to incoming customer messages in AUTO mode!
+ * Now powered by the Customizable AI Product Knowledgebase & Multi-Intent Training Engine!
+ * Answers customer questions about Price, Stock Status, Variants/What's Included,
+ * Why the Product is Good (Features/Benefits), Warranty, Delivery, Showroom Location,
+ * and Order Confirmation in real time on Live Facebook Messenger!
  */
 
 const fs = require("fs");
@@ -90,71 +90,315 @@ async function safeEvaluate(page, fn, ...args) {
   }
 }
 
-function classifyCustomerMessage(text, customerName, templates = []) {
-  const lower = (text || "").toLowerCase();
-  let category = "Sales Conversion";
+const DEFAULT_STORE_PROFILE = {
+  storeName: "Test Next Official Store",
+  deliveryPolicy: "সারাদেশে ফ্রি ক্যাশ অন হোম ডেলিভারি (প্রোডাক্ট হাতে পেয়ে চেক করে পেমেন্ট করার সুবিধা)",
+  deliveryTime: "ঢাকায় ২৪ ঘণ্টা এবং ঢাকার বাইরে ৪৮-৭২ ঘণ্টার মধ্যে হোম ডেলিভারি",
+  showroomAddress: "শপ #৪০৮, লেভেল ৪, যমুনা ফিউচার পার্ক, ঢাকা (সকাল ১০টা - রাত ৮টা)",
+  helplineNumber: "01700-000000",
+  customAiPrompt:
+    "সবসময় ভদ্রভাবে কাস্টমারের প্রশ্নের সঠিক উত্তর দেবে এবং অর্ডার কনফার্ম করতে নাম, পূর্ণ ঠিকানা ও মোবাইল নম্বর চাইবে।",
+};
 
-  if (
+const DEFAULT_PRODUCTS = [
+  {
+    id: "prod-1",
+    name: "Premium Smart Watch Ultra",
+    keywords: "watch, smart watch, ultra, ঘড়ি, স্মার্ট ওয়াচ, ওয়াচ, ঘড়ি",
+    regularPrice: "৩,৯৯০ টাকা",
+    offerPrice: "২,৪৯০ টাকা",
+    stockStatus: "IN_STOCK",
+    stockQuantityText: "হ্যাঁ, আমাদের কাছে পর্যাপ্ত স্টক এভেইলেবল আছে",
+    variantsAndContents:
+      "কালার: ব্ল্যাক, সিলভার ও টাইটানিয়াম অরেঞ্জ | বক্সে থাকছে: ১টি স্মার্ট ওয়াচ, ২টি প্রিমিয়াম স্ট্র্যাপ (চেইন ও সিলিকন), ওয়্যারলেস ম্যাগনেটিক চার্জার এবং ইউজার ম্যানুয়াল",
+    whyGoodFeatures:
+      "এতে রয়েছে Super AMOLED HD ডিসপ্লে, ১০০% ওয়াটারপ্রুফ (IP68), সরাসরি ব্লুটুথ কলিং ও মেসেজ নোটিফিকেশন, হার্ট-রেট মনিটর এবং এক চার্জে ৫-৭ দিন দীর্ঘ ব্যাটারি ব্যাকআপ",
+    warrantyInfo: "১ বছরের অফিসিয়াল ব্র্যান্ড ওয়ারেন্টি এবং ৭ দিনের ইনস্ট্যান্ট রিপ্লেসমেন্ট গ্যারান্টি",
+    isDefaultProduct: true,
+  },
+];
+
+/**
+ * Trained Multi-Intent Product AI Engine
+ * Understands queries about:
+ * - Product Catalog ("কি কি প্রোডাক্ট আছে?")
+ * - Price / Discount ("দাম কত?", "অফার প্রাইজ কত?")
+ * - Stock Status ("স্টক আছে নাকি নাই?", "পাওয়া যাবে?")
+ * - Variants / Colors / Box Contents ("কি কি কালার আছে?", "বক্সে কি কি থাকবে?")
+ * - Why Product is Good / Quality / Features ("কেন ভালো?", "কোয়ালিটি কেমন?", "ফিচার কি?")
+ * - Warranty / Guarantee ("ওয়ারেন্টি আছে?")
+ * - Delivery / Courier ("ডেলিভারি চার্জ কত?", "কতদিন লাগবে?")
+ * - Showroom / Location ("শোরুম কোথায়?")
+ * - Order Confirmation (Phone number / Address detection)
+ */
+function generateTrainedAiResponse(text, customerName, runtime = {}) {
+  const rawMsg = (text || "").trim();
+  const lower = rawMsg.toLowerCase();
+  const cleanName = customerName || "স্যার";
+
+  const products =
+    Array.isArray(runtime.products) && runtime.products.length > 0
+      ? runtime.products
+      : DEFAULT_PRODUCTS;
+  const storeProfile = {
+    ...DEFAULT_STORE_PROFILE,
+    ...(runtime.storeProfile || {}),
+  };
+  const templates = Array.isArray(runtime.templates) ? runtime.templates : [];
+
+  // 1. Check if customer provided a phone number (01xxxxxxxxx) to confirm an order
+  const phoneMatch = rawMsg.match(/(?:\+?88)?01[3-9]\d{8}/);
+  if (phoneMatch) {
+    const orderReply = `অসংখ্য ধন্যবাদ ${cleanName}! আপনার মোবাইল নম্বর (${phoneMatch[0]}) ও অর্ডারের তথ্য আমরা পেয়েছি। আমাদের প্রতিনিধি খুব দ্রুত কল করে আপনার অর্ডারটি কনফার্ম করবেন। (${storeProfile.deliveryTime})। জরুরি প্রয়োজনে কল করুন: ${storeProfile.helplineNumber}।`;
+    return {
+      category: "Sales Conversion",
+      suggestions: [orderReply],
+    };
+  }
+
+  // 2. Match specific product by name or keywords
+  let matchedProduct = null;
+  for (const prod of products) {
+    const nameTokens = [prod.name || ""]
+      .concat((prod.keywords || "").split(","))
+      .map((k) => k.trim().toLowerCase())
+      .filter((k) => k.length >= 2);
+
+    if (nameTokens.some((tok) => lower.includes(tok))) {
+      matchedProduct = prod;
+      break;
+    }
+  }
+
+  const primaryProduct =
+    matchedProduct || products.find((p) => p.isDefaultProduct) || products[0] || DEFAULT_PRODUCTS[0];
+
+  // 3. Detect all customer intents in the message
+  const asksAllProductsCatalog =
+    !matchedProduct &&
+    products.length > 1 &&
+    (lower.includes("কি কি প্রোডাক্ট") ||
+      lower.includes("কী কী প্রোডাক্ট") ||
+      lower.includes("কি কি পণ্য") ||
+      lower.includes("কি কি পাওয়া যায়") ||
+      lower.includes("সব প্রোডাক্ট") ||
+      lower.includes("ক্যাটালগ") ||
+      lower.includes("all product") ||
+      lower.includes("catalog") ||
+      lower.includes("list"));
+
+  const asksPrice =
     lower.includes("দাম") ||
     lower.includes("মূল্য") ||
+    lower.includes("কত") ||
     lower.includes("টাকা") ||
-    lower.includes("অর্ডার") ||
-    lower.includes("কিনতে") ||
+    lower.includes("প্রাইজ") ||
+    lower.includes("অফার") ||
+    lower.includes("ডিসকাউন্ট") ||
     lower.includes("price") ||
-    lower.includes("order")
-  ) {
-    category = "Sales Conversion";
-  } else if (
+    lower.includes("rate") ||
+    lower.includes("cost") ||
+    lower.includes("dam") ||
+    lower.includes("koto") ||
+    lower.includes("pp");
+
+  const asksStock =
+    lower.includes("স্টক") ||
+    lower.includes("পাওয়া যাবে") ||
+    lower.includes("পাওয়া যাবে") ||
+    lower.includes("আছে নাকি") ||
+    lower.includes("আছে কি") ||
+    lower.includes("এভেইলেবল") ||
+    lower.includes("নাকি নাই") ||
+    lower.includes("stock") ||
+    lower.includes("available") ||
+    lower.includes("ache");
+
+  const asksVariants =
+    lower.includes("কি কি আছে") ||
+    lower.includes("কী কী আছে") ||
+    lower.includes("কালার") ||
+    lower.includes("রঙ") ||
+    lower.includes("সাইজ") ||
+    lower.includes("বক্সে") ||
+    lower.includes("সাথে কি") ||
+    lower.includes("ভ্যারিয়েন্ট") ||
+    lower.includes("color") ||
+    lower.includes("colour") ||
+    lower.includes("size") ||
+    lower.includes("variant") ||
+    lower.includes("ki ki ache");
+
+  const asksWhyGood =
+    lower.includes("কেন ভালো") ||
+    lower.includes("কেন নিব") ||
+    lower.includes("কোয়ালিটি") ||
+    lower.includes("কোয়ালিটি") ||
+    lower.includes("কেমন") ||
+    lower.includes("ফিচার") ||
+    lower.includes("সুবিধা") ||
+    lower.includes("উপকারিতা") ||
+    lower.includes("ভালো হবে") ||
+    lower.includes("কাজ কি") ||
+    lower.includes("বৈশিষ্ট্য") ||
+    lower.includes("quality") ||
+    lower.includes("feature") ||
+    lower.includes("benefit") ||
+    lower.includes("details") ||
+    lower.includes("বিস্তারিত") ||
+    lower.includes("keno valo") ||
+    lower.includes("kemon");
+
+  const asksWarranty =
+    lower.includes("ওয়ারেন্টি") ||
+    lower.includes("ওয়ারেন্টি") ||
+    lower.includes("গ্যারান্টি") ||
+    lower.includes("নষ্ট হলে") ||
+    lower.includes("রিপ্লেস") ||
+    lower.includes("warranty") ||
+    lower.includes("guarantee");
+
+  const asksDelivery =
+    lower.includes("ডেলিভারি") ||
+    lower.includes("চার্জ") ||
+    lower.includes("কুরিয়ার") ||
+    lower.includes("কুরিয়ার") ||
+    lower.includes("কতদিন") ||
+    lower.includes("ক্যাশ অন") ||
+    lower.includes("delivery") ||
+    lower.includes("courier");
+
+  const asksLocation =
     lower.includes("লোকেশন") ||
     lower.includes("শোরুম") ||
+    lower.includes("দোকান") ||
     lower.includes("কোথায়") ||
+    lower.includes("কোথায়") ||
+    lower.includes("অফিস") ||
     lower.includes("location") ||
     lower.includes("showroom") ||
-    lower.includes("shop")
-  ) {
-    category = "Visit Conversion";
-  } else if (
-    lower.includes("ওয়ারেন্টি") ||
-    lower.includes("গ্যারান্টি") ||
-    lower.includes("warranty") ||
-    lower.includes("guarantee") ||
-    lower.includes("অরিজিনাল")
-  ) {
+    lower.includes("shop") ||
+    lower.includes("address");
+
+  // 4. If customer asks what products are available in the store
+  if (asksAllProductsCatalog) {
+    const productLines = products
+      .map((p, idx) => {
+        const stBadge =
+          p.stockStatus === "OUT_OF_STOCK"
+            ? "(স্টক আউট)"
+            : p.stockStatus === "LIMITED_STOCK"
+            ? "(সীমিত স্টক)"
+            : "(স্টকে আছে)";
+        return `${idx + 1}. ${p.name} — অফার প্রাইজ: ${p.offerPrice} ${stBadge}`;
+      })
+      .join(" | ");
+    const catalogReply = `আসসালামু আলাইকুম ${cleanName}! আমাদের বর্তমান প্রোডাক্টসমূহ: ${productLines}। ${storeProfile.deliveryPolicy}। আপনি কোন প্রোডাক্টটি সম্পর্কে বিস্তারিত জানতে বা অর্ডার করতে চান?`;
+    return {
+      category: "Sales Conversion",
+      suggestions: [catalogReply],
+    };
+  }
+
+  // 5. Handle OUT_OF_STOCK product immediately if customer asks about it
+  if (primaryProduct.stockStatus === "OUT_OF_STOCK") {
+    const alternative = products.find((p) => p.id !== primaryProduct.id && p.stockStatus !== "OUT_OF_STOCK");
+    const outReply = `আসসালামু আলাইকুম ${cleanName}! দুঃখিত, আমাদের "${primaryProduct.name}" প্রোডাক্টটি বর্তমানে স্টক আউট (Out of Stock) রয়েছে।${
+      alternative
+        ? ` তবে আমাদের "${alternative.name}" বর্তমানে স্টকে আছে (অফার প্রাইজ: ${alternative.offerPrice}, ${alternative.whyGoodFeatures})। আপনি চাইলে এটি অর্ডার করতে পারেন!`
+        : ` নতুন স্টক আসা মাত্র আমরা আপনাকে জানাবো। যেকোনো তথ্যের জন্য কল করুন: ${storeProfile.helplineNumber}।`
+    }`;
+    return {
+      category: "Sales Conversion",
+      suggestions: [outReply],
+    };
+  }
+
+  // 6. Compose dynamic response from the trained product fields based on detected intents
+  const parts = [`আসসালামু আলাইকুম ${cleanName}!`];
+  let category = "Sales Conversion";
+
+  const hasSpecificIntent =
+    asksPrice ||
+    asksStock ||
+    asksVariants ||
+    asksWhyGood ||
+    asksWarranty ||
+    asksDelivery ||
+    asksLocation;
+
+  if (asksStock) {
+    const stockMsg =
+      primaryProduct.stockStatus === "LIMITED_STOCK"
+        ? `জি, আমাদের "${primaryProduct.name}" বর্তমানে সীমিত স্টকে (Limited Stock) এভেইলেবল আছে (${primaryProduct.stockQuantityText || "দ্রুত অর্ডার করুন"})।`
+        : `জি, আমাদের "${primaryProduct.name}" বর্তমানে স্টকে এভেইলেবল আছে (${primaryProduct.stockQuantityText || "রেডি স্টক"})।`;
+    parts.push(stockMsg);
+  }
+
+  if (asksPrice) {
+    const priceMsg = primaryProduct.regularPrice
+      ? `"${primaryProduct.name}"-এর রেগুলার প্রাইজ ${primaryProduct.regularPrice}, তবে বর্তমানে স্পেশাল অফার প্রাইজ মাত্র ${primaryProduct.offerPrice}!`
+      : `"${primaryProduct.name}"-এর স্পেশাল অফার প্রাইজ মাত্র ${primaryProduct.offerPrice}!`;
+    parts.push(priceMsg);
+  }
+
+  if (asksVariants && primaryProduct.variantsAndContents) {
+    parts.push(`যা যা থাকছে: ${primaryProduct.variantsAndContents}।`);
+  }
+
+  if (asksWhyGood && primaryProduct.whyGoodFeatures) {
+    parts.push(`কেন এটি সেরা: ${primaryProduct.whyGoodFeatures}।`);
     category = "Lead Conversion";
   }
 
-  const matchingTpl = templates.find((t) => t.category === category);
-  const suggestions = [];
-
-  if (matchingTpl && matchingTpl.content) {
-    suggestions.push(matchingTpl.content);
+  if (asksWarranty && primaryProduct.warrantyInfo) {
+    parts.push(`ওয়ারেন্টি সুবিধা: ${primaryProduct.warrantyInfo}।`);
+    category = "Lead Conversion";
   }
 
-  if (category === "Visit Conversion") {
-    suggestions.push(
-      `ধন্যবাদ ${customerName}! আমাদের শোরুমের ঠিকানা: লেভেল ৪, যমুনা ফিউচার পার্ক, ঢাকা। প্রতিদিন সকাল ১০টা থেকে রাত ৮টা পর্যন্ত খোলা থাকে।`
+  if (asksDelivery) {
+    parts.push(`ডেলিভারি তথ্য: ${storeProfile.deliveryPolicy} (${storeProfile.deliveryTime})।`);
+  }
+
+  if (asksLocation) {
+    parts.push(`আমাদের শোরুমের ঠিকানা: ${storeProfile.showroomAddress}। হেল্পলাইন: ${storeProfile.helplineNumber}।`);
+    category = "Visit Conversion";
+  }
+
+  // If customer sent a general greeting ("হ্যালো", "Hi", "ভাইয়া") or general inquiry without specific keyword
+  if (!hasSpecificIntent) {
+    parts.push(
+      `আমাদের "${primaryProduct.name}" বর্তমানে স্টকে আছে। স্পেশাল অফার প্রাইজ মাত্র ${primaryProduct.offerPrice}${
+        primaryProduct.regularPrice ? ` (রেগুলার প্রাইজ ${primaryProduct.regularPrice})` : ""
+      }। বিশেষত্ব: ${primaryProduct.whyGoodFeatures}।`
     );
-  } else if (category === "Lead Conversion") {
-    suggestions.push(
-      `জি ${customerName}, আমাদের প্রতিটি প্রোডাক্টের সাথে ১ বছরের অফিসিয়াল ওয়ারেন্টি এবং ৭ দিনের রিপ্লেসমেন্ট গ্যারান্টি রয়েছে।`
-    );
-  } else {
-    suggestions.push(
-      `আসসালামু আলাইকুম ${customerName}! আমাদের স্পেশাল অফার প্রাইজ ২,৪৯০ টাকা (সারাদেশে ফ্রি ক্যাশ অন হোম ডেলিভারি)। অর্ডার কনফার্ম করতে আপনার নাম, পূর্ণ ঠিকানা ও মোবাইল নম্বর দিন।`
-    );
-    suggestions.push(
-      `ধন্যবাদ আপনার বার্তার জন্য! প্রোডাক্টটি স্টকে আছে। অর্ডার করতে আপনার ডেলিভারি ঠিকানা ও ফোন নম্বরটি শেয়ার করুন।`
-    );
+  } else if (!asksDelivery && !asksLocation) {
+    // Append concise delivery policy when answering price/stock/features
+    parts.push(`${storeProfile.deliveryPolicy}।`);
+  }
+
+  if (!asksLocation) {
+    parts.push(`অর্ডার কনফার্ম করতে আপনার নাম, পূর্ণ ঠিকানা ও মোবাইল নম্বর দিন।`);
+  }
+
+  const primaryReply = parts.join(" ");
+
+  // Secondary suggestion (detailed product overview)
+  const secondaryReply = `আসসালামু আলাইকুম ${cleanName}! "${primaryProduct.name}" — অফার মূল্য: ${primaryProduct.offerPrice}। ${primaryProduct.variantsAndContents}। বিশেষ সুবিধা: ${primaryProduct.whyGoodFeatures} (${primaryProduct.warrantyInfo})। অর্ডার করতে নাম, ঠিকানা ও ফোন নম্বর দিন।`;
+
+  const suggestions = [primaryReply, secondaryReply];
+  const matchingTpl = templates.find((t) => t.category === category);
+  if (matchingTpl && matchingTpl.content && !suggestions.includes(matchingTpl.content)) {
+    suggestions.push(matchingTpl.content);
   }
 
   return {
     category,
-    suggestions: Array.from(new Set(suggestions)).slice(0, 2),
+    suggestions: suggestions.slice(0, 2),
   };
 }
 
 async function sendTextInActiveThread(page, replyText) {
-  // Locate the visible reply textbox ("Reply in Messenger…" or "Aa" or role="textbox")
   const tbPos = await safeEvaluate(page, () => {
     const tbs = Array.from(
       document.querySelectorAll('div[role="textbox"], textarea[placeholder*="Reply" i], div[contenteditable="true"]')
@@ -176,7 +420,6 @@ async function sendTextInActiveThread(page, replyText) {
   await page.mouse.click(tbPos.x, tbPos.y);
   await sleep(500);
 
-  // Clear any existing draft text and insert replyText cleanly once
   await safeEvaluate(page, (msg) => {
     const tbs = Array.from(
       document.querySelectorAll('div[role="textbox"], textarea[placeholder*="Reply" i], div[contenteditable="true"]')
@@ -197,7 +440,6 @@ async function sendTextInActiveThread(page, replyText) {
   await page.keyboard.press("Enter");
   await sleep(1500);
 
-  // Also check if there is an explicit Send button near the bottom right and click it if textbox still has text
   await safeEvaluate(page, () => {
     const sendBtns = Array.from(
       document.querySelectorAll(
@@ -228,8 +470,10 @@ async function runInboxBot(configPath) {
     targetId = "61595136714776",
     targetName = "Test Next",
     mode: initialMode = "AUTO",
-    humanDelaySeconds = 5,
+    humanDelaySeconds = 4,
     templates = [],
+    products = DEFAULT_PRODUCTS,
+    storeProfile = DEFAULT_STORE_PROFILE,
     checkIntervalSeconds = 8,
     maxChecks = 86400,
     headless = false,
@@ -258,9 +502,32 @@ async function runInboxBot(configPath) {
       JSON.stringify({ activeJobId: jobId, targetId, targetName, startedAt: new Date().toISOString() }, null, 2),
       "utf8"
     );
+    // Preserve existing trained products/storeProfile in runtimeSettingsFile if already saved from UI
+    let existingRuntime = {};
+    if (fs.existsSync(runtimeSettingsFile)) {
+      try {
+        existingRuntime = JSON.parse(fs.readFileSync(runtimeSettingsFile, "utf8"));
+      } catch (_) {}
+    }
     fs.writeFileSync(
       runtimeSettingsFile,
-      JSON.stringify({ mode: initialMode, isRunning: true, templates }, null, 2),
+      JSON.stringify(
+        {
+          mode: initialMode,
+          isRunning: true,
+          templates:
+            Array.isArray(existingRuntime.templates) && existingRuntime.templates.length > 0
+              ? existingRuntime.templates
+              : templates,
+          products:
+            Array.isArray(existingRuntime.products) && existingRuntime.products.length > 0
+              ? existingRuntime.products
+              : products,
+          storeProfile: existingRuntime.storeProfile || storeProfile,
+        },
+        null,
+        2
+      ),
       "utf8"
     );
   } catch (_) {}
@@ -281,7 +548,7 @@ async function runInboxBot(configPath) {
         return JSON.parse(fs.readFileSync(runtimeSettingsFile, "utf8"));
       }
     } catch (_) {}
-    return { mode: initialMode, isRunning: true, templates };
+    return { mode: initialMode, isRunning: true, templates, products, storeProfile };
   }
 
   function popPendingReplies() {
@@ -307,13 +574,14 @@ async function runInboxBot(configPath) {
   }
 
   console.log("==========================================================");
-  console.log("💬 BMT 24/7 Live Facebook Messenger Inbox Assistant Bot");
+  console.log("💬 BMT 24/7 Live Facebook Messenger AI Inbox Bot");
   console.log(`📌 Channel: ${sourceType} — ${targetName} (${targetId || "Profile"})`);
-  console.log(`🤖 Initial Mode: ${initialMode}`);
-  console.log(`🔄 24/7 Continuous Active Monitoring Enabled`);
+  console.log(`🧠 Trained Products Loaded: ${(products || []).length}`);
+  console.log(`🤖 Initial Mode: ${initialMode} | 24/7 Continuous Active Monitoring`);
   console.log("==========================================================\n");
 
   const autoRepliedSignatures = new Set();
+  const lastBotRepliesByCustomer = new Map();
   let liveConversations = [];
   let totalAutoRepliesSent = 0;
 
@@ -378,7 +646,6 @@ async function runInboxBot(configPath) {
     const settledUrl = page.url();
     console.log(`📍 Settled Inbox URL: ${settledUrl}`);
 
-    // Verify login state
     const isLoggedOut = await safeEvaluate(page, () => {
       const hasPass = Boolean(document.querySelector('input[type="password"], input[name="pass"]'));
       const bodyText = document.body ? document.body.innerText : "";
@@ -415,16 +682,13 @@ async function runInboxBot(configPath) {
       const runtime = getRuntimeSettings();
       const currentMode = runtime.mode || initialMode;
       const isRunning = runtime.isRunning !== false;
-      const activeTemplates =
-        Array.isArray(runtime.templates) && runtime.templates.length > 0
-          ? runtime.templates
-          : templates;
+      const trainedProductCount = Array.isArray(runtime.products) ? runtime.products.length : 1;
 
       console.log(
-        `\n🔍 [24/7 Inbox Scan #${check}] Scanning Live Messenger (${targetName}) | Mode: ${currentMode}...`
+        `\n🔍 [24/7 Inbox Scan #${check}] Channel: ${targetName} | Mode: ${currentMode} | Trained Products: ${trainedProductCount}`
       );
 
-      // 1. Check if the user queued any manual/approved replies from the UI
+      // 1. Process any manual / approved replies queued from the UI
       const queuedReplies = popPendingReplies();
       for (const qItem of queuedReplies) {
         if (!qItem || !qItem.replyText) continue;
@@ -432,7 +696,6 @@ async function runInboxBot(configPath) {
           `📤 [MANUAL/APPROVED REPLY] Sending to "${qItem.customerName}": "${qItem.replyText.slice(0, 60)}..."`
         );
         try {
-          // Click thread matching customerName if not already selected
           const threadCoord = await safeEvaluate(
             page,
             (cName) => {
@@ -460,6 +723,7 @@ async function runInboxBot(configPath) {
           }
 
           await sendTextInActiveThread(page, qItem.replyText);
+          lastBotRepliesByCustomer.set((qItem.customerName || "").toLowerCase(), qItem.replyText.slice(0, 40));
           console.log(`   ✅ [SUCCESS] Reply delivered to ${qItem.customerName} on Live Messenger!`);
         } catch (sendErr) {
           console.warn(`   ⚠️ Failed to send manual reply to ${qItem.customerName}: ${sendErr.message}`);
@@ -495,7 +759,6 @@ async function runInboxBot(configPath) {
 
           for (const el of allEls) {
             const r = el.getBoundingClientRect();
-            // Thread rows sit on the left panel (x: 40..360, width: 220..460, height: 54..112)
             if (r.x < 40 || r.x > 360 || r.width < 220 || r.width > 460 || r.height < 54 || r.height > 112)
               continue;
 
@@ -515,10 +778,7 @@ async function runInboxBot(configPath) {
             const previewLine = lines[1] || "";
             const timeLine = lines.slice(2).join(" ") || "Just now";
             const isRepliedByPage =
-              /^you:\s*/i.test(previewLine) ||
-              /^আপনি:\s*/i.test(previewLine) ||
-              previewLine.toLowerCase().startsWith("আসসালামু আলাইকুম") ||
-              previewLine.toLowerCase().startsWith("ধন্যবাদ");
+              /^you:\s*/i.test(previewLine) || /^আপনি:\s*/i.test(previewLine);
 
             const cleanPreview = previewLine.replace(/^(?:You|আপনি):\s*/i, "").trim();
 
@@ -545,10 +805,16 @@ async function runInboxBot(configPath) {
 
       for (let i = 0; i < scannedThreads.length; i++) {
         const th = scannedThreads[i];
-        const classification = classifyCustomerMessage(th.cleanPreview, th.customerName, activeTemplates);
-        const convId = `fb-live-${th.customerName.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`;
+        const lowerCustomer = th.customerName.toLowerCase();
+        const lastBotSnippet = lastBotRepliesByCustomer.get(lowerCustomer);
 
-        let isReplied = th.isRepliedByPage;
+        let isReplied =
+          th.isRepliedByPage ||
+          Boolean(lastBotSnippet && th.cleanPreview.startsWith(lastBotSnippet.slice(0, 25)));
+
+        const aiResult = generateTrainedAiResponse(th.cleanPreview, th.customerName, runtime);
+        const convId = `fb-live-${lowerCustomer.replace(/[^a-z0-9]+/g, "-")}`;
+
         let lastText = th.cleanPreview;
         const messages = [];
 
@@ -564,7 +830,7 @@ async function runInboxBot(configPath) {
           messages.push({
             id: `${convId}-m1`,
             sender: "CUSTOMER",
-            text: "হ্যালো, প্রোডাক্টটির দাম ও বিস্তারিত জানাবেন?",
+            text: "প্রোডাক্ট সম্পর্কে বিস্তারিত জানতে চাই",
             timestamp: th.lastMessageTime,
             status: "DELIVERED",
           });
@@ -578,11 +844,14 @@ async function runInboxBot(configPath) {
           });
         }
 
-        // 3. If AUTO mode is active and this customer is WAITING_REPLY, send live auto-reply!
-        const sig = `${th.customerName.toLowerCase()}:::${th.cleanPreview.slice(0, 50).toLowerCase()}`;
+        // 3. If AUTO mode is active and this customer is WAITING_REPLY, send trained AI auto-reply!
+        const sig = `${lowerCustomer}:::${th.cleanPreview.slice(0, 60).toLowerCase()}`;
         if (isRunning && currentMode === "AUTO" && !isReplied && !autoRepliedSignatures.has(sig)) {
-          const autoReplyText = classification.suggestions[0];
-          console.log(`\n🤖 [AUTO-REPLY TRIGGERED] Unanswered message from ${th.customerName}: "${th.cleanPreview}"`);
+          const autoReplyText = aiResult.suggestions[0];
+          console.log(
+            `\n🤖 [TRAINED AI AUTO-REPLY] Customer "${th.customerName}" asked: "${th.cleanPreview}"`
+          );
+          console.log(`   💡 AI Answer: "${autoReplyText}"`);
           console.log(`   ⏳ Applying human-like delay (${Math.min(humanDelaySeconds, 6)}s)...`);
           await sleep(Math.min(humanDelaySeconds, 6) * 1000);
 
@@ -592,6 +861,7 @@ async function runInboxBot(configPath) {
             await sendTextInActiveThread(page, autoReplyText);
 
             autoRepliedSignatures.add(sig);
+            lastBotRepliesByCustomer.set(lowerCustomer, autoReplyText.slice(0, 40));
             totalAutoRepliesSent++;
             isReplied = true;
             lastText = autoReplyText;
@@ -599,11 +869,11 @@ async function runInboxBot(configPath) {
               id: `${convId}-auto-${Date.now()}`,
               sender: "AI_ASSISTANT",
               text: autoReplyText,
-              timestamp: "Just now (Live Auto-Sent)",
+              timestamp: "Just now (Live AI Sent)",
               status: "SENT",
               graphApiStatus: "SUCCESS_200",
             });
-            console.log(`   ✅ [SUCCESS] Auto-reply sent to ${th.customerName} on Live Facebook Messenger!`);
+            console.log(`   ✅ [SUCCESS] Trained AI reply sent to ${th.customerName} on Live Messenger!`);
           } catch (autoErr) {
             console.warn(`   ⚠️ Auto-reply error for ${th.customerName}: ${autoErr.message}`);
           }
@@ -614,12 +884,12 @@ async function runInboxBot(configPath) {
           customerName: th.customerName,
           pageName: targetName,
           platform: sourceType === "Page" ? "Facebook Page" : "Messenger",
-          category: classification.category,
+          category: aiResult.category,
           unreadCount: isReplied ? 0 : 1,
           lastMessageText: lastText,
           lastMessageTime: th.lastMessageTime,
           status: isReplied ? "REPLIED" : "WAITING_REPLY",
-          aiSuggestions: classification.suggestions,
+          aiSuggestions: aiResult.suggestions,
           messages,
         });
       }

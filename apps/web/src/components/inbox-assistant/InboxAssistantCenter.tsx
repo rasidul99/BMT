@@ -22,10 +22,16 @@ import {
   Play,
   Terminal,
   AlertTriangle,
+  Package,
+  Edit3,
+  BrainCircuit,
 } from "lucide-react"
 import {
   useInboxAssistant,
   ConversationCategory,
+  TrainedProduct,
+  ProductStockStatus,
+  generatePreviewTrainedAnswer,
 } from "../../hooks/useInboxAssistant"
 import { useFacebookAccounts } from "../../hooks/useFacebookAccounts"
 import { getPageRegistry } from "../../lib/fb-page-registry"
@@ -40,6 +46,8 @@ export function InboxAssistantCenter({ currentMode }: InboxAssistantCenterProps)
     selectedConversation,
     setSelectedConvId,
     templates,
+    products,
+    storeProfile,
     settings,
     metrics,
     sendReply,
@@ -50,17 +58,25 @@ export function InboxAssistantCenter({ currentMode }: InboxAssistantCenterProps)
     updateHumanDelay,
     addTemplate,
     deleteTemplate,
+    addProduct,
+    updateProduct,
+    deleteProduct,
+    saveStoreProfile,
   } = useInboxAssistant()
 
   const { accounts: fleetAccounts } = useFacebookAccounts()
 
-  const [activeTab, setActiveTab] = useState<"INBOX" | "TEMPLATES" | "RULES" | "LEDGER">("INBOX")
+  const [activeTab, setActiveTab] = useState<
+    "INBOX" | "TRAINING" | "TEMPLATES" | "RULES" | "LEDGER"
+  >("INBOX")
   const [searchQuery, setSearchQuery] = useState("")
   const [replyInput, setReplyInput] = useState("")
   const [toastMessage, setToastMessage] = useState<string | null>(null)
 
   // Channel selector for Live Messenger Bot (Page or Personal ID)
-  const [selectedChannelKey, setSelectedChannelKey] = useState<string>("Page::61595136714776::Test Next")
+  const [selectedChannelKey, setSelectedChannelKey] = useState<string>(
+    "Page::61595136714776::Test Next"
+  )
 
   // Live Messenger Bot Watcher State
   const [activeJobId, setActiveJobId] = useState<string | null>(null)
@@ -72,20 +88,138 @@ export function InboxAssistantCenter({ currentMode }: InboxAssistantCenterProps)
   const [isStartingBot, setIsStartingBot] = useState<boolean>(false)
   const autoStartedRef = useRef<boolean>(false)
 
-  // Template Modal
+  // Template Modal State
   const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false)
   const [newTplTitle, setNewTplTitle] = useState("")
-  const [newTplCategory, setNewTplCategory] = useState<ConversationCategory | "General">("Sales Conversion")
+  const [newTplCategory, setNewTplCategory] = useState<ConversationCategory | "General">(
+    "Sales Conversion"
+  )
   const [newTplContent, setNewTplContent] = useState("")
+
+  // Product AI Training Modal State (Add / Edit Product)
+  const [isProductModalOpen, setIsProductModalOpen] = useState(false)
+  const [editingProductId, setEditingProductId] = useState<string | null>(null)
+  const [prodName, setProdName] = useState("")
+  const [prodKeywords, setProdKeywords] = useState("")
+  const [prodRegularPrice, setProdRegularPrice] = useState("")
+  const [prodOfferPrice, setProdOfferPrice] = useState("")
+  const [prodStockStatus, setProdStockStatus] = useState<ProductStockStatus>("IN_STOCK")
+  const [prodStockText, setProdStockText] = useState("হ্যাঁ, আমাদের কাছে পর্যাপ্ত রেডি স্টক আছে")
+  const [prodVariants, setProdVariants] = useState("")
+  const [prodWhyGood, setProdWhyGood] = useState("")
+  const [prodWarranty, setProdWarranty] = useState("")
+  const [prodIsDefault, setProdIsDefault] = useState(false)
+
+  // Store Policy Editable State
+  const [deliveryPolicyInput, setDeliveryPolicyInput] = useState(storeProfile.deliveryPolicy)
+  const [deliveryTimeInput, setDeliveryTimeInput] = useState(storeProfile.deliveryTime)
+  const [showroomAddressInput, setShowroomAddressInput] = useState(storeProfile.showroomAddress)
+  const [helplineInput, setHelplineInput] = useState(storeProfile.helplineNumber)
+
+  // Quick Preview Question inside AI Training Tab
+  const [previewQuestion, setPreviewQuestion] = useState(
+    "ভাইয়া দাম কত, স্টক আছে নাকি আর প্রোডাক্টটা কেন ভালো?"
+  )
+
+  useEffect(() => {
+    setDeliveryPolicyInput(storeProfile.deliveryPolicy)
+    setDeliveryTimeInput(storeProfile.deliveryTime)
+    setShowroomAddressInput(storeProfile.showroomAddress)
+    setHelplineInput(storeProfile.helplineNumber)
+  }, [storeProfile])
 
   const showToast = (msg: string) => {
     setToastMessage(msg)
     setTimeout(() => setToastMessage(null), 3500)
   }
 
+  const openAddProductModal = () => {
+    setEditingProductId(null)
+    setProdName("")
+    setProdKeywords("")
+    setProdRegularPrice("")
+    setProdOfferPrice("")
+    setProdStockStatus("IN_STOCK")
+    setProdStockText("হ্যাঁ, আমাদের কাছে পর্যাপ্ত রেডি স্টক এভেইলেবল আছে")
+    setProdVariants("")
+    setProdWhyGood("")
+    setProdWarranty("১ বছরের অফিসিয়াল ওয়ারেন্টি")
+    setProdIsDefault(products.length === 0)
+    setIsProductModalOpen(true)
+  }
+
+  const openEditProductModal = (prod: TrainedProduct) => {
+    setEditingProductId(prod.id)
+    setProdName(prod.name)
+    setProdKeywords(prod.keywords)
+    setProdRegularPrice(prod.regularPrice)
+    setProdOfferPrice(prod.offerPrice)
+    setProdStockStatus(prod.stockStatus)
+    setProdStockText(prod.stockQuantityText)
+    setProdVariants(prod.variantsAndContents)
+    setProdWhyGood(prod.whyGoodFeatures)
+    setProdWarranty(prod.warrantyInfo)
+    setProdIsDefault(Boolean(prod.isDefaultProduct))
+    setIsProductModalOpen(true)
+  }
+
+  const handleSaveProduct = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!prodName.trim() || !prodOfferPrice.trim()) return
+
+    if (editingProductId) {
+      updateProduct(editingProductId, {
+        name: prodName.trim(),
+        keywords: prodKeywords.trim() || prodName.trim().toLowerCase(),
+        regularPrice: prodRegularPrice.trim(),
+        offerPrice: prodOfferPrice.trim(),
+        stockStatus: prodStockStatus,
+        stockQuantityText: prodStockText.trim(),
+        variantsAndContents: prodVariants.trim(),
+        whyGoodFeatures: prodWhyGood.trim(),
+        warrantyInfo: prodWarranty.trim(),
+        isDefaultProduct: prodIsDefault,
+      })
+      showToast(`"${prodName.trim()}" প্রোডাক্টের AI ট্রেনিং আপডেট হয়ে লাইভ মেসেঞ্জার বটে সিঙ্ক হয়েছে!`)
+    } else {
+      addProduct({
+        name: prodName.trim(),
+        keywords: prodKeywords.trim() || prodName.trim().toLowerCase(),
+        regularPrice: prodRegularPrice.trim(),
+        offerPrice: prodOfferPrice.trim(),
+        stockStatus: prodStockStatus,
+        stockQuantityText: prodStockText.trim(),
+        variantsAndContents: prodVariants.trim(),
+        whyGoodFeatures: prodWhyGood.trim(),
+        warrantyInfo: prodWarranty.trim(),
+        isDefaultProduct: prodIsDefault,
+      })
+      showToast(`নতুন প্রোডাক্ট "${prodName.trim()}" AI বটে যুক্ত ও সিঙ্ক করা হয়েছে!`)
+    }
+    setIsProductModalOpen(false)
+  }
+
+  const handleSaveStorePolicy = (e: React.FormEvent) => {
+    e.preventDefault()
+    saveStoreProfile({
+      ...storeProfile,
+      deliveryPolicy: deliveryPolicyInput.trim(),
+      deliveryTime: deliveryTimeInput.trim(),
+      showroomAddress: showroomAddressInput.trim(),
+      helplineNumber: helplineInput.trim(),
+    })
+    showToast("স্টোর ও ডেলিভারি পলিসি লাইভ মেসেঞ্জার AI বটে সেভ হয়েছে!")
+  }
+
   // Dynamic connected Facebook Pages & Personal IDs
   const channelOptions = useMemo(() => {
-    const list: { key: string; sourceType: "Page" | "Personal ID"; id: string; name: string; label: string }[] = [
+    const list: {
+      key: string
+      sourceType: "Page" | "Personal ID"
+      id: string
+      name: string
+      label: string
+    }[] = [
       {
         key: "Page::61595136714776::Test Next",
         sourceType: "Page",
@@ -182,6 +316,8 @@ export function InboxAssistantCenter({ currentMode }: InboxAssistantCenterProps)
           mode: settings.mode,
           humanDelaySeconds: settings.humanDelaySeconds,
           templates,
+          products,
+          storeProfile,
           checkIntervalSeconds: 8,
           maxChecks: 86400,
           headless: false,
@@ -207,7 +343,6 @@ export function InboxAssistantCenter({ currentMode }: InboxAssistantCenterProps)
     }
   }
 
-  // Auto-connect or Auto-launch 24/7 Messenger Bot on mount when settings.isRunning is true
   useEffect(() => {
     if (!settings.isRunning) return
     if (activeJobId || isStartingBot || autoStartedRef.current) return
@@ -216,14 +351,15 @@ export function InboxAssistantCenter({ currentMode }: InboxAssistantCenterProps)
     handleStartLiveInboxBot({ reuseIfActive: true, silent: true })
   }, [settings.isRunning, activeJobId, isStartingBot])
 
-  // Poll active 24/7 Live Messenger Bot job & auto-restart if it ever stops while Continuous Running is active
   useEffect(() => {
     if (!activeJobId && !settings.isRunning) return
 
     const pollNow = async () => {
       try {
         const targetJob = activeJobId || "latest"
-        const res = await fetch(`/api/facebook-bot/inbox-assistant?jobId=${encodeURIComponent(targetJob)}`)
+        const res = await fetch(
+          `/api/facebook-bot/inbox-assistant?jobId=${encodeURIComponent(targetJob)}`
+        )
         const data = await res.json()
         if (data?.success && data.jobId) {
           if (!activeJobId) setActiveJobId(data.jobId)
@@ -253,7 +389,6 @@ export function InboxAssistantCenter({ currentMode }: InboxAssistantCenterProps)
     return () => clearInterval(interval)
   }, [activeJobId, syncLiveConversations, settings.isRunning, isStartingBot])
 
-  // Filtered Conversations
   const filteredConversations = useMemo(() => {
     return conversations.filter((c) => {
       if (searchQuery) {
@@ -268,30 +403,30 @@ export function InboxAssistantCenter({ currentMode }: InboxAssistantCenterProps)
     })
   }, [conversations, searchQuery])
 
-  // Handle Send Manual Reply
   const handleSendReply = (e?: React.FormEvent) => {
     if (e) e.preventDefault()
     if (!replyInput.trim() || !selectedConversation) return
 
     sendReply(selectedConversation.id, replyInput.trim(), "PAGE")
     setReplyInput("")
-    showToast(`Reply dispatched to "${selectedConversation.customerName}" on Live Facebook Messenger!`)
+    showToast(
+      `Reply dispatched to "${selectedConversation.customerName}" on Live Facebook Messenger!`
+    )
   }
 
-  // Handle Approve AI Suggestion
   const handleApproveSuggestion = (text: string) => {
     if (!selectedConversation) return
     sendReply(selectedConversation.id, text, "AI_ASSISTANT")
-    showToast(`AI Reply approved & dispatched to "${selectedConversation.customerName}" on Live Messenger!`)
+    showToast(
+      `AI Reply approved & dispatched to "${selectedConversation.customerName}" on Live Messenger!`
+    )
   }
 
-  // Handle Insert Template
   const handleInsertTemplate = (content: string) => {
     setReplyInput(content)
     showToast("Template loaded into reply composer!")
   }
 
-  // Handle Add Template Submit
   const handleCreateTemplate = (e: React.FormEvent) => {
     e.preventDefault()
     if (!newTplTitle.trim() || !newTplContent.trim()) return
@@ -315,6 +450,15 @@ export function InboxAssistantCenter({ currentMode }: InboxAssistantCenterProps)
         watcherStatus === "LAUNCHING_BROWSER" ||
         watcherStatus === "STARTING")
   )
+
+  const livePreviewAnswer = useMemo(() => {
+    return generatePreviewTrainedAnswer(
+      previewQuestion,
+      "Rasidul Islam Sajib",
+      products,
+      storeProfile
+    )
+  }, [previewQuestion, products, storeProfile])
 
   return (
     <div className="space-y-5 pb-20">
@@ -341,12 +485,22 @@ export function InboxAssistantCenter({ currentMode }: InboxAssistantCenterProps)
             </span>
           </div>
           <p className="text-xs text-muted-foreground mt-1 max-w-2xl">
-            সরাসরি আপনার আসল ফেসবুক পেজ (Meta Business Suite Inbox) ও পার্সোনাল মেসেঞ্জার ২৪/৭ মনিটর করে কাস্টমারের মেসেজের অটোমেটিক AI রিপ্লাই বা ওয়ান-ক্লিক ম্যানুয়াল রিপ্লাই পাঠায়।
+            আপনার প্রোডাক্টের দাম, স্টক, ভ্যারিয়েন্ট ও বৈশিষ্ট্য দিয়ে AI-কে ট্রেইন করুন—কাস্টমার যেকোনো প্রোডাক্ট সম্পর্কে জিজ্ঞেস করলে ২৪/৭ লাইভ মেসেঞ্জার বট সাথে সাথে সঠিক উত্তর দেবে।
           </p>
         </div>
 
-        {/* Live Facebook Channel Selector & 24/7 Bot Button */}
+        {/* Live Facebook Channel Selector & Train AI + 24/7 Bot Buttons */}
         <div className="flex items-center flex-wrap gap-2 shrink-0">
+          <button
+            type="button"
+            data-testid="open-ai-product-training-btn"
+            onClick={() => setActiveTab("TRAINING")}
+            className="flex items-center space-x-1.5 px-3.5 py-2 rounded-xl text-xs font-bold bg-violet-600 hover:bg-violet-500 text-white transition shadow-xs cursor-pointer whitespace-nowrap"
+          >
+            <BrainCircuit className="w-3.5 h-3.5" />
+            <span>Train AI Products ({products.length})</span>
+          </button>
+
           <select
             value={selectedChannelKey}
             onChange={(e) => {
@@ -410,9 +564,7 @@ export function InboxAssistantCenter({ currentMode }: InboxAssistantCenterProps)
               <span>
                 {watcherStatus === "AUTH_ERROR" || watcherStatus === "ERROR"
                   ? watcherError || "Live Messenger Bot encountered an error"
-                  : `💬 24/7 Live Facebook Messenger Bot Active on "${activeChannel.name}" — Scan #${watcherCheckCount} (${
-                      settings.mode === "AUTO" ? "Auto-Reply Mode" : "Manual Review Mode"
-                    })`}
+                  : `💬 24/7 Live Facebook Messenger Bot Active on "${activeChannel.name}" — Scan #${watcherCheckCount} | Trained on ${products.length} Product(s)`}
               </span>
             </div>
             <div className="flex items-center gap-2">
@@ -537,15 +689,15 @@ export function InboxAssistantCenter({ currentMode }: InboxAssistantCenterProps)
 
         <div className="border border-border bg-card p-4 rounded-xl shadow-xs flex flex-col justify-between">
           <div className="flex items-center justify-between text-muted-foreground text-xs font-semibold">
-            <span>Pending Replies</span>
-            <Clock className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+            <span>Trained Products</span>
+            <Package className="w-4 h-4 text-violet-600 dark:text-violet-400" />
           </div>
           <div className="mt-2 flex items-baseline justify-between">
-            <span className="text-2xl font-bold text-blue-600 dark:text-blue-400">
-              {metrics.waitingReply}
+            <span className="text-2xl font-bold text-violet-600 dark:text-violet-400">
+              {products.length}
             </span>
-            <span className="text-[10px] font-medium text-muted-foreground">
-              Awaiting Action
+            <span className="text-[10px] font-medium text-emerald-600 dark:text-emerald-400">
+              {products.filter((p) => p.stockStatus !== "OUT_OF_STOCK").length} In Stock
             </span>
           </div>
         </div>
@@ -586,7 +738,7 @@ export function InboxAssistantCenter({ currentMode }: InboxAssistantCenterProps)
         <button
           type="button"
           onClick={() => setActiveTab("INBOX")}
-          className={`flex items-center space-x-2 px-4 py-2 rounded-lg text-xs font-semibold transition shrink-0 ${
+          className={`flex items-center space-x-2 px-4 py-2 rounded-lg text-xs font-semibold transition shrink-0 cursor-pointer ${
             activeTab === "INBOX"
               ? "bg-blue-600 text-white shadow-xs"
               : "bg-muted text-muted-foreground hover:bg-muted/80"
@@ -598,8 +750,22 @@ export function InboxAssistantCenter({ currentMode }: InboxAssistantCenterProps)
 
         <button
           type="button"
+          data-testid="tab-ai-product-training"
+          onClick={() => setActiveTab("TRAINING")}
+          className={`flex items-center space-x-2 px-4 py-2 rounded-lg text-xs font-bold transition shrink-0 cursor-pointer ${
+            activeTab === "TRAINING"
+              ? "bg-violet-600 text-white shadow-xs"
+              : "bg-violet-500/10 text-violet-600 dark:text-violet-300 border border-violet-500/20 hover:bg-violet-500/20"
+          }`}
+        >
+          <BrainCircuit className="w-3.5 h-3.5" />
+          <span>AI Product Training &amp; Catalog ({products.length})</span>
+        </button>
+
+        <button
+          type="button"
           onClick={() => setActiveTab("TEMPLATES")}
-          className={`flex items-center space-x-2 px-4 py-2 rounded-lg text-xs font-semibold transition shrink-0 ${
+          className={`flex items-center space-x-2 px-4 py-2 rounded-lg text-xs font-semibold transition shrink-0 cursor-pointer ${
             activeTab === "TEMPLATES"
               ? "bg-blue-600 text-white shadow-xs"
               : "bg-muted text-muted-foreground hover:bg-muted/80"
@@ -612,7 +778,7 @@ export function InboxAssistantCenter({ currentMode }: InboxAssistantCenterProps)
         <button
           type="button"
           onClick={() => setActiveTab("RULES")}
-          className={`flex items-center space-x-2 px-4 py-2 rounded-lg text-xs font-semibold transition shrink-0 ${
+          className={`flex items-center space-x-2 px-4 py-2 rounded-lg text-xs font-semibold transition shrink-0 cursor-pointer ${
             activeTab === "RULES"
               ? "bg-blue-600 text-white shadow-xs"
               : "bg-muted text-muted-foreground hover:bg-muted/80"
@@ -625,7 +791,7 @@ export function InboxAssistantCenter({ currentMode }: InboxAssistantCenterProps)
         <button
           type="button"
           onClick={() => setActiveTab("LEDGER")}
-          className={`flex items-center space-x-2 px-4 py-2 rounded-lg text-xs font-semibold transition shrink-0 ${
+          className={`flex items-center space-x-2 px-4 py-2 rounded-lg text-xs font-semibold transition shrink-0 cursor-pointer ${
             activeTab === "LEDGER"
               ? "bg-blue-600 text-white shadow-xs"
               : "bg-muted text-muted-foreground hover:bg-muted/80"
@@ -637,13 +803,342 @@ export function InboxAssistantCenter({ currentMode }: InboxAssistantCenterProps)
       </div>
 
       {/* ======================================================== */}
+      {/* TAB 0: AI PRODUCT TRAINING & CATALOG KNOWLEDGEBASE       */}
+      {/* ======================================================== */}
+      {activeTab === "TRAINING" && (
+        <div className="space-y-6 text-xs">
+          {/* Top Action Header */}
+          <div className="border border-violet-500/30 bg-violet-500/5 p-4 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                <BrainCircuit className="w-5 h-5 text-violet-500" />
+                <h2 className="text-sm font-black text-foreground">
+                  AI Product Knowledgebase &amp; Multi-Intent Training
+                </h2>
+              </div>
+              <p className="text-muted-foreground text-xs max-w-3xl">
+                এখানে আপনার প্রতিটি প্রোডাক্টের <b>দাম, স্টক আছে কি না, কী কী কালার/ভ্যারিয়েন্ট আছে, কেন প্রোডাক্টটি ভালো এবং ওয়ারেন্টি</b> যুক্ত করুন। কাস্টমার মেসেঞ্জারে যেভাবেই প্রশ্ন করুক, ২৪/৭ লাইভ AI বট এখানকার তথ্য অনুযায়ী সাথে সাথে উত্তর দেবে!
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={openAddProductModal}
+              className="px-4 py-2.5 rounded-xl bg-violet-600 hover:bg-violet-500 text-white font-bold text-xs flex items-center gap-1.5 shadow-xs cursor-pointer shrink-0"
+            >
+              <Plus className="w-4 h-4 stroke-[2.5]" />
+              <span>Add New Product to Train AI</span>
+            </button>
+          </div>
+
+          {/* Trained Products Grid */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            {products.map((prod) => {
+              const isOut = prod.stockStatus === "OUT_OF_STOCK"
+              const isLimited = prod.stockStatus === "LIMITED_STOCK"
+              return (
+                <div
+                  key={prod.id}
+                  className={`border rounded-2xl p-4 space-y-3 bg-card shadow-xs transition ${
+                    prod.isDefaultProduct
+                      ? "border-violet-500/50 ring-1 ring-violet-500/20"
+                      : "border-border"
+                  }`}
+                >
+                  <div className="flex flex-wrap items-start justify-between gap-2 border-b border-border pb-3">
+                    <div>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-black text-sm text-foreground">{prod.name}</span>
+                        {prod.isDefaultProduct && (
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-violet-500/15 text-violet-400 border border-violet-500/30">
+                            ★ Primary Default Product
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-[11px] text-muted-foreground mt-0.5">
+                        Match Keywords: <span className="text-foreground font-medium">{prod.keywords}</span>
+                      </p>
+                    </div>
+
+                    <div className="flex items-center gap-1.5">
+                      {!prod.isDefaultProduct && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            updateProduct(prod.id, { isDefaultProduct: true })
+                            showToast(`"${prod.name}"-কে ডিফল্ট প্রোডাক্ট হিসেবে সেট করা হয়েছে!`)
+                          }}
+                          className="px-2 py-1 rounded-lg border border-border hover:bg-muted text-[10px] font-semibold text-muted-foreground hover:text-foreground transition cursor-pointer"
+                        >
+                          Set Default
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => openEditProductModal(prod)}
+                        className="px-2.5 py-1 rounded-lg bg-blue-600/10 text-blue-500 hover:bg-blue-600/20 border border-blue-500/20 font-bold text-[11px] flex items-center gap-1 transition cursor-pointer"
+                      >
+                        <Edit3 className="w-3 h-3" />
+                        <span>Edit</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          deleteProduct(prod.id)
+                          showToast(`"${prod.name}" প্রোডাক্টটি ডিলিট করা হয়েছে।`)
+                        }}
+                        className="p-1.5 rounded-lg border border-border hover:bg-rose-500/10 text-muted-foreground hover:text-rose-500 transition cursor-pointer"
+                        title="Delete product"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Price & 1-Click Stock Status Switcher */}
+                  <div className="flex flex-wrap items-center justify-between gap-2 bg-muted/30 p-2.5 rounded-xl border border-border">
+                    <div className="space-y-0.5">
+                      <span className="text-[10px] text-muted-foreground uppercase font-bold block">
+                        Trained Price
+                      </span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-black text-emerald-500">
+                          অফার: {prod.offerPrice}
+                        </span>
+                        {prod.regularPrice && (
+                          <span className="text-[11px] text-muted-foreground line-through">
+                            রেগুলার: {prod.regularPrice}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="space-y-1">
+                      <span className="text-[10px] text-muted-foreground uppercase font-bold block text-right">
+                        1-Click Stock Status (Live Sync)
+                      </span>
+                      <div className="flex items-center gap-1">
+                        {(
+                          [
+                            { id: "IN_STOCK", label: "In Stock" },
+                            { id: "LIMITED_STOCK", label: "Limited" },
+                            { id: "OUT_OF_STOCK", label: "Out of Stock" },
+                          ] as const
+                        ).map((st) => {
+                          const active = prod.stockStatus === st.id
+                          return (
+                            <button
+                              key={st.id}
+                              type="button"
+                              onClick={() => {
+                                updateProduct(prod.id, { stockStatus: st.id })
+                                showToast(
+                                  `"${prod.name}"-এর স্টক স্ট্যাটাস "${st.label}" হিসেবে লাইভ বটে আপডেট হয়েছে!`
+                                )
+                              }}
+                              className={`px-2 py-1 rounded-md text-[10px] font-bold transition cursor-pointer border ${
+                                active
+                                  ? st.id === "IN_STOCK"
+                                    ? "bg-emerald-600 text-white border-emerald-600"
+                                    : st.id === "LIMITED_STOCK"
+                                    ? "bg-amber-600 text-white border-amber-600"
+                                    : "bg-rose-600 text-white border-rose-600"
+                                  : "bg-background text-muted-foreground border-border hover:text-foreground"
+                              }`}
+                            >
+                              {st.label}
+                            </button>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Detailed Product Knowledge Fields */}
+                  <div className="space-y-2 text-[11px]">
+                    <div className="p-2.5 rounded-xl bg-muted/15 border border-border/60">
+                      <span className="font-bold text-blue-500 block mb-0.5">
+                        📦 কী কী আছে / কালার, সাইজ ও বক্সে যা থাকছে:
+                      </span>
+                      <p className="text-foreground leading-relaxed">{prod.variantsAndContents}</p>
+                    </div>
+
+                    <div className="p-2.5 rounded-xl bg-muted/15 border border-border/60">
+                      <span className="font-bold text-emerald-500 block mb-0.5">
+                        ✨ কেন প্রোডাক্টটি ভালো / মূল বৈশিষ্ট্য ও সুবিধা:
+                      </span>
+                      <p className="text-foreground leading-relaxed">{prod.whyGoodFeatures}</p>
+                    </div>
+
+                    <div className="p-2.5 rounded-xl bg-muted/15 border border-border/60 flex items-center justify-between gap-2">
+                      <div>
+                        <span className="font-bold text-violet-400">🛡️ ওয়ারেন্টি ও গ্যারান্টি: </span>
+                        <span className="text-foreground">{prod.warrantyInfo}</span>
+                      </div>
+                      <span
+                        className={`px-2 py-0.5 rounded text-[10px] font-bold shrink-0 ${
+                          isOut
+                            ? "bg-rose-500/15 text-rose-400"
+                            : isLimited
+                            ? "bg-amber-500/15 text-amber-400"
+                            : "bg-emerald-500/15 text-emerald-400"
+                        }`}
+                      >
+                        {isOut ? "স্টক আউট" : isLimited ? "সীমিত স্টক" : "স্টকে আছে"}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+
+          {/* Store Policy & Live AI Answer Preview Grid */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+            {/* Store Delivery & Showroom Info Form (6 cols) */}
+            <form
+              onSubmit={handleSaveStorePolicy}
+              className="lg:col-span-6 border border-border bg-card p-4 rounded-2xl space-y-3 shadow-xs"
+            >
+              <div className="border-b border-border pb-2.5 flex items-center justify-between">
+                <div>
+                  <h3 className="font-bold text-sm text-foreground">
+                    🚚 ডেলিভারি চার্জ, শোরুম ও স্টোর পলিসি ট্রেনিং
+                  </h3>
+                  <p className="text-[11px] text-muted-foreground">
+                    কাস্টমার ডেলিভারি বা শোরুমের ঠিকানা জানতে চাইলে AI এখান থেকে উত্তর দেবে।
+                  </p>
+                </div>
+                <button
+                  type="submit"
+                  className="px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs cursor-pointer"
+                >
+                  Save Policy
+                </button>
+              </div>
+
+              <div className="space-y-2.5">
+                <div className="space-y-1">
+                  <label className="font-semibold text-foreground">
+                    ডেলিভারি পলিসি ও চার্জ (Delivery Policy)
+                  </label>
+                  <input
+                    type="text"
+                    value={deliveryPolicyInput}
+                    onChange={(e) => setDeliveryPolicyInput(e.target.value)}
+                    className="w-full px-3 py-2 border border-border rounded-lg bg-background text-xs outline-none focus:border-blue-500"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="font-semibold text-foreground">
+                    ডেলিভারি সময় (Delivery Time)
+                  </label>
+                  <input
+                    type="text"
+                    value={deliveryTimeInput}
+                    onChange={(e) => setDeliveryTimeInput(e.target.value)}
+                    className="w-full px-3 py-2 border border-border rounded-lg bg-background text-xs outline-none focus:border-blue-500"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="font-semibold text-foreground">
+                    শোরুম / অফিসের ঠিকানা (Showroom Address)
+                  </label>
+                  <input
+                    type="text"
+                    value={showroomAddressInput}
+                    onChange={(e) => setShowroomAddressInput(e.target.value)}
+                    className="w-full px-3 py-2 border border-border rounded-lg bg-background text-xs outline-none focus:border-blue-500"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="font-semibold text-foreground">
+                    হেল্পলাইন নম্বর (Helpline Number)
+                  </label>
+                  <input
+                    type="text"
+                    value={helplineInput}
+                    onChange={(e) => setHelplineInput(e.target.value)}
+                    className="w-full px-3 py-2 border border-border rounded-lg bg-background text-xs outline-none focus:border-blue-500"
+                  />
+                </div>
+              </div>
+            </form>
+
+            {/* Instant AI Brain Answer Previewer (6 cols) */}
+            <div className="lg:col-span-6 border border-border bg-card p-4 rounded-2xl space-y-3 shadow-xs flex flex-col justify-between">
+              <div className="space-y-3">
+                <div className="border-b border-border pb-2.5">
+                  <h3 className="font-bold text-sm text-foreground flex items-center gap-1.5">
+                    <Sparkles className="w-4 h-4 text-violet-500" />
+                    <span>AI ট্রেইনড উত্তর প্রিভিউ (Instant AI Brain Check)</span>
+                  </h3>
+                  <p className="text-[11px] text-muted-foreground">
+                    কাস্টমার মেসেঞ্জারে কোনো প্রশ্ন করলে আপনার ট্রেইন করা তথ্য দিয়ে AI ঠিক কীভাবে উত্তর দেবে তা নিচে দেখুন:
+                  </p>
+                </div>
+
+                <div className="flex flex-wrap gap-1.5">
+                  {[
+                    "ভাইয়া দাম কত?",
+                    "স্টক আছে নাকি নাই?",
+                    "কি কি কালার আছে আর বক্সে কি থাকবে?",
+                    "প্রোডাক্টটা কেন ভালো? ওয়ারেন্টি আছে?",
+                    "ইয়ারবাডের দাম কত আর কেন ভালো?",
+                    "আপনাদের কাছে কি কি প্রোডাক্ট আছে?",
+                  ].map((sampleQ) => (
+                    <button
+                      key={sampleQ}
+                      type="button"
+                      onClick={() => setPreviewQuestion(sampleQ)}
+                      className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold border transition cursor-pointer ${
+                        previewQuestion === sampleQ
+                          ? "bg-violet-600 text-white border-violet-600"
+                          : "bg-muted/40 text-muted-foreground border-border hover:text-foreground"
+                      }`}
+                    >
+                      {sampleQ}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="space-y-1">
+                  <label className="font-semibold text-muted-foreground text-[11px]">
+                    কাস্টমারের যেকোনো প্রশ্ন লিখে চেক করুন:
+                  </label>
+                  <input
+                    type="text"
+                    value={previewQuestion}
+                    onChange={(e) => setPreviewQuestion(e.target.value)}
+                    placeholder="যেমন: ভাইয়া ঘড়িটার দাম কত আর স্টক আছে নাকি?"
+                    className="w-full px-3 py-2 border border-border rounded-lg bg-background text-xs outline-none focus:border-violet-500"
+                  />
+                </div>
+              </div>
+
+              <div className="p-3.5 rounded-xl bg-violet-500/10 border border-violet-500/30 space-y-1.5 mt-2">
+                <div className="text-[10px] font-bold uppercase text-violet-400 flex items-center gap-1">
+                  <Bot className="w-3.5 h-3.5" />
+                  <span>Live Messenger AI Auto-Reply Output:</span>
+                </div>
+                <p className="text-xs text-foreground leading-relaxed font-medium">
+                  &ldquo;{livePreviewAnswer}&rdquo;
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ======================================================== */}
       {/* TAB 1: LIVE MESSENGER INBOX (SPLIT-PANE VIEW)            */}
       {/* ======================================================== */}
       {activeTab === "INBOX" && (
         <div className="grid grid-cols-1 lg:grid-cols-12 border border-border bg-card rounded-2xl shadow-xs overflow-hidden text-xs min-h-[620px]">
           {/* Left Pane: Conversations List (5 cols) */}
           <div className="lg:col-span-5 border-b lg:border-b-0 lg:border-r border-border flex flex-col h-[320px] lg:h-[650px] overflow-hidden bg-muted/10">
-            {/* Search Box */}
             <div className="p-3 border-b border-border bg-card">
               <div className="relative">
                 <Search className="w-3.5 h-3.5 absolute left-3 top-2.5 text-muted-foreground" />
@@ -657,7 +1152,6 @@ export function InboxAssistantCenter({ currentMode }: InboxAssistantCenterProps)
               </div>
             </div>
 
-            {/* List */}
             <div className="flex-1 overflow-y-auto divide-y divide-border">
               {filteredConversations.length === 0 ? (
                 <div className="p-6 text-center text-muted-foreground">
@@ -720,7 +1214,6 @@ export function InboxAssistantCenter({ currentMode }: InboxAssistantCenterProps)
           <div className="lg:col-span-7 flex flex-col min-h-[420px] lg:h-[650px] overflow-hidden bg-background">
             {selectedConversation ? (
               <>
-                {/* Thread Header */}
                 <div className="p-3.5 border-b border-border bg-card flex items-center justify-between">
                   <div className="flex items-center space-x-3">
                     <div className="w-8 h-8 rounded-full bg-blue-600 text-white font-bold flex items-center justify-center text-xs shadow-xs">
@@ -762,7 +1255,6 @@ export function InboxAssistantCenter({ currentMode }: InboxAssistantCenterProps)
                   </span>
                 </div>
 
-                {/* Messages Chat Scroll Area */}
                 <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-muted/5">
                   {selectedConversation.messages.map((msg) => {
                     const isCustomer = msg.sender === "CUSTOMER"
@@ -815,13 +1307,14 @@ export function InboxAssistantCenter({ currentMode }: InboxAssistantCenterProps)
                   })}
                 </div>
 
-                {/* AI Suggested Replies Box */}
                 {selectedConversation.aiSuggestions.length > 0 && (
                   <div className="p-3 border-t border-border bg-blue-50/40 dark:bg-blue-950/20 space-y-2">
                     <div className="flex items-center justify-between">
                       <span className="text-[11px] font-bold text-blue-600 dark:text-blue-400 flex items-center space-x-1.5">
                         <Sparkles className="w-3.5 h-3.5" />
-                        <span>AI Suggested Responses ({selectedConversation.category} Style):</span>
+                        <span>
+                          AI Suggested Responses (Trained on {products.length} Products):
+                        </span>
                       </span>
                       <span className="text-[10px] text-muted-foreground">
                         Click Approve to send directly to Live Messenger
@@ -860,7 +1353,6 @@ export function InboxAssistantCenter({ currentMode }: InboxAssistantCenterProps)
                   </div>
                 )}
 
-                {/* Ready Templates Quick Bar */}
                 <div className="p-2 border-t border-border bg-muted/20 flex items-center space-x-2 overflow-x-auto no-scrollbar">
                   <span className="text-[10px] font-semibold text-muted-foreground shrink-0 flex items-center space-x-1">
                     <Bookmark className="w-3 h-3 text-blue-600" />
@@ -878,14 +1370,13 @@ export function InboxAssistantCenter({ currentMode }: InboxAssistantCenterProps)
                   ))}
                   <button
                     type="button"
-                    onClick={() => setActiveTab("TEMPLATES")}
-                    className="text-[10px] text-blue-600 dark:text-blue-400 font-semibold hover:underline shrink-0"
+                    onClick={() => setActiveTab("TRAINING")}
+                    className="text-[10px] text-violet-500 font-bold hover:underline shrink-0"
                   >
-                    View All →
+                    + Train Products →
                   </button>
                 </div>
 
-                {/* Reply Composer */}
                 <form
                   onSubmit={handleSendReply}
                   className="p-3 border-t border-border bg-card flex items-center space-x-2"
@@ -1011,7 +1502,6 @@ export function InboxAssistantCenter({ currentMode }: InboxAssistantCenterProps)
           </div>
 
           <div className="space-y-4">
-            {/* Delay Settings */}
             <div className="space-y-2">
               <div className="flex justify-between items-center">
                 <label className="font-bold text-foreground">Human-like Response Delay</label>
@@ -1031,20 +1521,6 @@ export function InboxAssistantCenter({ currentMode }: InboxAssistantCenterProps)
               <p className="text-[11px] text-muted-foreground">
                 Simulates natural human typing delay before sending auto-replies in Live Facebook Messenger.
               </p>
-            </div>
-
-            {/* Unknown Intent Fallback Policy */}
-            <div className="border border-border p-4 rounded-xl bg-muted/20 space-y-2">
-              <span className="font-bold text-foreground block">
-                Unknown Query Fallback &amp; Motivation Sequence:
-              </span>
-              <p className="text-muted-foreground text-[11px]">
-                If a customer asks a question outside your product knowledge base, the AI automatically dispatches a motivational
-                follow-up message along with your predefined Fallback Template (<code>tpl-4</code>) and alerts human operators.
-              </p>
-              <div className="p-2.5 bg-background border border-border rounded-lg text-[11px] font-mono text-muted-foreground">
-                Fallback Action: Auto-send catalog link &amp; escalate to human operator queue.
-              </div>
             </div>
           </div>
         </div>
@@ -1095,6 +1571,175 @@ export function InboxAssistantCenter({ currentMode }: InboxAssistantCenterProps)
                 </div>
               </div>
             ))}
+          </div>
+        </div>
+      )}
+
+      {/* ======================================================== */}
+      {/* MODAL: ADD / EDIT PRODUCT FOR AI TRAINING                */}
+      {/* ======================================================== */}
+      {isProductModalOpen && (
+        <div className="fixed inset-0 z-50 bg-black/65 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-card border border-border rounded-2xl w-full max-w-xl shadow-2xl p-6 space-y-4 animate-in fade-in zoom-in-95 my-8">
+            <div className="flex items-center justify-between border-b border-border pb-3">
+              <div className="flex items-center space-x-2">
+                <BrainCircuit className="w-5 h-5 text-violet-500" />
+                <h3 className="font-bold text-base text-foreground">
+                  {editingProductId
+                    ? "Edit Product AI Training Data"
+                    : "Add New Product to Train AI"}
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsProductModalOpen(false)}
+                className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground transition"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveProduct} className="space-y-3.5 text-xs">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="font-bold text-foreground">
+                    প্রোডাক্টের নাম (Product Name) *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="যেমন: Premium Smart Watch Ultra"
+                    value={prodName}
+                    onChange={(e) => setProdName(e.target.value)}
+                    className="w-full px-3 py-2 border border-border rounded-lg bg-background text-xs outline-none focus:border-violet-500"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="font-bold text-foreground">
+                    চেনার কীওয়ার্ড (Keywords — কমা দিয়ে)
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="যেমন: watch, ঘড়ি, স্মার্ট ওয়াচ, ওয়াচ"
+                    value={prodKeywords}
+                    onChange={(e) => setProdKeywords(e.target.value)}
+                    className="w-full px-3 py-2 border border-border rounded-lg bg-background text-xs outline-none focus:border-violet-500"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="space-y-1">
+                  <label className="font-bold text-foreground">
+                    অফার প্রাইজ / বিক্রয়মূল্য *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="যেমন: ২,৪৯০ টাকা"
+                    value={prodOfferPrice}
+                    onChange={(e) => setProdOfferPrice(e.target.value)}
+                    className="w-full px-3 py-2 border border-border rounded-lg bg-background text-xs outline-none focus:border-violet-500"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="font-bold text-foreground">
+                    রেগুলার প্রাইজ (ঐচ্ছিক)
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="যেমন: ৩,৯৯০ টাকা"
+                    value={prodRegularPrice}
+                    onChange={(e) => setProdRegularPrice(e.target.value)}
+                    className="w-full px-3 py-2 border border-border rounded-lg bg-background text-xs outline-none focus:border-violet-500"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="font-bold text-foreground">স্টক স্ট্যাটাস (Stock)</label>
+                  <select
+                    value={prodStockStatus}
+                    onChange={(e) => setProdStockStatus(e.target.value as ProductStockStatus)}
+                    className="w-full px-3 py-2 border border-border rounded-lg bg-background text-xs outline-none focus:border-violet-500"
+                  >
+                    <option value="IN_STOCK">✅ In Stock (স্টকে আছে)</option>
+                    <option value="LIMITED_STOCK">⚠️ Limited Stock (সীমিত স্টক)</option>
+                    <option value="OUT_OF_STOCK">❌ Out of Stock (স্টক আউট)</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <label className="font-bold text-foreground">
+                  কী কী আছে / কালার, সাইজ ও বক্সের ভেতর কী থাকবে (Variants &amp; Box Contents)
+                </label>
+                <textarea
+                  rows={2}
+                  placeholder="যেমন: কালার: ব্ল্যাক, সিলভার ও গোল্ড | বক্সে থাকছে: ১টি ওয়াচ, ২টি বেল্ট ও চার্জার"
+                  value={prodVariants}
+                  onChange={(e) => setProdVariants(e.target.value)}
+                  className="w-full px-3 py-2 border border-border rounded-lg bg-background text-xs outline-none focus:border-violet-500"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="font-bold text-foreground">
+                  কেন প্রোডাক্টটি ভালো / মূল বৈশিষ্ট্য ও উপকারিতা (Why It&apos;s Good / Key Benefits)
+                </label>
+                <textarea
+                  rows={2}
+                  placeholder="যেমন: ১০০% ওয়াটারপ্রুফ, Super AMOLED ডিসপ্লে, ব্লুটুথ কলিং এবং ৭ দিন ব্যাটারি ব্যাকআপ"
+                  value={prodWhyGood}
+                  onChange={(e) => setProdWhyGood(e.target.value)}
+                  className="w-full px-3 py-2 border border-border rounded-lg bg-background text-xs outline-none focus:border-violet-500"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="font-bold text-foreground">
+                    ওয়ারেন্টি ও গ্যারান্টি (Warranty)
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="যেমন: ১ বছরের অফিসিয়াল ওয়ারেন্টি"
+                    value={prodWarranty}
+                    onChange={(e) => setProdWarranty(e.target.value)}
+                    className="w-full px-3 py-2 border border-border rounded-lg bg-background text-xs outline-none focus:border-violet-500"
+                  />
+                </div>
+
+                <div className="flex items-center pt-5">
+                  <label className="flex items-center gap-2 cursor-pointer font-semibold text-foreground">
+                    <input
+                      type="checkbox"
+                      checked={prodIsDefault}
+                      onChange={(e) => setProdIsDefault(e.target.checked)}
+                      className="rounded accent-violet-600"
+                    />
+                    <span>এটিকে মেইন/ডিফল্ট প্রোডাক্ট হিসেবে সেট করুন</span>
+                  </label>
+                </div>
+              </div>
+
+              <div className="pt-3 border-t border-border flex items-center justify-end space-x-2">
+                <button
+                  type="button"
+                  onClick={() => setIsProductModalOpen(false)}
+                  className="px-4 py-2 rounded-lg border border-border hover:bg-muted font-semibold text-xs transition"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 rounded-lg bg-violet-600 hover:bg-violet-500 text-white font-bold text-xs shadow-xs transition cursor-pointer"
+                >
+                  Save &amp; Train Live AI Bot
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
