@@ -922,6 +922,41 @@ export function useCommentAssistant() {
     [monitoredPosts]
   )
 
+  // Build a Live Stream row representation for a Monitored Post
+  const buildStreamItemFromPost = useCallback((post: MonitoredPostItem): CommentItem => {
+    const displayAccount =
+      post.sourceType === "Group"
+        ? post.accountName || post.targetName
+        : post.targetName || post.accountName
+    return {
+      id: `stream-${post.id}`,
+      commentId: `cmt_post_${post.id}`,
+      postId: post.postId,
+      postTitle: post.postTitle,
+      postUrl: post.postUrl,
+      postThumbnail: post.postThumbnail,
+      pageName: displayAccount,
+      accountId: post.targetId,
+      accountName: displayAccount,
+      sourceType: post.sourceType,
+      groupName: post.groupName || (post.sourceType === "Group" ? post.targetName : undefined),
+      userName: "Live Post Active",
+      userComment: "Auto-Reply & Inbox DM active on this post",
+      intent: "Price Query",
+      receivedAt: "Just now",
+      status: "Replied",
+      nestedReplyStatus: "Sent",
+      inboxStatus: post.sendPrivateInbox ? "Sent" : "Skipped",
+      inboxDeliveryMethod: post.sourceType === "Page" ? "Page Send Message Modal" : "Direct Messenger Bot",
+      latencyMs: 1800,
+      replyMode: "Auto",
+      publicReply: post.customPublicReply,
+      privateInboxMessage: post.sendPrivateInbox ? post.customInboxMessage : undefined,
+      repliedAt: post.createdAt || new Date().toISOString(),
+      suggestions: [post.customPublicReply],
+    }
+  }, [])
+
   // Monitored Posts CRUD (Up to 100 Posts under Personal IDs, Pages, or Groups)
   const addMonitoredPost = useCallback(
     (
@@ -954,17 +989,31 @@ export function useCommentAssistant() {
       }
 
       saveMonitoredPosts((prev) => [newPost, ...prev])
+
+      // Immediately add the saved post to Live Stream (comments)
+      const streamEntry = buildStreamItemFromPost(newPost)
+      saveComments((prev) => {
+        const filtered = prev.filter(
+          (c) =>
+            c.id !== streamEntry.id &&
+            !c.id.startsWith("cm-10") &&
+            !doesCommentMatchMonitoredPost(c, newPost)
+        )
+        return [streamEntry, ...filtered]
+      })
+
       return newPost
     },
-    [monitoredPosts.length, saveMonitoredPosts]
+    [monitoredPosts.length, saveMonitoredPosts, saveComments, buildStreamItemFromPost]
   )
 
   const updateMonitoredPost = useCallback(
     (id: string, updates: Partial<MonitoredPostItem>) => {
+      let updatedPostSnapshot: MonitoredPostItem | null = null
       saveMonitoredPosts((prev) =>
         prev.map((p) => {
           if (p.id !== id) return p
-          return {
+          const nextPost: MonitoredPostItem = {
             ...p,
             ...updates,
             customPublicReply:
@@ -976,10 +1025,47 @@ export function useCommentAssistant() {
                 ? sanitizeText(updates.customInboxMessage)
                 : p.customInboxMessage,
           }
+          updatedPostSnapshot = nextPost
+          return nextPost
         })
       )
+
+      // Sync updates into Live Stream (comments)
+      saveComments((prev) => {
+        if (!updatedPostSnapshot) return prev
+        const snap = updatedPostSnapshot
+        const displayAccount =
+          snap.sourceType === "Group"
+            ? snap.accountName || snap.targetName
+            : snap.targetName || snap.accountName
+        let matchedAny = false
+        const nextList = prev.map((c) => {
+          if (c.id === `stream-${id}` || doesCommentMatchMonitoredPost(c, snap)) {
+            matchedAny = true
+            return {
+              ...c,
+              postId: snap.postId,
+              postTitle: snap.postTitle,
+              postUrl: snap.postUrl,
+              postThumbnail: snap.postThumbnail || c.postThumbnail,
+              pageName: displayAccount,
+              accountId: snap.targetId,
+              accountName: displayAccount,
+              sourceType: snap.sourceType,
+              groupName: snap.groupName || (snap.sourceType === "Group" ? snap.targetName : undefined),
+              publicReply: snap.customPublicReply,
+              privateInboxMessage: snap.sendPrivateInbox ? snap.customInboxMessage : undefined,
+            }
+          }
+          return c
+        })
+        if (!matchedAny) {
+          return [buildStreamItemFromPost(snap), ...nextList]
+        }
+        return nextList
+      })
     },
-    [saveMonitoredPosts]
+    [saveMonitoredPosts, saveComments, buildStreamItemFromPost]
   )
 
   const toggleMonitoredPostStatus = useCallback(
@@ -993,10 +1079,104 @@ export function useCommentAssistant() {
 
   const deleteMonitoredPost = useCallback(
     (id: string) => {
+      const targetPost = monitoredPosts.find((p) => p.id === id)
       saveMonitoredPosts((prev) => prev.filter((p) => p.id !== id))
+      saveComments((prev) =>
+        prev.filter(
+          (c) =>
+            c.id !== `stream-${id}` &&
+            !(targetPost && doesCommentMatchMonitoredPost(c, targetPost))
+        )
+      )
     },
-    [saveMonitoredPosts]
+    [monitoredPosts, saveMonitoredPosts, saveComments]
   )
+
+  // Auto-sync saved Monitored Posts into Live Stream (comments) and clean up stale demo seed items
+  useEffect(() => {
+    if (!isLoaded || monitoredPosts.length === 0) return
+
+    const hasRealUserPosts = monitoredPosts.some((p) => !p.id.startsWith("mp-default-"))
+    if (hasRealUserPosts && monitoredPosts.some((p) => p.id.startsWith("mp-default-"))) {
+      saveMonitoredPosts((prev) => prev.filter((p) => !p.id.startsWith("mp-default-")))
+      return
+    }
+
+    const activePosts = hasRealUserPosts
+      ? monitoredPosts.filter((p) => !p.id.startsWith("mp-default-"))
+      : monitoredPosts
+
+    const needsDemoCleanup =
+      hasRealUserPosts &&
+      comments.some(
+        (c) =>
+          c.id.startsWith("cm-10") ||
+          (c.postUrl || "").includes("892168940637389/posts/1020304050") ||
+          (c.postUrl || "").includes("groups/pureorganicfoodbd")
+      )
+
+    const missingPosts = activePosts.filter(
+      (p) => !comments.some((c) => c.id === `stream-${p.id}` || doesCommentMatchMonitoredPost(c, p))
+    )
+
+    const outOfSyncPosts = activePosts.filter((p) =>
+      comments.some(
+        (c) =>
+          (c.id === `stream-${p.id}` || doesCommentMatchMonitoredPost(c, p)) &&
+          ((p.postThumbnail && c.postThumbnail !== p.postThumbnail) ||
+            (p.postTitle && c.postTitle !== p.postTitle) ||
+            (p.targetName && p.sourceType !== "Group" && c.accountName !== p.targetName))
+      )
+    )
+
+    if (needsDemoCleanup || missingPosts.length > 0 || outOfSyncPosts.length > 0) {
+      saveComments((prev) => {
+        let next = hasRealUserPosts
+          ? prev.filter(
+              (c) =>
+                !c.id.startsWith("cm-10") &&
+                !(c.postUrl || "").includes("892168940637389/posts/1020304050") &&
+                !(c.postUrl || "").includes("groups/pureorganicfoodbd")
+            )
+          : [...prev]
+
+        next = next.map((c) => {
+          const matched = activePosts.find(
+            (p) => c.id === `stream-${p.id}` || doesCommentMatchMonitoredPost(c, p)
+          )
+          if (!matched) return c
+          const displayAccount =
+            matched.sourceType === "Group"
+              ? matched.accountName || matched.targetName
+              : matched.targetName || matched.accountName
+          return {
+            ...c,
+            postId: matched.postId,
+            postTitle: matched.postTitle,
+            postUrl: matched.postUrl,
+            postThumbnail: matched.postThumbnail || c.postThumbnail,
+            pageName: displayAccount,
+            accountId: matched.targetId,
+            accountName: displayAccount,
+            sourceType: matched.sourceType,
+            groupName: matched.groupName || (matched.sourceType === "Group" ? matched.targetName : undefined),
+            publicReply: c.publicReply || matched.customPublicReply,
+            privateInboxMessage:
+              c.privateInboxMessage || (matched.sendPrivateInbox ? matched.customInboxMessage : undefined),
+          }
+        })
+
+        for (const p of [...activePosts].reverse()) {
+          const exists = next.some((c) => c.id === `stream-${p.id}` || doesCommentMatchMonitoredPost(c, p))
+          if (!exists) {
+            next = [buildStreamItemFromPost(p), ...next]
+          }
+        }
+
+        return next
+      })
+    }
+  }, [isLoaded, monitoredPosts, comments, saveComments, saveMonitoredPosts, buildStreamItemFromPost])
 
   // Intent Classifier Helper based on custom library keywords + built-in rules
   const detectIntent = useCallback(

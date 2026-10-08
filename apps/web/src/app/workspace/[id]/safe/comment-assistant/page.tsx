@@ -796,9 +796,9 @@ export default function SafeCommentAssistantPage() {
           customInboxMessage: postCustomInboxMessage.trim(),
           sendPrivateInbox: postSendPrivateInbox,
         })
-        setPostSavedToast(`Updated post "${resolvedTitle}" under ${selectedTargetName}`)
+        setPostSavedToast(`Updated post "${resolvedTitle}" in Live Stream & Posts!`)
       } else {
-        addMonitoredPost({
+        const createdPost = addMonitoredPost({
           postUrl: cleanUrl,
           postTitle: resolvedTitle,
           postThumbnail: finalThumbnail || undefined,
@@ -814,11 +814,14 @@ export default function SafeCommentAssistantPage() {
           customInboxMessage: postCustomInboxMessage.trim(),
           sendPrivateInbox: postSendPrivateInbox,
         })
-        setPostSavedToast(`Saved "${resolvedTitle}" under ${selectedTargetName} — Active Monitoring!`)
+        setPostSavedToast(`Added "${resolvedTitle}" (${selectedTargetName}) to Live Stream!`)
+        if (createdPost) {
+          handleStartWatcherForPost(createdPost)
+        }
       }
       setShowAddPostModal(false)
       setEditingPostId(null)
-      setActiveTab("posts")
+      setActiveTab("stream")
       setTimeout(() => setPostSavedToast(null), 4000)
     } catch (err: any) {
       alert(err.message || "Could not save monitored post.")
@@ -1257,7 +1260,8 @@ export default function SafeCommentAssistantPage() {
     setSimPushedSuccess(true)
   }
 
-  // Polling for watcher bot status
+  // Polling for watcher bot status and syncing real Facebook comments into Live Stream
+  const seenWatcherReplyIdsRef = React.useRef<Set<string>>(new Set())
   useEffect(() => {
     if (!watcherJobId || watcherStatus === "COMPLETED" || watcherStatus === "ERROR") return
 
@@ -1268,7 +1272,34 @@ export default function SafeCommentAssistantPage() {
         if (data.success) {
           setWatcherStatus(data.status)
           setWatcherCheckCount(data.checkCount || 0)
-          if (data.replies) setWatcherReplies(data.replies)
+          if (Array.isArray(data.replies)) {
+            setWatcherReplies(data.replies)
+            data.replies.forEach((rep: any, idx: number) => {
+              const repKey = `${watcherJobId}-${rep.author || "user"}-${rep.commentText || idx}`
+              if (!seenWatcherReplyIdsRef.current.has(repKey) && rep.commentText) {
+                seenWatcherReplyIdsRef.current.add(repKey)
+                const matchedPost = findMonitoredPostForComment(undefined, watcherPostUrl)
+                addIncomingComment({
+                  commentId: `cmt_live_${Date.now()}_${idx}`,
+                  postId: matchedPost?.postId || `post_live_${Date.now()}`,
+                  postTitle: matchedPost?.postTitle || "Live Watched Facebook Post",
+                  postUrl: matchedPost?.postUrl || watcherPostUrl,
+                  postThumbnail: matchedPost?.postThumbnail,
+                  pageName: matchedPost?.targetName || "Connected Facebook Page",
+                  accountId: matchedPost?.targetId || "page-live",
+                  accountName: matchedPost?.targetName || "Connected Facebook Page",
+                  sourceType: matchedPost?.sourceType || "Page",
+                  groupName: matchedPost?.groupName,
+                  userName: rep.author || "Facebook Customer",
+                  userComment: rep.commentText,
+                  autoReplyNow: true,
+                  sendInbox: matchedPost ? matchedPost.sendPrivateInbox : true,
+                  customPublicReply: rep.replyText || matchedPost?.customPublicReply,
+                  customInboxReply: rep.inboxText || matchedPost?.customInboxMessage,
+                })
+              }
+            })
+          }
           if (data.logs) setWatcherLogs(data.logs)
         }
       } catch (e) {
@@ -1277,7 +1308,7 @@ export default function SafeCommentAssistantPage() {
     }, 2500)
 
     return () => clearInterval(interval)
-  }, [watcherJobId, watcherStatus])
+  }, [watcherJobId, watcherStatus, watcherPostUrl, findMonitoredPostForComment, addIncomingComment])
 
   // Polling for live webhook events
   const fetchLiveWebhookEvents = async () => {
