@@ -339,106 +339,6 @@ export function LinkCommentBlockCenter({ currentMode }: LinkCommentBlockCenterPr
     })
   }, [logs, actionFilter, searchQuery])
 
-  // Export CSV
-  const handleExportCSV = () => {
-    const headers = [
-      "Comment ID",
-      "Sender Name",
-      "Facebook Page / Account",
-      "Post Title",
-      "Comment Content",
-      "Detected Link(s)",
-      "Action Taken",
-      "Status",
-      "Latency (ms)",
-      "Detected At",
-    ]
-
-    const rows = filteredLogs.map((l) => [
-      `"${l.commentId}"`,
-      `"${l.senderName.replace(/"/g, '""')}"`,
-      `"${l.pageOrAccountName.replace(/"/g, '""')}"`,
-      `"${l.postTitle.replace(/"/g, '""')}"`,
-      `"${l.commentText.replace(/"/g, '""')}"`,
-      `"${l.detectedLinks.join("; ")}"`,
-      `"${l.actionTaken}"`,
-      `"${l.graphApiStatus}"`,
-      l.latencyMs,
-      `"${l.detectedAt}"`,
-    ])
-
-    const csvContent = "\uFEFF" + [headers.join(","), ...rows.map((r) => r.join(","))].join("\r\n")
-    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" })
-    const url = URL.createObjectURL(blob)
-    const link = document.createElement("a")
-    link.href = url
-    link.setAttribute("download", `bmt_link_shield_audit_logs_${Date.now()}.csv`)
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
-    URL.revokeObjectURL(url)
-    showToast(`Exported ${filteredLogs.length} incident records to CSV!`)
-  }
-
-  // Export Excel (.xls)
-  const handleExportExcel = () => {
-    const headers = [
-      "Comment ID",
-      "Sender Name",
-      "Monitored Page",
-      "Post Title",
-      "Comment Text",
-      "Detected Link",
-      "Action Taken",
-      "Latency (ms)",
-      "Timestamp",
-    ]
-
-    const rows = filteredLogs.map(
-      (l) =>
-        `<tr>
-          <td>${l.commentId}</td>
-          <td><b>${l.senderName}</b></td>
-          <td>${l.pageOrAccountName}</td>
-          <td>${l.postTitle}</td>
-          <td>${l.commentText}</td>
-          <td style="color: #dc2626;"><b>${l.detectedLinks.join(", ")}</b></td>
-          <td><b>${l.actionTaken}</b></td>
-          <td>${l.latencyMs}ms</td>
-          <td>${l.detectedAt}</td>
-        </tr>`
-    )
-
-    const tableHtml = `
-      <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
-      <head><meta charset="utf-8"/></head>
-      <body>
-        <table border="1">
-          <thead>
-            <tr style="background-color: #dc2626; color: white; font-weight: bold;">
-              ${headers.map((h) => `<th>${h}</th>`).join("")}
-            </tr>
-          </thead>
-          <tbody>
-            ${rows.join("")}
-          </tbody>
-        </table>
-      </body>
-      </html>
-    `
-
-    const blob = new Blob([tableHtml], { type: "application/vnd.ms-excel;charset=utf-8;" })
-    const url = URL.createObjectURL(blob)
-    const link = document.createElement("a")
-    link.href = url
-    link.setAttribute("download", `bmt_link_shield_audit_logs_${Date.now()}.xls`)
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
-    URL.revokeObjectURL(url)
-    showToast(`Exported ${filteredLogs.length} incident records to Excel (.xls)!`)
-  }
-
   const handleAddDomain = (e: React.FormEvent) => {
     e.preventDefault()
     if (!newDomain.trim()) return
@@ -493,33 +393,15 @@ export function LinkCommentBlockCenter({ currentMode }: LinkCommentBlockCenterPr
         </div>
 
         {/* Global Controls */}
-        <div className="flex items-center flex-wrap gap-2">
+        <div className="flex items-center flex-wrap gap-2 shrink-0">
           <button
             type="button"
             data-testid="open-add-shield-post-btn"
             onClick={() => setShowAddPostModal(true)}
-            className="flex items-center space-x-1.5 px-3.5 py-2 rounded-xl text-xs font-bold bg-blue-600 hover:bg-blue-500 text-white transition shadow-xs cursor-pointer"
+            className="flex items-center space-x-1.5 px-3.5 py-2 rounded-xl text-xs font-bold bg-blue-600 hover:bg-blue-500 text-white transition shadow-xs cursor-pointer whitespace-nowrap"
           >
             <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
             <span>Add Post to Shield</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={handleExportCSV}
-            className="flex items-center space-x-1.5 px-3 py-2 rounded-lg text-xs font-semibold bg-background hover:bg-muted border border-border text-foreground transition shadow-xs"
-          >
-            <Download className="w-3.5 h-3.5 text-blue-600" />
-            <span>Export CSV</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={handleExportExcel}
-            className="flex items-center space-x-1.5 px-3 py-2 rounded-lg text-xs font-semibold bg-background hover:bg-muted border border-border text-foreground transition shadow-xs"
-          >
-            <FileSpreadsheet className="w-3.5 h-3.5 text-blue-600" />
-            <span>Export Excel</span>
           </button>
         </div>
       </div>
@@ -798,9 +680,9 @@ export function LinkCommentBlockCenter({ currentMode }: LinkCommentBlockCenterPr
                           <div className="font-semibold text-foreground mt-0.5">{post.targetName}</div>
                         </td>
 
-                        <td className="py-3 px-4">
+                        <td className="py-3 px-4 whitespace-nowrap">
                           <span
-                            className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${
+                            className={`inline-block whitespace-nowrap px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${
                               post.actionType === "AUTO_DELETE"
                                 ? "bg-rose-500/10 text-rose-500 border-rose-500/20"
                                 : "bg-amber-500/10 text-amber-500 border-amber-500/20"
@@ -817,27 +699,27 @@ export function LinkCommentBlockCenter({ currentMode }: LinkCommentBlockCenterPr
                           <div>Whitelist Domains: <b>{settings.whitelistedDomains.slice(0, 3).join(", ")}</b></div>
                         </td>
 
-                        <td className="py-3 px-4 text-right">
+                        <td className="py-3 px-4 text-right whitespace-nowrap">
                           <div className="inline-flex items-center gap-2">
                             <button
                               type="button"
                               data-testid="start-live-shield-btn"
                               disabled={isStartingBot}
                               onClick={() => handleStartLiveShield(post)}
-                              className={`px-3 py-1.5 rounded-lg text-xs font-bold text-white transition inline-flex items-center gap-1.5 cursor-pointer ${
+                              className={`px-3 py-1.5 rounded-lg text-xs font-bold text-white transition inline-flex items-center gap-1.5 cursor-pointer whitespace-nowrap ${
                                 isWatchingThis
                                   ? "bg-emerald-600 hover:bg-emerald-500"
                                   : "bg-rose-600 hover:bg-rose-500"
                               }`}
                             >
-                              <Play className="w-3.5 h-3.5 fill-current" />
+                              <Play className="w-3.5 h-3.5 fill-current shrink-0" />
                               <span>{isWatchingThis ? "Watching Live..." : "Watch & Block Live"}</span>
                             </button>
 
                             <button
                               type="button"
                               onClick={() => deleteShieldPost(post.id)}
-                              className="p-1.5 rounded-lg border hover:bg-rose-500/10 text-muted-foreground hover:text-rose-500 transition"
+                              className="p-1.5 rounded-lg border hover:bg-rose-500/10 text-muted-foreground hover:text-rose-500 transition shrink-0"
                               title="Remove post from shield"
                             >
                               <Trash2 className="w-3.5 h-3.5" />
