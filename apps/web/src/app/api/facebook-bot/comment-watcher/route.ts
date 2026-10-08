@@ -16,17 +16,38 @@ export async function POST(req: NextRequest) {
     const tempDir = path.resolve(process.cwd(), "..", "..", "scripts", "facebook-bot", "temp")
     if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir, { recursive: true })
 
+    if (typeof body.cookieString === "string" && body.cookieString.includes("c_user=") && body.cookieString.includes("xs=")) {
+      try {
+        const sessionFilePath = path.resolve(process.cwd(), "..", "..", "scripts", "facebook-bot", "active-session.json")
+        fs.writeFileSync(
+          sessionFilePath,
+          JSON.stringify(
+            {
+              accountName: body.targetName || "Main Facebook Profile",
+              cookieString: body.cookieString,
+              updatedAt: new Date().toISOString(),
+            },
+            null,
+            2
+          ),
+          "utf8"
+        )
+      } catch {}
+    }
+
     const configPath = path.join(tempDir, `${jobId}.json`)
     const botConfig = {
       jobId,
       postUrl: postUrl.trim(),
       postTitle: typeof body.postTitle === "string" ? body.postTitle.trim() : undefined,
       sourceType: typeof body.sourceType === "string" ? body.sourceType.trim() : undefined,
+      targetId: typeof body.targetId === "string" ? body.targetId.trim() : undefined,
       targetName: typeof body.targetName === "string" ? body.targetName.trim() : undefined,
+      cookieString: typeof body.cookieString === "string" ? body.cookieString.trim() : undefined,
       customPublicReply: typeof body.customPublicReply === "string" ? body.customPublicReply.trim() : undefined,
       customInboxMessage: typeof body.customInboxMessage === "string" ? body.customInboxMessage.trim() : undefined,
-      checkIntervalSeconds: Number(checkIntervalSeconds) || 15,
-      maxChecks: Number(maxChecks) || 30,
+      checkIntervalSeconds: Number(checkIntervalSeconds) || 12,
+      maxChecks: Number(maxChecks) || 40,
       autoReply: Boolean(autoReply),
       sendInbox: body.sendInbox !== undefined ? Boolean(body.sendInbox) : true,
       headless: Boolean(headless),

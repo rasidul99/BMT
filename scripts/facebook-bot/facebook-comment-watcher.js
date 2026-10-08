@@ -244,7 +244,27 @@ async function runWatcher(configPath) {
 
   const page = await browser.newPage();
   await page.setViewport({ width: 1280, height: 950 });
-  await page.setCookie(...cookies);
+
+  // If acting as a Page with a numeric Page ID, set i_user cookie so Facebook acts as the Page directly
+  const explicitPageId =
+    config.targetId && /^\d+$/.test(String(config.targetId).trim())
+      ? String(config.targetId).trim()
+      : null;
+  if (explicitPageId && sourceType === "Page") {
+    const filteredCookies = cookies.filter((c) => c.name !== "i_user");
+    filteredCookies.push({
+      name: "i_user",
+      value: explicitPageId,
+      domain: ".facebook.com",
+      path: "/",
+      httpOnly: false,
+      secure: true,
+      sameSite: "Lax",
+    });
+    await page.setCookie(...filteredCookies);
+  } else {
+    await page.setCookie(...cookies);
+  }
 
   const processedComments = new Set();
   const allReplies = [];
@@ -252,55 +272,17 @@ async function runWatcher(configPath) {
   async function scrollDialog() {
     try {
       await page.mouse.move(640, 450);
-      await page.mouse.wheel({ deltaY: 800 });
-      await sleep(1500);
-      await page.mouse.wheel({ deltaY: 800 });
-      await sleep(1500);
+      await page.mouse.wheel({ deltaY: 700 });
+      await sleep(1200);
+      await page.mouse.wheel({ deltaY: 700 });
+      await sleep(1200);
     } catch (_) {
       await safeEvaluate(page, () => window.scrollBy({ top: 500, behavior: "smooth" }));
-      await sleep(1500);
+      await sleep(1200);
     }
   }
 
   try {
-    // Ensure acting as Page if Page ID is present in URL
-    const pageIdMatch = postUrl.match(/id=(\d+)/) || postUrl.match(/facebook\.com\/(\d+)/);
-    if (pageIdMatch && pageIdMatch[1]) {
-      const pageId = pageIdMatch[1];
-      console.log(`🏢 Checking profile switch for Page ID ${pageId}...`);
-      try {
-        await page.goto(`https://www.facebook.com/${pageId}`, { waitUntil: "networkidle2", timeout: 45000 });
-        await sleep(3000);
-        const switched = await safeEvaluate(page, () => {
-          const buttons = Array.from(document.querySelectorAll('div[role="button"]'));
-          const target = buttons.find(b => (b.innerText || '').trim() === 'Switch Now' || (b.innerText || '').trim() === 'Switch');
-          if (target) {
-            target.click();
-            return true;
-          }
-          return false;
-        });
-        if (switched) {
-          console.log("   🔄 Switch button clicked, confirming modal switch...");
-          await sleep(2500);
-          await safeEvaluate(page, () => {
-            const all = Array.from(document.querySelectorAll('div[aria-label="Switch"], div[role="button"]'));
-            for (const el of all) {
-              const txt = (el.innerText || el.getAttribute('aria-label') || '').trim();
-              if (txt === 'Switch' && el.closest('div[role="dialog"]')) {
-                el.click();
-                break;
-              }
-            }
-          });
-          await sleep(8000);
-          console.log("   ✅ Profile switched to Page.");
-        }
-      } catch (swErr) {
-        console.warn("   ⚠️ Profile switch notice:", swErr.message);
-      }
-    }
-
     console.log(`🌐 Navigating to Post URL: ${postUrl}...`);
 
     // Safe navigation with client-side redirect tolerance
@@ -312,22 +294,73 @@ async function runWatcher(configPath) {
 
     // Wait for any Facebook client-side redirection (e.g. share/p/ -> permalink.php) to settle
     console.log("⏳ Waiting for Facebook URL redirection to settle...");
-    await sleep(6000);
+    await sleep(5500);
 
-    const currentUrl = page.url();
+    let currentUrl = page.url();
     console.log(`📍 Current Facebook URL settled at: ${currentUrl}`);
 
-    // If redirected from share/p to permalink, ensure direct full post load
-    if (currentUrl.includes("permalink.php") && postUrl.includes("/share/")) {
-      console.log(`🔄 Reloading canonical permalink directly: ${currentUrl}`);
+    // If URL has id=<pageId> and we haven't set i_user yet for a Page post, set i_user and reload canonical URL
+    const settledPageIdMatch = currentUrl.match(/[?&]id=(\d+)/) || currentUrl.match(/facebook\.com\/(\d+)\//);
+    const detectedPageId = explicitPageId || (settledPageIdMatch ? settledPageIdMatch[1] : null);
+
+    if (detectedPageId && sourceType !== "Personal ID") {
+      console.log(`🏢 Ensuring Page profile context (i_user=${detectedPageId})...`);
       try {
-        await page.goto(currentUrl, { waitUntil: "networkidle2", timeout: 45000 });
-        await sleep(4000);
+        await page.setCookie({
+          name: "i_user",
+          value: detectedPageId,
+          domain: ".facebook.com",
+          path: "/",
+          httpOnly: false,
+          secure: true,
+          sameSite: "Lax",
+        });
+      } catch (_) {}
+    }
+
+    // Reload canonical permalink directly if redirected from share/p or if Page cookie was updated
+    if ((currentUrl.includes("permalink.php") && postUrl.includes("/share/")) || detectedPageId) {
+      console.log(`🔄 Loading post with active Page profile: ${currentUrl}`);
+      try {
+        await page.goto(currentUrl, { waitUntil: "domcontentloaded", timeout: 45000 });
+        await sleep(4500);
       } catch (_) {}
     }
 
     // Initial scroll to ensure comments are visible
     await scrollDialog();
+
+    // Try switching "Most relevant" comment filter to "All comments" so no comments are hidden
+    try {
+      const switchedFilter = await safeEvaluate(page, () => {
+        const spans = Array.from(document.querySelectorAll('div[role="button"] span, span[ dir="auto"]'));
+        const filterBtn = spans.find((s) => {
+          const t = (s.innerText || "").trim().toLowerCase();
+          return t === "most relevant" || t === "সবচেয়ে প্রাসঙ্গিক";
+        });
+        if (filterBtn) {
+          const clickable = filterBtn.closest('div[role="button"]') || filterBtn;
+          clickable.click();
+          return true;
+        }
+        return false;
+      });
+      if (switchedFilter) {
+        await sleep(1500);
+        await safeEvaluate(page, () => {
+          const items = Array.from(document.querySelectorAll('div[role="menuitem"], div[role="menuitemradio"], div[role="option"], span'));
+          const allItem = items.find((el) => {
+            const t = (el.innerText || "").trim().toLowerCase();
+            return t.startsWith("all comments") || t.startsWith("সব মন্তব্য") || t.startsWith("newest");
+          });
+          if (allItem) {
+            const clickable = allItem.closest('div[role="menuitem"], div[role="menuitemradio"], div[role="option"]') || allItem;
+            clickable.click();
+          }
+        });
+        await sleep(2500);
+      }
+    } catch (_) {}
 
     for (let check = 1; check <= maxChecks; check++) {
       console.log(`\n🔍 [Check ${check}/${maxChecks}] Scanning comment section...`);
@@ -336,17 +369,43 @@ async function runWatcher(configPath) {
       // Scan page for comments safely
       let detectedComments = [];
       try {
-        detectedComments = await safeEvaluate(page, () => {
-          const rawArticles = Array.from(document.querySelectorAll('div[role="article"], div[aria-label*="Comment by" i], div[aria-label*="মন্তব্য" i]'));
-          // Filter out nested child articles so each comment block is visited only once
-          const articles = rawArticles.filter(art => !rawArticles.some(other => other !== art && other.contains(art)));
+        detectedComments = await safeEvaluate(page, (configuredReplyText) => {
+          // 1. Prefer explicit top-level comment articles (avoiding outer post article & nested reply articles)
+          let commentArticles = Array.from(
+            document.querySelectorAll('div[role="article"][aria-label*="Comment by" i], div[role="article"][aria-label*="মন্তব্য" i]')
+          );
+
+          // 2. Fallback if Facebook uses different aria-labels
+          if (commentArticles.length === 0) {
+            const allArticles = Array.from(document.querySelectorAll('div[role="article"]'));
+            commentArticles = allArticles.filter((art) => {
+              const aria = (art.getAttribute("aria-label") || "").toLowerCase();
+              if (aria.startsWith("reply by") || aria.includes("এর উত্তর")) return false;
+              // Exclude outer post container that wraps comment articles
+              const hasChildComment = allArticles.some(
+                (other) => other !== art && art.contains(other) && (other.getAttribute("aria-label") || "").toLowerCase().includes("comment")
+              );
+              return !hasChildComment;
+            });
+          }
+
+          const botReplySignatures = [
+            (configuredReplyText || "").trim().slice(0, 25).toLowerCase(),
+            "ইনবক্সে পাঠানো হয়েছে",
+            "মেসেঞ্জার চেক করুন",
+            "ইনবক্স চেক করুন",
+            "বিস্তারিত তথ্য আপনার ইনবক্সে",
+          ].filter((s) => s && s.length >= 6);
+
           const list = [];
 
-          articles.forEach((art, idx) => {
+          commentArticles.forEach((art, idx) => {
+            const ariaLabel = art.getAttribute("aria-label") || "";
+            if (/^reply by/i.test(ariaLabel) || ariaLabel.includes("এর উত্তর")) return;
+
             const text = (art.innerText || "").trim();
             if (!text || text.length < 2) return;
 
-            // Check if this comment is from the Post Author (has 'Author' badge)
             const isAuthor = text.toLowerCase().includes("author") || text.includes("লেখক");
 
             // Check for buttons under this comment
@@ -361,13 +420,18 @@ async function runWatcher(configPath) {
               return bt === "send message" || bt === "বার্তা পাঠান" || bt.includes("send message") || bt.includes("বার্তা পাঠান");
             });
 
-            // STRICT FILTER: A real comment MUST have a Reply button!
-            // Sidebars like 'INFINITY BANGLADESH', 'People you may know', 'Reels' do NOT have a Reply button.
             if (!hasReplyBtn) return;
 
-            // Extract commenter name and comment text cleanly
-            const nameEl = art.querySelector('a[role="link"] span, h3 span, strong span, a span');
-            let author = nameEl ? (nameEl.innerText || nameEl.textContent || '').trim() : '';
+            // Extract commenter name cleanly
+            let author = "";
+            const ariaMatch = ariaLabel.match(/Comment by (.+?)(?: \d+| about | an? | just now| yesterday|$)/i);
+            if (ariaMatch && ariaMatch[1]) {
+              author = ariaMatch[1].trim();
+            }
+            if (!author) {
+              const nameEl = art.querySelector('a[role="link"] span, h3 span, strong span, a span');
+              author = nameEl ? (nameEl.innerText || nameEl.textContent || "").trim() : "";
+            }
 
             const lines = text.split("\n").map((l) => l.trim()).filter(Boolean);
             if (!author) {
@@ -378,17 +442,45 @@ async function runWatcher(configPath) {
             const bodyLines = lines.filter((l) => {
               const low = l.toLowerCase();
               if (l === author) return false;
-              if (low === "like" || low === "reply" || low === "send message" || low === "see translation" || low === "author" || low === "see response" || low.includes("see response") || low.includes("রেসপন্স দেখুন")) return false;
-              if (low.includes("·") || low.endsWith("m") || low.endsWith("h") || low.endsWith("d") || low.includes("ago")) return false;
-              if (low.includes("পছন্দ") || low.includes("উত্তর") || low.includes("বার্তা পাঠান")) return false;
+              if (
+                low === "like" ||
+                low === "reply" ||
+                low === "send message" ||
+                low === "see translation" ||
+                low === "author" ||
+                low === "follow" ||
+                low === "top fan" ||
+                low === "see response" ||
+                low.includes("see response") ||
+                low.includes("রেসপন্স দেখুন")
+              )
+                return false;
+              if (low.includes("·") || /^\d+\s*[mhdwy]$/i.test(low) || low.includes("ago") || low === "just now") return false;
+              if (low.includes("পছন্দ") || low.includes("উত্তর") || low.includes("বার্তা পাঠান") || low === "লেখক") return false;
               return true;
             });
             const body = bodyLines.join(" ").trim() || (lines[lines.length - 1] || text);
+            const lowerBody = body.toLowerCase();
+
+            // Check if this comment itself is a bot auto-reply
+            const isBotOwnReply = botReplySignatures.some((sig) => lowerBody.includes(sig));
+
+            // Check if a reply already exists in the DOM thread right below/inside this comment
+            const parentThread = art.parentElement ? art.parentElement.parentElement || art.parentElement : art;
+            const threadText = (parentThread ? parentThread.innerText || "" : "").toLowerCase();
+            const hasExistingBotReply =
+              !isBotOwnReply &&
+              (botReplySignatures.some((sig) => threadText.includes(sig)) ||
+                /\b\d+\s+repl(?:y|ies)\b/i.test(threadText) ||
+                threadText.includes("view 1 reply") ||
+                threadText.includes("১টি উত্তর দেখুন"));
 
             list.push({
               index: idx,
               author,
               isAuthor,
+              isBotOwnReply,
+              hasExistingBotReply,
               text: body,
               fullText: text,
               hasReplyBtn,
@@ -397,7 +489,7 @@ async function runWatcher(configPath) {
           });
 
           return list;
-        });
+        }, customPublicReply || "");
       } catch (scanErr) {
         console.warn(`Scan error (will retry next check): ${scanErr.message}`);
         await sleep(3000);
@@ -406,23 +498,27 @@ async function runWatcher(configPath) {
 
       console.log(`📊 Found ${detectedComments.length} comment blocks on post.`);
 
-      // If no comments detected on this check, re-scroll dialog to prompt lazy-loading
       if (detectedComments.length === 0) {
         console.log("   🔄 Re-scrolling dialog to wake up comment section...");
         await scrollDialog();
       }
 
       for (const item of detectedComments) {
-        const cleanSnippet = (item.text || '').replace(/see response/gi, '').replace(/see translation/gi, '').replace(/like/gi, '').replace(/reply/gi, '').trim();
+        const cleanSnippet = (item.text || "")
+          .replace(/see response/gi, "")
+          .replace(/see translation/gi, "")
+          .replace(/like/gi, "")
+          .replace(/reply/gi, "")
+          .trim();
         const commentKey = `${item.author}:::${cleanSnippet.slice(0, 40)}`;
 
         if (processedComments.has(commentKey)) {
           continue;
         }
 
-        // Skip comments made by the author itself (e.g. pinned 1st comments)
-        if (item.isAuthor) {
-          console.log(`ℹ️ Skipping Author comment: "${item.text.slice(0, 30)}..."`);
+        // Skip if this comment is the bot's own reply or already has a bot reply
+        if (item.isBotOwnReply || item.hasExistingBotReply) {
+          console.log(`ℹ️ Skipping already-replied / bot reply comment: "${item.text.slice(0, 35)}..."`);
           processedComments.add(commentKey);
           continue;
         }
@@ -448,12 +544,14 @@ async function runWatcher(configPath) {
           console.log(`   ✉️ Locating and clicking "Send message" button for ${item.author}...`);
           try {
             const clickedMsg = await safeEvaluate(page, (targetAuthor, targetText, fallbackIdx) => {
-              const rawArticles = Array.from(document.querySelectorAll('div[role="article"], div[aria-label*="Comment by" i]'));
-              const articles = rawArticles.filter(art => !rawArticles.some(other => other !== art && other.contains(art)));
-              const targetArt = articles.find(a => {
-                const t = (a.innerText || '');
-                return t.includes(targetText) && (!targetAuthor || t.includes(targetAuthor));
-              }) || articles[fallbackIdx];
+              const commentArticles = Array.from(
+                document.querySelectorAll('div[role="article"][aria-label*="Comment by" i], div[role="article"][aria-label*="মন্তব্য" i], div[role="article"]')
+              );
+              const targetArt =
+                commentArticles.find((a) => {
+                  const t = a.innerText || "";
+                  return t.includes(targetText) && (!targetAuthor || t.includes(targetAuthor));
+                }) || commentArticles[fallbackIdx];
 
               if (!targetArt) return false;
               const buttons = Array.from(targetArt.querySelectorAll('div[role="button"], span[role="button"], a[role="button"]'));
@@ -471,28 +569,28 @@ async function runWatcher(configPath) {
             if (clickedMsg) {
               await sleep(3000);
 
-              // Check for message popup modal
               const msgSent = await safeEvaluate(page, async (msgText) => {
                 const dialogs = Array.from(document.querySelectorAll('div[role="dialog"]'));
-                const msgDialog = dialogs.find(d => {
-                  const t = (d.innerText || '');
-                  return t.includes("Message ") || t.includes("Send a message as") || t.includes("Send Message");
-                }) || dialogs[dialogs.length - 1];
+                const msgDialog =
+                  dialogs.find((d) => {
+                    const t = d.innerText || "";
+                    return t.includes("Message ") || t.includes("Send a message as") || t.includes("Send Message");
+                  }) || dialogs[dialogs.length - 1];
 
                 if (!msgDialog) return { success: false, reason: "No message dialog found" };
 
-                // Find textbox in the message dialog
                 const tb = msgDialog.querySelector('div[role="textbox"]');
                 if (!tb) return { success: false, reason: "No textbox in message dialog" };
 
                 tb.focus();
-                document.execCommand('insertText', false, msgText);
+                document.execCommand("insertText", false, msgText);
 
-                await new Promise(r => setTimeout(r, 800));
+                await new Promise((r) => setTimeout(r, 800));
 
-                // Find and click "Send Message" button
                 const sendBtns = Array.from(msgDialog.querySelectorAll('div[role="button"], div[aria-label*="Send" i]'));
-                const sendBtn = sendBtns.find(b => (b.innerText || b.getAttribute('aria-label') || '').trim().toLowerCase() === 'send message');
+                const sendBtn = sendBtns.find(
+                  (b) => (b.innerText || b.getAttribute("aria-label") || "").trim().toLowerCase() === "send message"
+                );
                 if (sendBtn) {
                   sendBtn.click();
                   return { success: true, method: "send button clicked" };
@@ -502,22 +600,21 @@ async function runWatcher(configPath) {
 
               console.log("   Private message modal dispatch:", msgSent);
               if (msgSent.success) {
-                await sleep(3500);
+                await sleep(3000);
                 inboxSuccess = true;
                 console.log(`   ✅ [SUCCESS] Private message sent to ${item.author}'s Messenger!`);
               }
 
-              // Close message modal if still visible to unblock the comment thread
               try {
                 await safeEvaluate(page, () => {
                   const dialogs = Array.from(document.querySelectorAll('div[role="dialog"]'));
-                  const msgDialog = dialogs.find(d => (d.innerText || '').includes("Message "));
+                  const msgDialog = dialogs.find((d) => (d.innerText || "").includes("Message "));
                   if (msgDialog) {
                     const closeBtn = msgDialog.querySelector('div[aria-label="Close"], div[role="button"][aria-label*="Close" i]');
                     if (closeBtn) closeBtn.click();
                   }
                 });
-                await sleep(1500);
+                await sleep(1000);
               } catch (_) {}
             }
           } catch (mErr) {
@@ -530,14 +627,18 @@ async function runWatcher(configPath) {
           console.log(`   ⏳ Locating and clicking "Reply" button for ${item.author}...`);
           try {
             const clickedReply = await safeEvaluate(page, (targetAuthor, targetText, fallbackIdx) => {
-              const rawArticles = Array.from(document.querySelectorAll('div[role="article"], div[aria-label*="Comment by" i]'));
-              const articles = rawArticles.filter(art => !rawArticles.some(other => other !== art && other.contains(art)));
-              const targetArt = articles.find(a => {
-                const t = (a.innerText || '');
-                return t.includes(targetText) && (!targetAuthor || t.includes(targetAuthor));
-              }) || articles[fallbackIdx];
+              const commentArticles = Array.from(
+                document.querySelectorAll('div[role="article"][aria-label*="Comment by" i], div[role="article"][aria-label*="মন্তব্য" i]')
+              );
+              const targetArt =
+                commentArticles.find((a) => {
+                  const t = a.innerText || "";
+                  return t.includes(targetText) && (!targetAuthor || t.includes(targetAuthor));
+                }) || commentArticles[fallbackIdx];
 
               if (!targetArt) return false;
+
+              targetArt.scrollIntoView({ block: "center", behavior: "instant" });
 
               const buttons = Array.from(targetArt.querySelectorAll('div[role="button"], span[role="button"], a[role="button"]'));
               const replyBtn = buttons.find((b) => {
@@ -553,16 +654,23 @@ async function runWatcher(configPath) {
             }, item.author, item.text, item.index);
 
             if (clickedReply) {
-              await sleep(2500);
+              await sleep(2200);
 
-              // Strictly locate the nested reply textbox (NEVER use top-level post comment box)
-              let boxToUse = await page.$('div[role="textbox"][aria-label*="Reply to" i], div[role="textbox"][aria-label*="উত্তর দিন" i], div[role="textbox"][aria-label*="Write a reply" i], div[role="textbox"][aria-label*="উত্তর লিখুন" i]');
+              // Strictly locate the nested reply textbox (prefer focused element if it's a reply textbox, NEVER top-level comment box)
+              let boxToUse = await page.$(
+                'div[role="textbox"][aria-label*="Reply to" i], div[role="textbox"][aria-label*="উত্তর দিন" i], div[role="textbox"][aria-label*="Write a reply" i], div[role="textbox"][aria-label*="উত্তর লিখুন" i]'
+              );
 
               if (!boxToUse) {
                 const allBoxes = await page.$$('div[role="textbox"][contenteditable="true"]');
                 for (const b of allBoxes) {
-                  const aria = (await page.evaluate(el => el.getAttribute('aria-label') || '', b)).toLowerCase();
-                  if (aria.includes('comment as') || aria.includes('write a comment') || aria.includes('হিসাবে মন্তব্য') || aria.includes('মন্তব্য লিখুন')) {
+                  const aria = (await page.evaluate((el) => el.getAttribute("aria-label") || "", b)).toLowerCase();
+                  if (
+                    aria.includes("comment as") ||
+                    aria.includes("write a comment") ||
+                    aria.includes("হিসাবে মন্তব্য") ||
+                    aria.includes("মন্তব্য লিখুন")
+                  ) {
                     continue; // Skip top-level comment box
                   }
                   boxToUse = b;
@@ -572,17 +680,29 @@ async function runWatcher(configPath) {
 
               if (boxToUse) {
                 await boxToUse.click();
-                await sleep(500);
+                await sleep(400);
 
-                console.log(`   ⌨️ Typing AI nested public reply into comment box...`);
-                for (const char of ai.reply) {
-                  await page.keyboard.type(char, { delay: Math.floor(Math.random() * 35) + 15 });
+                console.log(`   ⌨️ Inserting AI nested public reply into comment box...`);
+                const insertedViaExec = await page.evaluate(
+                  (el, textToInsert) => {
+                    el.focus();
+                    const ok = document.execCommand("insertText", false, textToInsert);
+                    return ok && (el.innerText || "").trim().length > 0;
+                  },
+                  boxToUse,
+                  ai.reply
+                );
+
+                if (!insertedViaExec) {
+                  for (const char of ai.reply) {
+                    await page.keyboard.type(char, { delay: 20 });
+                  }
                 }
 
                 await sleep(800);
                 console.log(`   🚀 Submitting nested comment reply (pressing Enter)...`);
                 await page.keyboard.press("Enter");
-                await sleep(4000);
+                await sleep(3500);
 
                 console.log(`   ✅ [SUCCESS] AI Nested Reply successfully posted on Facebook!`);
                 publicSuccess = true;

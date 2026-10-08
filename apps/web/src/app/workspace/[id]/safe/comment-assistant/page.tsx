@@ -893,6 +893,16 @@ export default function SafeCommentAssistantPage() {
     setWatcherStatus("STARTING")
     setPostSavedToast(`Launching Live Facebook Watcher Bot for "${post.postTitle}" (${post.targetName})...`)
 
+    let resolvedCookie = ""
+    try {
+      const accWithCookie = fleetAccounts.find(
+        (a) => a.cookieString && a.cookieString.includes("c_user=") && a.cookieString.includes("xs=")
+      )
+      if (accWithCookie?.cookieString) {
+        resolvedCookie = accWithCookie.cookieString
+      }
+    } catch {}
+
     try {
       const res = await fetch("/api/facebook-bot/comment-watcher", {
         method: "POST",
@@ -901,13 +911,15 @@ export default function SafeCommentAssistantPage() {
           postUrl: post.postUrl,
           postTitle: post.postTitle,
           sourceType: post.sourceType,
+          targetId: post.targetId,
           targetName: post.targetName,
+          cookieString: resolvedCookie || undefined,
           customPublicReply: post.customPublicReply,
           customInboxMessage: post.customInboxMessage,
           autoReply: true,
           sendInbox: post.sendPrivateInbox,
           headless: !watcherHeaded,
-          checkIntervalSeconds: 15,
+          checkIntervalSeconds: 12,
           maxChecks: 40,
         }),
       })
@@ -927,6 +939,24 @@ export default function SafeCommentAssistantPage() {
       setTimeout(() => setPostSavedToast(null), 5000)
     }
   }
+
+  // Automatically start the Live Watcher Bot for the newest active real Facebook post on page load
+  const autoStartedWatcherRef = React.useRef<boolean>(false)
+  useEffect(() => {
+    if (autoStartedWatcherRef.current || watcherJobId || watcherLoading) return
+    const activeRealPost = monitoredPosts.find(
+      (p) =>
+        p.status === "Active" &&
+        !p.id.startsWith("mp-default-") &&
+        p.postUrl &&
+        p.postUrl.startsWith("http") &&
+        (p.postUrl.includes("/share/") || p.postUrl.includes("permalink.php") || p.postUrl.includes("posts/"))
+    )
+    if (activeRealPost) {
+      autoStartedWatcherRef.current = true
+      handleStartWatcherForPost(activeRealPost)
+    }
+  }, [monitoredPosts, watcherJobId, watcherLoading])
 
   const updateDraft = (commentId: string, field: "publicReply" | "inboxReply", value: string) => {
     setEditingReplies((prev) => {
@@ -2018,6 +2048,40 @@ export default function SafeCommentAssistantPage() {
                                       title="Send Nested Comment Reply + Private Messenger DM"
                                     >
                                       <Send className="w-3 h-3" /> Reply + DM
+                                    </button>
+                                  )}
+
+                                  {cm.postUrl && (
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        const matchedPost = findMonitoredPostForComment(cm.postId, cm.postUrl, cm.postTitle)
+                                        if (matchedPost) {
+                                          handleStartWatcherForPost(matchedPost)
+                                        } else {
+                                          handleStartWatcherForPost({
+                                            id: cm.id,
+                                            postId: cm.postId,
+                                            postUrl: cm.postUrl || "",
+                                            postTitle: cm.postTitle,
+                                            postThumbnail: cm.postThumbnail,
+                                            sourceType: cm.sourceType || "Page",
+                                            targetId: cm.accountId || "",
+                                            targetName: cm.accountName || cm.pageName,
+                                            accountName: cm.accountName || cm.pageName,
+                                            replyConfigMode: "custom",
+                                            customPublicReply: cm.publicReply || draft.publicReply,
+                                            customInboxMessage: cm.privateInboxMessage || draft.inboxReply,
+                                            sendPrivateInbox: true,
+                                            status: "Active",
+                                            createdAt: new Date().toISOString(),
+                                          })
+                                        }
+                                      }}
+                                      className="px-2 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-[10px] transition flex items-center gap-1 shadow-xs"
+                                      title="Launch Live Facebook Comment Watcher & Auto-Reply on this Post"
+                                    >
+                                      <Play className="w-3 h-3 fill-current" /> Watch Live
                                     </button>
                                   )}
 
