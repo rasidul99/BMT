@@ -1096,24 +1096,35 @@ export function useCommentAssistant() {
   useEffect(() => {
     if (!isLoaded || monitoredPosts.length === 0) return
 
-    const hasRealUserPosts = monitoredPosts.some((p) => !p.id.startsWith("mp-default-"))
-    if (hasRealUserPosts && monitoredPosts.some((p) => p.id.startsWith("mp-default-"))) {
-      saveMonitoredPosts((prev) => prev.filter((p) => !p.id.startsWith("mp-default-")))
+    const isDefaultSeed = (item: { id?: string; postUrl?: string }) => {
+      const id = item.id || ""
+      const url = (item.postUrl || "").toLowerCase()
+      return (
+        id.startsWith("mp-10") ||
+        id.startsWith("mp-default-") ||
+        id.startsWith("stream-mp-10") ||
+        id.startsWith("cm-10") ||
+        url.includes("892168940637389/posts/1020304050") ||
+        url.includes("groups/dhakabuyandsell/posts/88210391") ||
+        url.includes("rasidul/posts/99128374") ||
+        url.includes("groups/bdsmartgadget/posts/77129384") ||
+        url.includes("groups/pureorganicfoodbd") ||
+        url.includes("groups/mirpurwholesale")
+      )
+    }
+
+    const hasRealUserPosts = monitoredPosts.some((p) => !isDefaultSeed(p))
+    if (hasRealUserPosts && monitoredPosts.some((p) => isDefaultSeed(p))) {
+      saveMonitoredPosts((prev) => prev.filter((p) => !isDefaultSeed(p)))
       return
     }
 
     const activePosts = hasRealUserPosts
-      ? monitoredPosts.filter((p) => !p.id.startsWith("mp-default-"))
+      ? monitoredPosts.filter((p) => !isDefaultSeed(p))
       : monitoredPosts
 
     const needsDemoCleanup =
-      hasRealUserPosts &&
-      comments.some(
-        (c) =>
-          c.id.startsWith("cm-10") ||
-          (c.postUrl || "").includes("892168940637389/posts/1020304050") ||
-          (c.postUrl || "").includes("groups/pureorganicfoodbd")
-      )
+      hasRealUserPosts && comments.some((c) => isDefaultSeed(c))
 
     const missingPosts = activePosts.filter(
       (p) => !comments.some((c) => c.id === `stream-${p.id}` || doesCommentMatchMonitoredPost(c, p))
@@ -1132,12 +1143,7 @@ export function useCommentAssistant() {
     if (needsDemoCleanup || missingPosts.length > 0 || outOfSyncPosts.length > 0) {
       saveComments((prev) => {
         let next = hasRealUserPosts
-          ? prev.filter(
-              (c) =>
-                !c.id.startsWith("cm-10") &&
-                !(c.postUrl || "").includes("892168940637389/posts/1020304050") &&
-                !(c.postUrl || "").includes("groups/pureorganicfoodbd")
-            )
+          ? prev.filter((c) => !isDefaultSeed(c))
           : [...prev]
 
         next = next.map((c) => {

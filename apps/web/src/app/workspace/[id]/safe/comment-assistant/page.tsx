@@ -821,7 +821,7 @@ export default function SafeCommentAssistantPage() {
       }
       setShowAddPostModal(false)
       setEditingPostId(null)
-      setActiveTab("stream")
+      setActiveTab((prev) => (prev === "posts" ? "posts" : "incoming"))
       setTimeout(() => setPostSavedToast(null), 4000)
     } catch (err: any) {
       alert(err.message || "Could not save monitored post.")
@@ -947,9 +947,11 @@ export default function SafeCommentAssistantPage() {
     const activeRealPost = monitoredPosts.find(
       (p) =>
         p.status === "Active" &&
+        !p.id.startsWith("mp-10") &&
         !p.id.startsWith("mp-default-") &&
         p.postUrl &&
         p.postUrl.startsWith("http") &&
+        !p.postUrl.includes("892168940637389/posts/1020304050") &&
         (p.postUrl.includes("/share/") || p.postUrl.includes("permalink.php") || p.postUrl.includes("posts/"))
     )
     if (activeRealPost) {
