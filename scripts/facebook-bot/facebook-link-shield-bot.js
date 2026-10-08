@@ -1,6 +1,6 @@
 /**
- * BMT Live Facebook Link Comment Block Shield Bot
- * Monitors a real Facebook Post (Personal Profile, Page, or Group),
+ * BMT Live Facebook Link Comment Block Shield Bot (24/7 Active Daemon)
+ * Monitors a real Facebook Post (Personal Profile, Page, or Group) 24/7,
  * detects incoming comments from OTHER users containing links or blacklisted spam keywords,
  * and automatically DELETES or HIDES them directly on Facebook!
  * Strictly ignores the Post Owner / Author's own comments and Whitelisted domains.
@@ -163,7 +163,8 @@ async function runLinkShieldBot(configPath) {
     whitelistedDomains = ["bmt.link", "myshopbd.com"],
     blacklistedKeywords = ["crypto", "telegram", "t.me/", "wa.me/", "whatsapp", "free gift"],
     checkIntervalSeconds = 10,
-    maxChecks = 50,
+    // Default to 24/7 continuous operation (86,400 checks = 10 days of continuous 10s scans)
+    maxChecks = 86400,
     headless = false,
   } = config;
 
@@ -179,27 +180,49 @@ async function runLinkShieldBot(configPath) {
   const tempDir = path.resolve(__dirname, "temp");
   if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir, { recursive: true });
   const statusFile = path.join(tempDir, `${jobId}-status.json`);
+  const activeLockFile = path.join(tempDir, "shield-active-lock.json");
 
-  function updateStatus(state) {
+  // Write single-instance lock so any older duplicate shield bot gracefully exits
+  try {
     fs.writeFileSync(
-      statusFile,
-      JSON.stringify({ ...state, updatedAt: new Date().toISOString() }, null, 2),
+      activeLockFile,
+      JSON.stringify({ activeJobId: jobId, postUrl, startedAt: new Date().toISOString() }, null, 2),
       "utf8"
     );
+  } catch (_) {}
+
+  function isSupersededByNewerJob() {
+    try {
+      if (!fs.existsSync(activeLockFile)) return false;
+      const lock = JSON.parse(fs.readFileSync(activeLockFile, "utf8"));
+      return lock.activeJobId && lock.activeJobId !== jobId;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  function updateStatus(state) {
+    try {
+      fs.writeFileSync(
+        statusFile,
+        JSON.stringify({ ...state, jobId, updatedAt: new Date().toISOString() }, null, 2),
+        "utf8"
+      );
+    } catch (_) {}
   }
 
   console.log("==========================================================");
-  console.log("🛡️ BMT Live Facebook Link Comment Block Shield Bot");
+  console.log("🛡️ BMT 24/7 Live Facebook Link Comment Block Shield Bot");
   console.log(`🔗 Target Post: ${postUrl}`);
   console.log(`📌 Source: ${sourceType} — ${targetName}`);
   console.log(`⚡ Enforcement Action: ${actionType} | Sensitivity: ${sensitivity}`);
   console.log(`✅ Whitelisted Domains: ${whitelistedDomains.join(", ") || "None"}`);
   console.log(`🚫 Blacklisted Keywords: ${blacklistedKeywords.slice(0, 6).join(", ")}`);
-  console.log(`👁️ Headless: ${headless}`);
+  console.log(`🔄 Mode: 24/7 Continuous Active Protection`);
   console.log("==========================================================\n");
 
   const incidents = [];
-  const processedKeys = new Set();
+  const processedCleanKeys = new Set();
 
   updateStatus({
     status: "LAUNCHING_BROWSER",
@@ -249,15 +272,62 @@ async function runLinkShieldBot(configPath) {
 
   async function scrollDialog() {
     try {
-      await page.mouse.move(640, 450);
-      await page.mouse.wheel({ deltaY: 650 });
-      await sleep(1000);
-      await page.mouse.wheel({ deltaY: 650 });
-      await sleep(1000);
+      await page.mouse.move(640, 500);
+      await page.mouse.wheel({ deltaY: 600 });
+      await sleep(800);
+      await page.mouse.wheel({ deltaY: 600 });
+      await sleep(800);
     } catch (_) {
       await safeEvaluate(page, () => window.scrollBy({ top: 500, behavior: "smooth" }));
-      await sleep(1000);
+      await sleep(800);
     }
+  }
+
+  async function switchCommentFilterToAll() {
+    try {
+      const filterPos = await safeEvaluate(page, () => {
+        const spans = Array.from(document.querySelectorAll('div[role="button"] span, span[dir="auto"]'));
+        const filterBtn = spans.find((s) => {
+          const r = s.getBoundingClientRect();
+          if (r.width === 0 || r.height === 0) return false;
+          const t = (s.innerText || "").trim().toLowerCase();
+          return t === "most relevant" || t === "সবচেয়ে প্রাসঙ্গিক";
+        });
+        if (filterBtn) {
+          const clickable = filterBtn.closest('div[role="button"]') || filterBtn;
+          const r = clickable.getBoundingClientRect();
+          return { x: r.x + r.width / 2, y: r.y + r.height / 2 };
+        }
+        return null;
+      });
+
+      if (filterPos) {
+        await page.mouse.click(filterPos.x, filterPos.y);
+        await sleep(1200);
+        const allItemPos = await safeEvaluate(page, () => {
+          const items = Array.from(
+            document.querySelectorAll('div[role="menuitem"], div[role="menuitemradio"], div[role="option"], span')
+          );
+          const allItem = items.find((el) => {
+            const r = el.getBoundingClientRect();
+            if (r.width === 0 || r.height === 0) return false;
+            const t = (el.innerText || "").trim().toLowerCase();
+            return t.startsWith("all comments") || t.startsWith("সব মন্তব্য") || t.startsWith("newest");
+          });
+          if (allItem) {
+            const clickable =
+              allItem.closest('div[role="menuitem"], div[role="menuitemradio"], div[role="option"]') || allItem;
+            const r = clickable.getBoundingClientRect();
+            return { x: r.x + r.width / 2, y: r.y + r.height / 2 };
+          }
+          return null;
+        });
+        if (allItemPos) {
+          await page.mouse.click(allItemPos.x, allItemPos.y);
+          await sleep(1800);
+        }
+      }
+    } catch (_) {}
   }
 
   try {
@@ -269,11 +339,11 @@ async function runLinkShieldBot(configPath) {
     }
 
     await sleep(5000);
-    const currentUrl = page.url();
-    console.log(`📍 Settled Post URL: ${currentUrl}`);
+    let settledUrl = page.url();
+    console.log(`📍 Settled Post URL: ${settledUrl}`);
 
     const settledPageIdMatch =
-      currentUrl.match(/[?&]id=(\d+)/) || currentUrl.match(/facebook\.com\/(\d+)\//);
+      settledUrl.match(/[?&]id=(\d+)/) || settledUrl.match(/facebook\.com\/(\d+)\//);
     const detectedPageId = explicitPageId || (settledPageIdMatch ? settledPageIdMatch[1] : null);
 
     if (detectedPageId && sourceType !== "Personal ID") {
@@ -291,10 +361,11 @@ async function runLinkShieldBot(configPath) {
       } catch (_) {}
     }
 
-    if ((currentUrl.includes("permalink.php") && postUrl.includes("/share/")) || detectedPageId) {
+    if ((settledUrl.includes("permalink.php") && postUrl.includes("/share/")) || detectedPageId) {
       try {
-        await page.goto(currentUrl, { waitUntil: "domcontentloaded", timeout: 45000 });
+        await page.goto(settledUrl, { waitUntil: "domcontentloaded", timeout: 45000 });
         await sleep(4000);
+        settledUrl = page.url();
       } catch (_) {}
     }
 
@@ -302,12 +373,8 @@ async function runLinkShieldBot(configPath) {
     const authState = await safeEvaluate(page, () => {
       const hasPass = Boolean(document.querySelector('input[type="password"], input[name="pass"]'));
       const bodyText = document.body ? document.body.innerText : "";
-      const hasContinueBtn = Array.from(document.querySelectorAll('div[role="button"], button, span')).some(
-        (el) => (el.innerText || "").trim() === "Continue"
-      );
       return {
         hasPass,
-        hasContinueBtn,
         isLoggedOut:
           hasPass ||
           (bodyText.includes("Create new account") && bodyText.includes("Forgotten password?")),
@@ -333,44 +400,28 @@ async function runLinkShieldBot(configPath) {
     }
 
     await scrollDialog();
-
-    // Switch "Most relevant" comment filter to "All comments"
-    try {
-      const switchedFilter = await safeEvaluate(page, () => {
-        const spans = Array.from(document.querySelectorAll('div[role="button"] span, span[dir="auto"]'));
-        const filterBtn = spans.find((s) => {
-          const t = (s.innerText || "").trim().toLowerCase();
-          return t === "most relevant" || t === "সবচেয়ে প্রাসঙ্গিক";
-        });
-        if (filterBtn) {
-          const clickable = filterBtn.closest('div[role="button"]') || filterBtn;
-          clickable.click();
-          return true;
-        }
-        return false;
-      });
-      if (switchedFilter) {
-        await sleep(1500);
-        await safeEvaluate(page, () => {
-          const items = Array.from(
-            document.querySelectorAll('div[role="menuitem"], div[role="menuitemradio"], div[role="option"], span')
-          );
-          const allItem = items.find((el) => {
-            const t = (el.innerText || "").trim().toLowerCase();
-            return t.startsWith("all comments") || t.startsWith("সব মন্তব্য") || t.startsWith("newest");
-          });
-          if (allItem) {
-            const clickable =
-              allItem.closest('div[role="menuitem"], div[role="menuitemradio"], div[role="option"]') || allItem;
-            clickable.click();
-          }
-        });
-        await sleep(2000);
-      }
-    } catch (_) {}
+    await switchCommentFilterToAll();
 
     for (let check = 1; check <= maxChecks; check++) {
-      console.log(`\n🔍 [Shield Scan ${check}/${maxChecks}] Checking post comments for links & spam...`);
+      if (isSupersededByNewerJob()) {
+        console.log("🛑 Newer Link Shield Bot instance detected. Closing this instance cleanly.");
+        break;
+      }
+
+      // Periodically refresh post every 15 scans (~2.5 minutes) so new comments always appear in DOM
+      if (check > 1 && check % 15 === 0) {
+        console.log("🔄 Refreshing post view to fetch any newly arrived comments...");
+        try {
+          await page.goto(settledUrl, { waitUntil: "domcontentloaded", timeout: 45000 });
+          await sleep(4000);
+          await scrollDialog();
+          await switchCommentFilterToAll();
+        } catch (_) {}
+      } else if (check > 1 && check % 5 === 0) {
+        await switchCommentFilterToAll();
+      }
+
+      console.log(`\n🔍 [24/7 Shield Scan #${check}] Checking post comments for links & spam...`);
       updateStatus({
         status: "WATCHING",
         checkCount: check,
@@ -400,25 +451,19 @@ async function runLinkShieldBot(configPath) {
               .trim()
               .toLowerCase();
 
-            // Prefer top-level & nested comments by other users
-            let commentArticles = Array.from(
+            // Only select VISIBLE comment/reply articles (width > 0 & height > 0)
+            const rawCommentArticles = Array.from(
               document.querySelectorAll(
                 'div[role="article"][aria-label*="Comment by" i], div[role="article"][aria-label*="Reply by" i], div[role="article"][aria-label*="মন্তব্য" i]'
               )
-            );
+            ).filter((art) => {
+              const r = art.getBoundingClientRect();
+              return r.width > 0 && r.height > 0;
+            });
 
-            if (commentArticles.length === 0) {
-              const allArticles = Array.from(document.querySelectorAll('div[role="article"]'));
-              commentArticles = allArticles.filter((art) => {
-                const hasChildComment = allArticles.some(
-                  (other) =>
-                    other !== art &&
-                    art.contains(other) &&
-                    (other.getAttribute("aria-label") || "").toLowerCase().includes("comment")
-                );
-                return !hasChildComment;
-              });
-            }
+            // Prefer articles inside an open dialog if present
+            const dialogArticles = rawCommentArticles.filter((art) => Boolean(art.closest('div[role="dialog"]')));
+            const commentArticles = dialogArticles.length > 0 ? dialogArticles : rawCommentArticles;
 
             const seenSignatures = new Set();
             const list = [];
@@ -427,6 +472,9 @@ async function runLinkShieldBot(configPath) {
               const ariaLabel = art.getAttribute("aria-label") || "";
               const text = (art.innerText || "").trim();
               if (!text || text.length < 2) return;
+
+              // Check if comment is already hidden (shows "Unhide" button)
+              const isAlreadyHidden = /\bunhide\b/i.test(text) || text.includes("আনহাইড");
 
               let author = "";
               const ariaMatch = ariaLabel.match(
@@ -459,6 +507,8 @@ async function runLinkShieldBot(configPath) {
                   low === "like" ||
                   low === "reply" ||
                   low === "send message" ||
+                  low === "hide" ||
+                  low === "unhide" ||
                   low === "see translation" ||
                   low === "author" ||
                   low === "follow" ||
@@ -467,7 +517,7 @@ async function runLinkShieldBot(configPath) {
                   low.includes("রেসপন্স দেখুন")
                 )
                   return false;
-                if (low.includes("·") || /^\d+\s*[mhdwy]$/i.test(low) || low.includes("ago") || low === "just now")
+                if (low === "·" || /^\d+\s*[mhdwy]$/i.test(low) || low.includes("ago") || low === "just now")
                   return false;
                 if (low.includes("পছন্দ") || low.includes("উত্তর") || low.includes("বার্তা পাঠান") || low === "লেখক")
                   return false;
@@ -475,10 +525,9 @@ async function runLinkShieldBot(configPath) {
               });
 
               let body = bodyLines.join(" ").trim() || lines[lines.length - 1] || text;
-              // Clean trailing concatenated action labels
               body = body.replace(/(?:Like|Reply|Send message|See translation|See response)+$/gi, "").trim();
 
-              const dedupKey = `${lowerAuthor}:::${body.slice(0, 50).toLowerCase()}`;
+              const dedupKey = `${lowerAuthor}:::${body.slice(0, 60).toLowerCase()}`;
               if (seenSignatures.has(dedupKey)) return;
               seenSignatures.add(dedupKey);
 
@@ -487,6 +536,7 @@ async function runLinkShieldBot(configPath) {
                 ariaLabel,
                 author,
                 isAuthor,
+                isAlreadyHidden,
                 text: body,
               });
             });
@@ -501,16 +551,23 @@ async function runLinkShieldBot(configPath) {
         continue;
       }
 
-      console.log(`📊 Found ${detectedComments.length} unique comments on post.`);
+      console.log(`📊 Found ${detectedComments.length} visible comments on post.`);
 
       for (const item of detectedComments) {
-        const commentKey = `${item.author}:::${item.text.slice(0, 50)}`;
-        if (processedKeys.has(commentKey)) continue;
+        const cleanKey = `${item.author}:::${item.text.slice(0, 60)}`;
 
         // 1. Strictly skip Post Owner / Author's own comments!
         if (item.isAuthor) {
-          console.log(`ℹ️ Skipping Post Owner/Author comment (${item.author}): "${item.text.slice(0, 40)}..."`);
-          processedKeys.add(commentKey);
+          if (!processedCleanKeys.has(cleanKey)) {
+            console.log(`ℹ️ Skipping Post Owner/Author comment (${item.author}): "${item.text.slice(0, 40)}..."`);
+            processedCleanKeys.add(cleanKey);
+          }
+          continue;
+        }
+
+        // Skip if already hidden when mode is HIDE_COMMENT
+        if (item.isAlreadyHidden && actionType === "HIDE_COMMENT") {
+          processedCleanKeys.add(cleanKey);
           continue;
         }
 
@@ -522,36 +579,37 @@ async function runLinkShieldBot(configPath) {
         });
 
         if (!analysis.shouldBlock && !analysis.isWhitelisted) {
-          // Normal clean customer comment without links — leave untouched
-          processedKeys.add(commentKey);
+          processedCleanKeys.add(cleanKey);
           continue;
         }
 
         if (analysis.isWhitelisted) {
-          console.log(`✅ [WHITELIST PASS] Allowed safe link from ${item.author}: ${analysis.detectedLinks.join(", ")}`);
-          processedKeys.add(commentKey);
-          incidents.unshift({
-            id: `inc-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
-            commentId: `fb_live_${Date.now()}`,
-            postId: postUrl,
-            postTitle,
-            senderName: item.author,
-            pageOrAccountName: targetName,
-            commentText: item.text,
-            detectedLinks: analysis.detectedLinks,
-            detectedAt: new Date().toLocaleTimeString(),
-            actionTaken: "ALLOWED_WHITELIST",
-            graphApiStatus: "SUCCESS_200",
-            latencyMs: 120,
-          });
-          updateStatus({
-            status: "WATCHING",
-            checkCount: check,
-            postUrl,
-            postTitle,
-            targetName,
-            incidents,
-          });
+          if (!processedCleanKeys.has(cleanKey)) {
+            console.log(`✅ [WHITELIST PASS] Allowed safe link from ${item.author}: ${analysis.detectedLinks.join(", ")}`);
+            processedCleanKeys.add(cleanKey);
+            incidents.unshift({
+              id: `inc-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+              commentId: `fb_live_${Date.now()}`,
+              postId: postUrl,
+              postTitle,
+              senderName: item.author,
+              pageOrAccountName: targetName,
+              commentText: item.text,
+              detectedLinks: analysis.detectedLinks,
+              detectedAt: new Date().toLocaleTimeString(),
+              actionTaken: "ALLOWED_WHITELIST",
+              graphApiStatus: "SUCCESS_200",
+              latencyMs: 120,
+            });
+            updateStatus({
+              status: "WATCHING",
+              checkCount: check,
+              postUrl,
+              postTitle,
+              targetName,
+              incidents,
+            });
+          }
           continue;
         }
 
@@ -567,20 +625,26 @@ async function runLinkShieldBot(configPath) {
         let finalActionTaken = actionType === "HIDE_COMMENT" ? "HIDDEN" : "AUTO_DELETED";
 
         try {
-          // Step A: Scroll comment into view and get its coordinates so we can hover with mouse
+          // Step A: Find the VISIBLE comment article and scroll it into view
           const commentCoords = await safeEvaluate(
             page,
             (targetAuthor, targetText) => {
               const articles = Array.from(
                 document.querySelectorAll(
-                  'div[role="article"][aria-label*="Comment by" i], div[role="article"][aria-label*="Reply by" i], div[role="article"]'
+                  'div[role="article"][aria-label*="Comment by" i], div[role="article"][aria-label*="Reply by" i], div[role="article"][aria-label*="মন্তব্য" i]'
                 )
-              );
+              ).filter((a) => {
+                const r = a.getBoundingClientRect();
+                return r.width > 0 && r.height > 0;
+              });
+
+              const snippet = targetText.slice(0, 25).toLowerCase();
               const art = articles.find((a) => {
-                const t = a.innerText || "";
-                return t.includes(targetText.slice(0, 25)) && (!targetAuthor || t.includes(targetAuthor));
+                const t = (a.innerText || "").toLowerCase();
+                return t.includes(snippet) && (!targetAuthor || t.includes(targetAuthor.toLowerCase()));
               });
               if (!art) return null;
+
               art.scrollIntoView({ block: "center", behavior: "instant" });
               const r = art.getBoundingClientRect();
               return { x: r.x + r.width / 2, y: r.y + Math.min(30, r.height / 2) };
@@ -591,64 +655,77 @@ async function runLinkShieldBot(configPath) {
 
           if (commentCoords) {
             await page.mouse.move(commentCoords.x, commentCoords.y);
-            await sleep(900);
+            await sleep(800);
           }
 
-          // Step B: Click the 3-dots (...) menu button next to this comment
-          const menuOpened = await safeEvaluate(
+          // Step B: Locate the 3-dots (...) menu button inside this visible comment article and click it with mouse
+          const menuBtnCoords = await safeEvaluate(
             page,
             (targetAuthor, targetText) => {
               const articles = Array.from(
                 document.querySelectorAll(
-                  'div[role="article"][aria-label*="Comment by" i], div[role="article"][aria-label*="Reply by" i], div[role="article"]'
+                  'div[role="article"][aria-label*="Comment by" i], div[role="article"][aria-label*="Reply by" i], div[role="article"][aria-label*="মন্তব্য" i]'
                 )
-              );
-              const art = articles.find((a) => {
-                const t = a.innerText || "";
-                return t.includes(targetText.slice(0, 25)) && (!targetAuthor || t.includes(targetAuthor));
+              ).filter((a) => {
+                const r = a.getBoundingClientRect();
+                return r.width > 0 && r.height > 0;
               });
-              if (!art) return false;
 
-              const scopes = [art, art.parentElement, art.parentElement && art.parentElement.parentElement].filter(
-                Boolean
+              const snippet = targetText.slice(0, 25).toLowerCase();
+              const art = articles.find((a) => {
+                const t = (a.innerText || "").toLowerCase();
+                return t.includes(snippet) && (!targetAuthor || t.includes(targetAuthor.toLowerCase()));
+              });
+              if (!art) return null;
+
+              const menuBtn = art.querySelector(
+                'div[aria-haspopup="menu"], div[role="button"][aria-label*="Delete, hide or report" i], div[role="button"][aria-label*="Actions for this comment" i], div[role="button"][aria-label*="Hide or report" i], div[role="button"][aria-label*="Comment options" i]'
               );
-
-              for (const scope of scopes) {
-                const candidates = Array.from(
-                  scope.querySelectorAll(
-                    'div[aria-haspopup="menu"], div[role="button"][aria-label*="Actions for this comment" i], div[role="button"][aria-label*="Hide or report" i], div[role="button"][aria-label*="Comment options" i], div[role="button"][aria-label*="More" i], div[role="button"][aria-label*="আরও" i], div[role="button"][aria-label*="মন্তব্য" i]'
-                  )
-                );
-                if (candidates.length > 0) {
-                  candidates[0].click();
-                  return true;
-                }
+              if (!menuBtn) return null;
+              const br = menuBtn.getBoundingClientRect();
+              if (br.width === 0 || br.height === 0) {
+                menuBtn.click();
+                return { clickedViaDom: true };
               }
-              return false;
+              return { x: br.x + br.width / 2, y: br.y + br.height / 2 };
             },
             item.author,
             item.text
           );
 
+          let menuOpened = false;
+          if (menuBtnCoords) {
+            if (menuBtnCoords.x && menuBtnCoords.y) {
+              await page.mouse.click(menuBtnCoords.x, menuBtnCoords.y);
+            }
+            menuOpened = true;
+          }
+
           if (menuOpened) {
             await sleep(1400);
 
-            // Step C: Click "Delete" or "Hide comment" inside the opened menu
-            const menuClickResult = await safeEvaluate(
+            // Step C: Find "Delete" or "Hide comment" inside div[role="menu"] and get its coordinates
+            const menuTarget = await safeEvaluate(
               page,
               (desiredAction) => {
-                const menuItems = Array.from(
-                  document.querySelectorAll('div[role="menuitem"], div[role="menu"] span, div[role="menu"] div')
-                );
+                const menu = document.querySelector('div[role="menu"]');
+                if (!menu) return null;
+
+                const candidates = Array.from(
+                  menu.querySelectorAll('div[role="button"], div[role="menuitem"], span')
+                ).filter((el) => {
+                  const r = el.getBoundingClientRect();
+                  return r.width > 0 && r.height > 0;
+                });
 
                 const findDelete = () =>
-                  menuItems.find((el) => {
+                  candidates.find((el) => {
                     const t = (el.innerText || "").trim().toLowerCase();
                     return t === "delete" || t === "delete..." || t === "delete comment" || t === "মুছে ফেলুন";
                   });
 
                 const findHide = () =>
-                  menuItems.find((el) => {
+                  candidates.find((el) => {
                     const t = (el.innerText || "").trim().toLowerCase();
                     return (
                       t === "hide comment" ||
@@ -658,62 +735,86 @@ async function runLinkShieldBot(configPath) {
                     );
                   });
 
+                let chosen = null;
+                let type = "AUTO_DELETED";
+
                 if (desiredAction === "AUTO_DELETE") {
-                  const delBtn = findDelete();
-                  if (delBtn) {
-                    const clickable = delBtn.closest('div[role="menuitem"]') || delBtn;
-                    clickable.click();
-                    return { clicked: true, type: "AUTO_DELETED" };
-                  }
-                  const hideBtn = findHide();
-                  if (hideBtn) {
-                    const clickable = hideBtn.closest('div[role="menuitem"]') || hideBtn;
-                    clickable.click();
-                    return { clicked: true, type: "HIDDEN" };
+                  chosen = findDelete();
+                  type = "AUTO_DELETED";
+                  if (!chosen) {
+                    chosen = findHide();
+                    type = "HIDDEN";
                   }
                 } else {
-                  const hideBtn = findHide();
-                  if (hideBtn) {
-                    const clickable = hideBtn.closest('div[role="menuitem"]') || hideBtn;
-                    clickable.click();
-                    return { clicked: true, type: "HIDDEN" };
-                  }
-                  const delBtn = findDelete();
-                  if (delBtn) {
-                    const clickable = delBtn.closest('div[role="menuitem"]') || delBtn;
-                    clickable.click();
-                    return { clicked: true, type: "AUTO_DELETED" };
+                  chosen = findHide();
+                  type = "HIDDEN";
+                  if (!chosen) {
+                    chosen = findDelete();
+                    type = "AUTO_DELETED";
                   }
                 }
 
-                return { clicked: false };
+                if (!chosen) return null;
+                const clickable =
+                  chosen.closest('div[role="button"], div[role="menuitem"]') || chosen;
+                const r = clickable.getBoundingClientRect();
+                return {
+                  type,
+                  x: r.x + r.width / 2,
+                  y: r.y + r.height / 2,
+                };
               },
               actionType
             );
 
-            if (menuClickResult && menuClickResult.clicked) {
-              finalActionTaken = menuClickResult.type;
-              await sleep(1500);
+            if (menuTarget && menuTarget.x && menuTarget.y) {
+              finalActionTaken = menuTarget.type;
+              await page.mouse.click(menuTarget.x, menuTarget.y);
+              await sleep(1600);
 
-              // Step D: If "Delete" opened a confirmation modal ("Delete Comment?"), confirm it!
+              // Step D: If "Delete" opened a confirmation modal ("Delete comment?"), click its "Delete" button!
               if (finalActionTaken === "AUTO_DELETED") {
-                await safeEvaluate(page, () => {
-                  const dialogs = Array.from(document.querySelectorAll('div[role="dialog"]'));
-                  for (const d of dialogs) {
-                    const btns = Array.from(d.querySelectorAll('div[role="button"], button, span'));
-                    const confirmBtn = btns.find((b) => {
-                      const t = (b.innerText || b.getAttribute("aria-label") || "").trim().toLowerCase();
-                      return t === "delete" || t === "মুছে ফেলুন" || t === "confirm";
-                    });
-                    if (confirmBtn) {
-                      const clickable = confirmBtn.closest('div[role="button"], button') || confirmBtn;
-                      clickable.click();
-                      return true;
+                const confirmCoords = await safeEvaluate(page, () => {
+                  const dialogs = Array.from(
+                    document.querySelectorAll('div[role="dialog"], div[role="alertdialog"]')
+                  );
+                  // Look specifically for the "Delete comment?" confirmation dialog first
+                  const delDialog =
+                    dialogs.find((d) => {
+                      const label = (d.getAttribute("aria-label") || "").toLowerCase();
+                      const txt = (d.innerText || "").toLowerCase();
+                      return (
+                        label.includes("delete") ||
+                        label.includes("মুছে") ||
+                        txt.includes("delete comment?") ||
+                        txt.includes("are you sure you want to delete")
+                      );
+                    }) || dialogs[dialogs.length - 1];
+
+                  if (!delDialog) return null;
+
+                  const btns = Array.from(delDialog.querySelectorAll('div[role="button"], button')).filter(
+                    (b) => {
+                      const r = b.getBoundingClientRect();
+                      return r.width > 0 && r.height > 0;
                     }
-                  }
-                  return false;
+                  );
+
+                  const confirmBtn = btns.find((b) => {
+                    const t = (b.innerText || b.getAttribute("aria-label") || "").trim().toLowerCase();
+                    return t === "delete" || t === "মুছে ফেলুন" || t === "confirm";
+                  });
+
+                  if (!confirmBtn) return null;
+                  confirmBtn.click();
+                  const r = confirmBtn.getBoundingClientRect();
+                  return { x: r.x + r.width / 2, y: r.y + r.height / 2 };
                 });
-                await sleep(2000);
+
+                if (confirmCoords && confirmCoords.x && confirmCoords.y) {
+                  await page.mouse.click(confirmCoords.x, confirmCoords.y);
+                }
+                await sleep(2500);
               }
 
               actionSucceeded = true;
@@ -721,7 +822,11 @@ async function runLinkShieldBot(configPath) {
                 `   ✅ [SUCCESS] Comment from ${item.author} was ${finalActionTaken} on live Facebook!`
               );
             } else {
-              console.warn(`   ⚠️ Menu opened, but Delete/Hide option was not available for this account role.`);
+              console.warn(`   ⚠️ Menu opened, but Delete/Hide option was not found.`);
+              // Close any open menu by pressing Escape
+              try {
+                await page.keyboard.press("Escape");
+              } catch (_) {}
             }
           } else {
             console.warn(`   ⚠️ Could not locate 3-dots comment menu button for ${item.author}.`);
@@ -730,36 +835,36 @@ async function runLinkShieldBot(configPath) {
           console.warn(`   ⚠️ Error while executing ${actionType}: ${actErr.message}`);
         }
 
-        processedKeys.add(commentKey);
-        const latencyMs = Math.max(250, Date.now() - startTime);
+        if (actionSucceeded) {
+          const latencyMs = Math.max(250, Date.now() - startTime);
+          incidents.unshift({
+            id: `inc-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+            commentId: `fb_live_${Date.now()}`,
+            postId: postUrl,
+            postTitle,
+            senderName: item.author,
+            pageOrAccountName: targetName,
+            commentText: item.text,
+            detectedLinks: analysis.detectedLinks,
+            detectedAt: new Date().toLocaleTimeString(),
+            actionTaken: finalActionTaken,
+            graphApiStatus: "SUCCESS_200",
+            latencyMs,
+          });
 
-        incidents.unshift({
-          id: `inc-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
-          commentId: `fb_live_${Date.now()}`,
-          postId: postUrl,
-          postTitle,
-          senderName: item.author,
-          pageOrAccountName: targetName,
-          commentText: item.text,
-          detectedLinks: analysis.detectedLinks,
-          detectedAt: new Date().toLocaleTimeString(),
-          actionTaken: finalActionTaken,
-          graphApiStatus: actionSucceeded ? "SUCCESS_200" : "SIMULATED_200",
-          latencyMs,
-        });
-
-        updateStatus({
-          status: "WATCHING",
-          checkCount: check,
-          postUrl,
-          postTitle,
-          targetName,
-          incidents,
-        });
+          updateStatus({
+            status: "WATCHING",
+            checkCount: check,
+            postUrl,
+            postTitle,
+            targetName,
+            incidents,
+          });
+        }
       }
 
       if (check < maxChecks) {
-        console.log(`⏳ Waiting ${checkIntervalSeconds}s before next scan...`);
+        console.log(`⏳ [24/7 Active] Waiting ${checkIntervalSeconds}s before next scan...`);
         await sleep(checkIntervalSeconds * 1000);
       }
     }

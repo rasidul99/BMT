@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useMemo, useEffect } from "react"
+import React, { useState, useMemo, useEffect, useRef } from "react"
 import {
   ShieldAlert,
   ShieldCheck,
@@ -196,35 +196,20 @@ export function LinkCommentBlockCenter({ currentMode }: LinkCommentBlockCenterPr
     }
   }, [postUrlInput, showAddPostModal])
 
-  // Poll active live Facebook Link Shield Bot job
-  useEffect(() => {
-    if (!activeJobId) return
-    const interval = setInterval(async () => {
-      try {
-        const res = await fetch(`/api/facebook-bot/link-shield?jobId=${encodeURIComponent(activeJobId)}`)
-        const data = await res.json()
-        if (data?.success) {
-          setWatcherStatus(data.status || "WATCHING")
-          setWatcherCheckCount(data.checkCount || 0)
-          if (data.error) setWatcherError(data.error)
-          if (data.logs) setWatcherLogs(data.logs)
-          if (Array.isArray(data.incidents) && data.incidents.length > 0) {
-            prependLiveIncidents(data.incidents)
-          }
-        }
-      } catch {}
-    }, 3000)
-
-    return () => clearInterval(interval)
-  }, [activeJobId, prependLiveIncidents])
+  const autoStartedRef = useRef<boolean>(false)
 
   // Launch Live Facebook Link Shield Bot for a specific post
-  const handleStartLiveShield = async (post: ShieldMonitoredPost) => {
+  const handleStartLiveShield = async (
+    post: ShieldMonitoredPost,
+    options?: { reuseIfActive?: boolean; silent?: boolean }
+  ) => {
     setIsStartingBot(true)
     setWatcherError(null)
     setActiveJobPostTitle(post.postTitle)
     setWatcherStatus("STARTING")
-    showToast(`Launching Live Facebook Link Shield Bot on "${post.postTitle}" (${post.targetName})...`)
+    if (!options?.silent) {
+      showToast(`Launching 24/7 Live Facebook Link Shield on "${post.postTitle}" (${post.targetName})...`)
+    }
 
     let resolvedCookie = ""
     try {
@@ -252,8 +237,9 @@ export function LinkCommentBlockCenter({ currentMode }: LinkCommentBlockCenterPr
           whitelistedDomains: settings.whitelistedDomains,
           blacklistedKeywords: settings.blacklistedKeywords,
           checkIntervalSeconds: 10,
-          maxChecks: 50,
+          maxChecks: 86400,
           headless: false,
+          reuseIfActive: Boolean(options?.reuseIfActive),
         }),
       })
       const data = await res.json()
@@ -261,7 +247,9 @@ export function LinkCommentBlockCenter({ currentMode }: LinkCommentBlockCenterPr
         setActiveJobId(data.jobId)
         setWatcherStatus("WATCHING")
         updateShieldPost(post.id, { watcherJobId: data.jobId, watcherStatus: "WATCHING" })
-        showToast(`Live Facebook Link Shield active on "${post.postTitle}"!`)
+        if (!options?.silent) {
+          showToast(`24/7 Live Facebook Link Shield active on "${post.postTitle}"!`)
+        }
       } else {
         setWatcherStatus("ERROR")
         setWatcherError(data?.error || "Failed to start Live Link Shield Bot")
@@ -273,6 +261,51 @@ export function LinkCommentBlockCenter({ currentMode }: LinkCommentBlockCenterPr
       setIsStartingBot(false)
     }
   }
+
+  // Auto-connect or Auto-launch 24/7 Shield Bot when Shield is 24/7 ACTIVE and posts exist
+  useEffect(() => {
+    if (!settings.isShieldActive || shieldPosts.length === 0) return
+    if (activeJobId || isStartingBot || autoStartedRef.current) return
+
+    autoStartedRef.current = true
+    const primaryPost = shieldPosts[0]
+    if (primaryPost) {
+      handleStartLiveShield(primaryPost, { reuseIfActive: true, silent: true })
+    }
+  }, [settings.isShieldActive, shieldPosts, activeJobId, isStartingBot])
+
+  // Poll active live Facebook Link Shield Bot job & auto-restart if it ever stops while 24/7 ACTIVE
+  useEffect(() => {
+    if (!activeJobId) return
+    const interval = setInterval(async () => {
+      try {
+        const res = await fetch(`/api/facebook-bot/link-shield?jobId=${encodeURIComponent(activeJobId)}`)
+        const data = await res.json()
+        if (data?.success) {
+          const nextStatus = data.status || "WATCHING"
+          setWatcherStatus(nextStatus)
+          setWatcherCheckCount(data.checkCount || 0)
+          if (data.error) setWatcherError(data.error)
+          if (data.logs) setWatcherLogs(data.logs)
+          if (Array.isArray(data.incidents) && data.incidents.length > 0) {
+            prependLiveIncidents(data.incidents)
+          }
+
+          // If 24/7 Shield is active and the bot job ever completed or stopped, auto-restart it!
+          if (
+            settings.isShieldActive &&
+            (nextStatus === "COMPLETED" || nextStatus === "STOPPED") &&
+            shieldPosts.length > 0 &&
+            !isStartingBot
+          ) {
+            handleStartLiveShield(shieldPosts[0], { reuseIfActive: false, silent: true })
+          }
+        }
+      } catch {}
+    }, 3000)
+
+    return () => clearInterval(interval)
+  }, [activeJobId, prependLiveIncidents, settings.isShieldActive, shieldPosts, isStartingBot])
 
   const handleSaveAndStartShieldPost = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -638,9 +671,15 @@ export function LinkCommentBlockCenter({ currentMode }: LinkCommentBlockCenterPr
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
-                  {shieldPosts.map((post) => {
-                    const isWatchingThis =
-                      activeJobId && post.watcherJobId === activeJobId && watcherStatus === "WATCHING"
+                  {shieldPosts.map((post, idx) => {
+                    const isWatchingThis = Boolean(
+                      (activeJobId &&
+                        (post.watcherJobId === activeJobId || idx === 0) &&
+                        (watcherStatus === "WATCHING" ||
+                          watcherStatus === "LAUNCHING_BROWSER" ||
+                          watcherStatus === "STARTING")) ||
+                        (settings.isShieldActive && idx === 0 && watcherStatus === "WATCHING")
+                    )
                     return (
                       <tr key={post.id} className="hover:bg-muted/20 transition">
                         <td className="py-3 px-4">
@@ -705,15 +744,21 @@ export function LinkCommentBlockCenter({ currentMode }: LinkCommentBlockCenterPr
                               type="button"
                               data-testid="start-live-shield-btn"
                               disabled={isStartingBot}
-                              onClick={() => handleStartLiveShield(post)}
+                              onClick={() => handleStartLiveShield(post, { reuseIfActive: false })}
                               className={`px-3 py-1.5 rounded-lg text-xs font-bold text-white transition inline-flex items-center gap-1.5 cursor-pointer whitespace-nowrap ${
                                 isWatchingThis
                                   ? "bg-emerald-600 hover:bg-emerald-500"
                                   : "bg-rose-600 hover:bg-rose-500"
                               }`}
                             >
-                              <Play className="w-3.5 h-3.5 fill-current shrink-0" />
-                              <span>{isWatchingThis ? "Watching Live..." : "Watch & Block Live"}</span>
+                              {isWatchingThis ? (
+                                <span className="w-2 h-2 rounded-full bg-white animate-ping shrink-0" />
+                              ) : (
+                                <Play className="w-3.5 h-3.5 fill-current shrink-0" />
+                              )}
+                              <span>
+                                {isWatchingThis ? "24/7 Active (Watching Live...)" : "Watch & Block Live"}
+                              </span>
                             </button>
 
                             <button

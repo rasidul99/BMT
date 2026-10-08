@@ -17,8 +17,9 @@ export async function POST(req: NextRequest) {
       whitelistedDomains = [],
       blacklistedKeywords = [],
       checkIntervalSeconds = 10,
-      maxChecks = 50,
+      maxChecks = 86400,
       headless = false,
+      reuseIfActive = false,
     } = body
 
     if (!postUrl || typeof postUrl !== "string" || !postUrl.trim()) {
@@ -28,9 +29,38 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    const jobId = `shield-${Date.now()}`
     const tempDir = path.resolve(process.cwd(), "..", "..", "scripts", "facebook-bot", "temp")
     if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir, { recursive: true })
+
+    // If reuseIfActive is requested, check if an existing 24/7 job is already actively watching
+    const activeLockFile = path.join(tempDir, "shield-active-lock.json")
+    if (reuseIfActive && fs.existsSync(activeLockFile)) {
+      try {
+        const lock = JSON.parse(fs.readFileSync(activeLockFile, "utf8"))
+        if (lock.activeJobId) {
+          const existingStatusFile = path.join(tempDir, `${lock.activeJobId}-status.json`)
+          if (fs.existsSync(existingStatusFile)) {
+            const st = JSON.parse(fs.readFileSync(existingStatusFile, "utf8"))
+            const ageMs = st.updatedAt ? Date.now() - new Date(st.updatedAt).getTime() : 999999
+            if (
+              (st.status === "WATCHING" || st.status === "LAUNCHING_BROWSER") &&
+              ageMs < 45000
+            ) {
+              return NextResponse.json({
+                success: true,
+                jobId: lock.activeJobId,
+                reused: true,
+                message: "Connected to active 24/7 Live Facebook Link Shield!",
+                postUrl: st.postUrl || postUrl.trim(),
+                status: st.status,
+              })
+            }
+          }
+        }
+      } catch {}
+    }
+
+    const jobId = `shield-${Date.now()}`
 
     if (
       typeof body.cookieString === "string" &&
@@ -76,7 +106,7 @@ export async function POST(req: NextRequest) {
       whitelistedDomains: Array.isArray(whitelistedDomains) ? whitelistedDomains : [],
       blacklistedKeywords: Array.isArray(blacklistedKeywords) ? blacklistedKeywords : [],
       checkIntervalSeconds: Number(checkIntervalSeconds) || 10,
-      maxChecks: Number(maxChecks) || 50,
+      maxChecks: Number(maxChecks) || 86400,
       headless: Boolean(headless),
     }
 
@@ -104,7 +134,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({
       success: true,
       jobId,
-      message: "Live Facebook Link Comment Block Shield launched!",
+      message: "24/7 Live Facebook Link Comment Block Shield launched!",
       postUrl: postUrl.trim(),
       status: "WATCHING",
     })
@@ -115,13 +145,24 @@ export async function POST(req: NextRequest) {
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url)
-  const jobId = searchParams.get("jobId")
-
-  if (!jobId) {
-    return NextResponse.json({ error: "Missing jobId" }, { status: 400 })
-  }
+  let jobId = searchParams.get("jobId")
 
   const tempDir = path.resolve(process.cwd(), "..", "..", "scripts", "facebook-bot", "temp")
+
+  if (!jobId || jobId === "latest") {
+    const activeLockFile = path.join(tempDir, "shield-active-lock.json")
+    if (fs.existsSync(activeLockFile)) {
+      try {
+        const lock = JSON.parse(fs.readFileSync(activeLockFile, "utf8"))
+        jobId = lock.activeJobId || null
+      } catch {}
+    }
+  }
+
+  if (!jobId) {
+    return NextResponse.json({ success: false, status: "IDLE", error: "No active jobId" })
+  }
+
   const statusFile = path.join(tempDir, `${jobId}-status.json`)
   const logFile = path.join(tempDir, `${jobId}.log`)
 
@@ -130,6 +171,17 @@ export async function GET(req: NextRequest) {
     try {
       statusData = JSON.parse(fs.readFileSync(statusFile, "utf8"))
     } catch {}
+  }
+
+  // Detect stale process if WATCHING hasn't updated in > 60 seconds
+  if (
+    (statusData.status === "WATCHING" || statusData.status === "LAUNCHING_BROWSER") &&
+    statusData.updatedAt
+  ) {
+    const ageMs = Date.now() - new Date(statusData.updatedAt).getTime()
+    if (ageMs > 60000) {
+      statusData.status = "STOPPED"
+    }
   }
 
   let logs = ""
@@ -143,6 +195,9 @@ export async function GET(req: NextRequest) {
     success: true,
     jobId,
     status: statusData.status || "UNKNOWN",
+    postUrl: statusData.postUrl || null,
+    postTitle: statusData.postTitle || null,
+    targetName: statusData.targetName || null,
     error: statusData.error || null,
     checkCount: statusData.checkCount || 0,
     incidents: statusData.incidents || [],
