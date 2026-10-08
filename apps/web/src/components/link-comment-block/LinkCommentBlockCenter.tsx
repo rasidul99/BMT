@@ -276,12 +276,16 @@ export function LinkCommentBlockCenter({ currentMode }: LinkCommentBlockCenterPr
 
   // Poll active live Facebook Link Shield Bot job & auto-restart if it ever stops while 24/7 ACTIVE
   useEffect(() => {
-    if (!activeJobId) return
-    const interval = setInterval(async () => {
+    if (!activeJobId && !settings.isShieldActive) return
+
+    const pollNow = async () => {
       try {
-        const res = await fetch(`/api/facebook-bot/link-shield?jobId=${encodeURIComponent(activeJobId)}`)
+        const targetJob = activeJobId || "latest"
+        const res = await fetch(`/api/facebook-bot/link-shield?jobId=${encodeURIComponent(targetJob)}`)
         const data = await res.json()
-        if (data?.success) {
+        if (data?.success && data.jobId) {
+          if (!activeJobId) setActiveJobId(data.jobId)
+          if (data.postTitle && !activeJobPostTitle) setActiveJobPostTitle(data.postTitle)
           const nextStatus = data.status || "WATCHING"
           setWatcherStatus(nextStatus)
           setWatcherCheckCount(data.checkCount || 0)
@@ -302,10 +306,13 @@ export function LinkCommentBlockCenter({ currentMode }: LinkCommentBlockCenterPr
           }
         }
       } catch {}
-    }, 3000)
+    }
+
+    pollNow()
+    const interval = setInterval(pollNow, 3000)
 
     return () => clearInterval(interval)
-  }, [activeJobId, prependLiveIncidents, settings.isShieldActive, shieldPosts, isStartingBot])
+  }, [activeJobId, activeJobPostTitle, prependLiveIncidents, settings.isShieldActive, shieldPosts, isStartingBot])
 
   const handleSaveAndStartShieldPost = async (e: React.FormEvent) => {
     e.preventDefault()

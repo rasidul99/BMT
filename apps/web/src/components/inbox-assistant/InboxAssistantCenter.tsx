@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useMemo } from "react"
+import React, { useState, useMemo, useEffect, useRef } from "react"
 import {
   MessageSquare,
   Bot,
@@ -10,34 +10,25 @@ import {
   Send,
   CheckCircle2,
   Clock,
-  Layers,
-  FileSpreadsheet,
-  Download,
   Search,
   Plus,
   Trash2,
   Sliders,
-  Settings2,
   Bookmark,
   Zap,
-  Globe,
   Check,
-  ChevronRight,
-  ExternalLink,
-  ShieldCheck,
   Store,
-  MapPin,
-  Tag,
   X,
   Play,
-  Pause,
+  Terminal,
+  AlertTriangle,
 } from "lucide-react"
 import {
   useInboxAssistant,
   ConversationCategory,
-  OperatingMode,
-  MessageTemplate,
 } from "../../hooks/useInboxAssistant"
+import { useFacebookAccounts } from "../../hooks/useFacebookAccounts"
+import { getPageRegistry } from "../../lib/fb-page-registry"
 
 interface InboxAssistantCenterProps {
   currentMode: "SAFE" | "ADVANCED"
@@ -45,7 +36,6 @@ interface InboxAssistantCenterProps {
 
 export function InboxAssistantCenter({ currentMode }: InboxAssistantCenterProps) {
   const {
-    isLoaded,
     conversations,
     selectedConversation,
     setSelectedConvId,
@@ -53,18 +43,34 @@ export function InboxAssistantCenter({ currentMode }: InboxAssistantCenterProps)
     settings,
     metrics,
     sendReply,
+    syncLiveConversations,
     toggleRunning,
     setOperatingMode,
     setCategoryStyle,
+    updateHumanDelay,
     addTemplate,
     deleteTemplate,
-    simulateIncomingMessage,
   } = useInboxAssistant()
+
+  const { accounts: fleetAccounts } = useFacebookAccounts()
 
   const [activeTab, setActiveTab] = useState<"INBOX" | "TEMPLATES" | "RULES" | "LEDGER">("INBOX")
   const [searchQuery, setSearchQuery] = useState("")
   const [replyInput, setReplyInput] = useState("")
   const [toastMessage, setToastMessage] = useState<string | null>(null)
+
+  // Channel selector for Live Messenger Bot (Page or Personal ID)
+  const [selectedChannelKey, setSelectedChannelKey] = useState<string>("Page::61595136714776::Test Next")
+
+  // Live Messenger Bot Watcher State
+  const [activeJobId, setActiveJobId] = useState<string | null>(null)
+  const [watcherStatus, setWatcherStatus] = useState<string>("IDLE")
+  const [watcherError, setWatcherError] = useState<string | null>(null)
+  const [watcherCheckCount, setWatcherCheckCount] = useState<number>(0)
+  const [watcherLogs, setWatcherLogs] = useState<string>("")
+  const [showTerminalLogs, setShowTerminalLogs] = useState<boolean>(false)
+  const [isStartingBot, setIsStartingBot] = useState<boolean>(false)
+  const autoStartedRef = useRef<boolean>(false)
 
   // Template Modal
   const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false)
@@ -72,17 +78,180 @@ export function InboxAssistantCenter({ currentMode }: InboxAssistantCenterProps)
   const [newTplCategory, setNewTplCategory] = useState<ConversationCategory | "General">("Sales Conversion")
   const [newTplContent, setNewTplContent] = useState("")
 
-  // Simulator Modal
-  const [isSimModalOpen, setIsSimModalOpen] = useState(false)
-  const [simName, setSimName] = useState("Tanvir Ahmed")
-  const [simPage, setSimPage] = useState("Fashion Hub Official")
-  const [simCategory, setSimCategory] = useState<ConversationCategory>("Sales Conversion")
-  const [simMessage, setSimMessage] = useState("আমি ওয়াচটি অর্ডার করতে চাই, কতদিন সময় লাগবে ডেলিভারি হতে?")
-
   const showToast = (msg: string) => {
     setToastMessage(msg)
     setTimeout(() => setToastMessage(null), 3500)
   }
+
+  // Dynamic connected Facebook Pages & Personal IDs
+  const channelOptions = useMemo(() => {
+    const list: { key: string; sourceType: "Page" | "Personal ID"; id: string; name: string; label: string }[] = [
+      {
+        key: "Page::61595136714776::Test Next",
+        sourceType: "Page",
+        id: "61595136714776",
+        name: "Test Next",
+        label: "Page: Test Next (61595136714776)",
+      },
+      {
+        key: "Page::892168940637389::CARE HUB BD",
+        sourceType: "Page",
+        id: "892168940637389",
+        name: "CARE HUB BD",
+        label: "Page: CARE HUB BD (892168940637389)",
+      },
+      {
+        key: "Personal ID::acc-rasidul::Rasidul (Personal ID)",
+        sourceType: "Personal ID",
+        id: "acc-rasidul",
+        name: "Rasidul (Personal ID)",
+        label: "Personal ID: Rasidul",
+      },
+    ]
+
+    const registeredPages = getPageRegistry()
+    registeredPages.forEach((entry) => {
+      if (!list.some((item) => item.id === entry.pageId)) {
+        list.push({
+          key: `Page::${entry.pageId}::${entry.pageName}`,
+          sourceType: "Page",
+          id: entry.pageId,
+          name: entry.pageName,
+          label: `Page: ${entry.pageName} (${entry.pageId})`,
+        })
+      }
+    })
+
+    fleetAccounts.forEach((acc) => {
+      if (acc.connectedPages) {
+        acc.connectedPages.forEach((pg) => {
+          if (!list.some((item) => item.id === pg.pageId)) {
+            list.push({
+              key: `Page::${pg.pageId}::${pg.pageName}`,
+              sourceType: "Page",
+              id: pg.pageId,
+              name: pg.pageName,
+              label: `Page: ${pg.pageName} (${pg.pageId})`,
+            })
+          }
+        })
+      }
+    })
+
+    return list
+  }, [fleetAccounts])
+
+  const activeChannel = useMemo(() => {
+    return channelOptions.find((c) => c.key === selectedChannelKey) || channelOptions[0]
+  }, [channelOptions, selectedChannelKey])
+
+  // Start or Connect to 24/7 Live Facebook Messenger Bot
+  const handleStartLiveInboxBot = async (options?: {
+    reuseIfActive?: boolean
+    silent?: boolean
+    customChannel?: { sourceType: "Page" | "Personal ID"; id: string; name: string }
+  }) => {
+    const channel = options?.customChannel || activeChannel
+    setIsStartingBot(true)
+    setWatcherError(null)
+    setWatcherStatus("STARTING")
+
+    if (!options?.silent) {
+      showToast(`Launching 24/7 Live Facebook Messenger Bot for "${channel.name}"...`)
+    }
+
+    let resolvedCookie = ""
+    try {
+      const accWithCookie = fleetAccounts.find(
+        (a) => a.cookieString && a.cookieString.includes("c_user=") && a.cookieString.includes("xs=")
+      )
+      if (accWithCookie?.cookieString) {
+        resolvedCookie = accWithCookie.cookieString
+      }
+    } catch {}
+
+    try {
+      const res = await fetch("/api/facebook-bot/inbox-assistant", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sourceType: channel.sourceType,
+          targetId: channel.id,
+          targetName: channel.name,
+          cookieString: resolvedCookie || undefined,
+          mode: settings.mode,
+          humanDelaySeconds: settings.humanDelaySeconds,
+          templates,
+          checkIntervalSeconds: 8,
+          maxChecks: 86400,
+          headless: false,
+          reuseIfActive: Boolean(options?.reuseIfActive),
+        }),
+      })
+      const data = await res.json()
+      if (data?.success && data.jobId) {
+        setActiveJobId(data.jobId)
+        setWatcherStatus("WATCHING")
+        if (!options?.silent) {
+          showToast(`24/7 Live Facebook Messenger Bot active on "${channel.name}"!`)
+        }
+      } else {
+        setWatcherStatus("ERROR")
+        setWatcherError(data?.error || "Failed to start Live Messenger Bot")
+      }
+    } catch (err: any) {
+      setWatcherStatus("ERROR")
+      setWatcherError(err.message || "Network error launching Live Messenger Bot")
+    } finally {
+      setIsStartingBot(false)
+    }
+  }
+
+  // Auto-connect or Auto-launch 24/7 Messenger Bot on mount when settings.isRunning is true
+  useEffect(() => {
+    if (!settings.isRunning) return
+    if (activeJobId || isStartingBot || autoStartedRef.current) return
+
+    autoStartedRef.current = true
+    handleStartLiveInboxBot({ reuseIfActive: true, silent: true })
+  }, [settings.isRunning, activeJobId, isStartingBot])
+
+  // Poll active 24/7 Live Messenger Bot job & auto-restart if it ever stops while Continuous Running is active
+  useEffect(() => {
+    if (!activeJobId && !settings.isRunning) return
+
+    const pollNow = async () => {
+      try {
+        const targetJob = activeJobId || "latest"
+        const res = await fetch(`/api/facebook-bot/inbox-assistant?jobId=${encodeURIComponent(targetJob)}`)
+        const data = await res.json()
+        if (data?.success && data.jobId) {
+          if (!activeJobId) setActiveJobId(data.jobId)
+          const nextStatus = data.status || "WATCHING"
+          setWatcherStatus(nextStatus)
+          setWatcherCheckCount(data.checkCount || 0)
+          if (data.error) setWatcherError(data.error)
+          if (data.logs) setWatcherLogs(data.logs)
+          if (Array.isArray(data.conversations) && data.conversations.length > 0) {
+            syncLiveConversations(data.conversations)
+          }
+
+          if (
+            settings.isRunning &&
+            (nextStatus === "COMPLETED" || nextStatus === "STOPPED") &&
+            !isStartingBot
+          ) {
+            handleStartLiveInboxBot({ reuseIfActive: false, silent: true })
+          }
+        }
+      } catch {}
+    }
+
+    pollNow()
+    const interval = setInterval(pollNow, 3000)
+
+    return () => clearInterval(interval)
+  }, [activeJobId, syncLiveConversations, settings.isRunning, isStartingBot])
 
   // Filtered Conversations
   const filteredConversations = useMemo(() => {
@@ -106,14 +275,14 @@ export function InboxAssistantCenter({ currentMode }: InboxAssistantCenterProps)
 
     sendReply(selectedConversation.id, replyInput.trim(), "PAGE")
     setReplyInput("")
-    showToast("Reply delivered via Graph API POST /{page-id}/messages!")
+    showToast(`Reply dispatched to "${selectedConversation.customerName}" on Live Facebook Messenger!`)
   }
 
   // Handle Approve AI Suggestion
   const handleApproveSuggestion = (text: string) => {
     if (!selectedConversation) return
     sendReply(selectedConversation.id, text, "AI_ASSISTANT")
-    showToast("AI Suggested reply approved and sent!")
+    showToast(`AI Reply approved & dispatched to "${selectedConversation.customerName}" on Live Messenger!`)
   }
 
   // Handle Insert Template
@@ -137,117 +306,18 @@ export function InboxAssistantCenter({ currentMode }: InboxAssistantCenterProps)
     setNewTplTitle("")
     setNewTplContent("")
     setIsTemplateModalOpen(false)
-    showToast("New message template saved to Library!")
+    showToast("New message template saved to Library & synced with Live Bot!")
   }
 
-  // Handle Simulate Submit
-  const handleSimulateSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!simMessage.trim()) return
-
-    simulateIncomingMessage(simName.trim(), simMessage.trim(), simPage, simCategory)
-    setIsSimModalOpen(false)
-    showToast(`Incoming message from ${simName} detected via Webhook!`)
-  }
-
-  // Export CSV
-  const handleExportCSV = () => {
-    const headers = [
-      "Conversation ID",
-      "Customer Name",
-      "Monitored Page",
-      "Platform",
-      "Conversation Category",
-      "Status",
-      "Last Message",
-      "Last Message Timestamp",
-      "Total Messages",
-    ]
-
-    const rows = conversations.map((c) => [
-      `"${c.id}"`,
-      `"${c.customerName.replace(/"/g, '""')}"`,
-      `"${c.pageName.replace(/"/g, '""')}"`,
-      `"${c.platform}"`,
-      `"${c.category}"`,
-      `"${c.status}"`,
-      `"${c.lastMessageText.replace(/"/g, '""')}"`,
-      `"${c.lastMessageTime}"`,
-      c.messages.length,
-    ])
-
-    const csvContent = "\uFEFF" + [headers.join(","), ...rows.map((r) => r.join(","))].join("\r\n")
-    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" })
-    const url = URL.createObjectURL(blob)
-    const link = document.createElement("a")
-    link.href = url
-    link.setAttribute("download", `bmt_inbox_conversations_${Date.now()}.csv`)
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
-    URL.revokeObjectURL(url)
-    showToast(`Exported ${conversations.length} conversation logs to CSV!`)
-  }
-
-  // Export Excel (.xls)
-  const handleExportExcel = () => {
-    const headers = [
-      "Customer Name",
-      "Page / Account",
-      "Platform",
-      "Conversion Category",
-      "Status",
-      "Last Message",
-      "Messages Count",
-      "Timestamp",
-    ]
-
-    const rows = conversations.map(
-      (c) =>
-        `<tr>
-          <td><b>${c.customerName}</b></td>
-          <td>${c.pageName}</td>
-          <td>${c.platform}</td>
-          <td>${c.category}</td>
-          <td>${c.status}</td>
-          <td>${c.lastMessageText}</td>
-          <td>${c.messages.length}</td>
-          <td>${c.lastMessageTime}</td>
-        </tr>`
-    )
-
-    const tableHtml = `
-      <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
-      <head><meta charset="utf-8"/></head>
-      <body>
-        <table border="1">
-          <thead>
-            <tr style="background-color: #2563eb; color: white; font-weight: bold;">
-              ${headers.map((h) => `<th>${h}</th>`).join("")}
-            </tr>
-          </thead>
-          <tbody>
-            ${rows.join("")}
-          </tbody>
-        </table>
-      </body>
-      </html>
-    `
-
-    const blob = new Blob([tableHtml], { type: "application/vnd.ms-excel;charset=utf-8;" })
-    const url = URL.createObjectURL(blob)
-    const link = document.createElement("a")
-    link.href = url
-    link.setAttribute("download", `bmt_inbox_conversations_${Date.now()}.xls`)
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
-    URL.revokeObjectURL(url)
-    showToast(`Exported ${conversations.length} conversation records to Excel (.xls)!`)
-  }
+  const isBotWatching = Boolean(
+    activeJobId &&
+      (watcherStatus === "WATCHING" ||
+        watcherStatus === "LAUNCHING_BROWSER" ||
+        watcherStatus === "STARTING")
+  )
 
   return (
-    <div className="space-y-6 pb-20">
+    <div className="space-y-5 pb-20">
       {/* Toast Notification */}
       {toastMessage && (
         <div className="fixed bottom-5 right-5 z-50 bg-slate-900 text-white dark:bg-white dark:text-slate-900 px-4 py-3 rounded-xl shadow-2xl flex items-center space-x-2 text-xs font-bold border border-slate-700 animate-in fade-in slide-in-from-bottom-2">
@@ -257,58 +327,113 @@ export function InboxAssistantCenter({ currentMode }: InboxAssistantCenterProps)
       )}
 
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-border pb-5">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-border pb-4">
         <div>
           <div className="flex items-center space-x-2">
             <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center text-white shadow-xs">
               <Bot className="w-5 h-5" />
             </div>
-            <h1 className="text-2xl font-black tracking-tight text-foreground">
+            <h1 className="text-xl font-black tracking-tight text-foreground">
               AI Inbox Reply Assistant
             </h1>
-            <span
-              className={`text-[10px] uppercase font-bold px-2.5 py-0.5 rounded-full border ${
-                currentMode === "SAFE"
-                  ? "bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300 border-blue-200 dark:border-blue-800"
-                  : "bg-amber-50 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300 border-amber-200 dark:border-amber-800"
-              }`}
-            >
-              {currentMode} ENGINE
+            <span className="text-[10px] uppercase font-bold px-2.5 py-0.5 rounded-full border bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20">
+              LIVE FACEBOOK MESSENGER BOT ({currentMode})
             </span>
           </div>
-          <p className="text-xs text-muted-foreground mt-1.5 max-w-2xl">
-            Real-time Messenger & Marketplace customer query handler with intent classification (Sales, Lead, Visit Conversion),
-            AI suggested response approval, automated follow-up sequences, and Graph API webhook dispatching.
+          <p className="text-xs text-muted-foreground mt-1 max-w-2xl">
+            সরাসরি আপনার আসল ফেসবুক পেজ (Meta Business Suite Inbox) ও পার্সোনাল মেসেঞ্জার ২৪/৭ মনিটর করে কাস্টমারের মেসেজের অটোমেটিক AI রিপ্লাই বা ওয়ান-ক্লিক ম্যানুয়াল রিপ্লাই পাঠায়।
           </p>
         </div>
 
-        {/* Global Action Buttons */}
-        <div className="flex items-center flex-wrap gap-2">
-          <button
-            onClick={() => setIsSimModalOpen(true)}
-            className="flex items-center space-x-1.5 px-3.5 py-2 rounded-lg text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white transition shadow-xs min-h-[36px]"
+        {/* Live Facebook Channel Selector & 24/7 Bot Button */}
+        <div className="flex items-center flex-wrap gap-2 shrink-0">
+          <select
+            value={selectedChannelKey}
+            onChange={(e) => {
+              const nextKey = e.target.value
+              setSelectedChannelKey(nextKey)
+              const found = channelOptions.find((c) => c.key === nextKey)
+              if (found) {
+                handleStartLiveInboxBot({ reuseIfActive: false, customChannel: found })
+              }
+            }}
+            className="px-3 py-2 rounded-xl border border-border bg-card text-foreground text-xs font-semibold outline-none focus:ring-2 focus:ring-blue-500/20"
           >
-            <Sparkles className="w-3.5 h-3.5" />
-            <span>Simulate Customer Query</span>
-          </button>
+            {channelOptions.map((ch) => (
+              <option key={ch.key} value={ch.key}>
+                {ch.label}
+              </option>
+            ))}
+          </select>
 
           <button
-            onClick={handleExportCSV}
-            className="flex items-center space-x-1.5 px-3.5 py-2 rounded-lg text-xs font-semibold bg-background hover:bg-muted border border-border text-foreground transition shadow-xs min-h-[36px]"
+            type="button"
+            data-testid="start-live-inbox-bot-btn"
+            disabled={isStartingBot}
+            onClick={() => handleStartLiveInboxBot({ reuseIfActive: false })}
+            className={`flex items-center space-x-1.5 px-3.5 py-2 rounded-xl text-xs font-bold text-white transition shadow-xs cursor-pointer whitespace-nowrap ${
+              isBotWatching
+                ? "bg-emerald-600 hover:bg-emerald-500"
+                : "bg-blue-600 hover:bg-blue-500"
+            }`}
           >
-            <Download className="w-3.5 h-3.5 text-muted-foreground" />
-            <span>Export CSV</span>
-          </button>
-
-          <button
-            onClick={handleExportExcel}
-            className="flex items-center space-x-1.5 px-3.5 py-2 rounded-lg text-xs font-semibold bg-background hover:bg-muted border border-border text-foreground transition shadow-xs min-h-[36px]"
-          >
-            <FileSpreadsheet className="w-3.5 h-3.5 text-muted-foreground" />
-            <span>Export Excel</span>
+            {isBotWatching ? (
+              <span className="w-2 h-2 rounded-full bg-white animate-ping shrink-0" />
+            ) : (
+              <Play className="w-3.5 h-3.5 fill-current shrink-0" />
+            )}
+            <span>
+              {isBotWatching
+                ? `24/7 Active (${activeChannel.name})`
+                : "Watch & Reply Live Messenger"}
+            </span>
           </button>
         </div>
       </div>
+
+      {/* Live Messenger Bot Status Banner */}
+      {activeJobId && (
+        <div
+          className={`p-3 rounded-xl border flex flex-col gap-2 text-xs ${
+            watcherStatus === "AUTH_ERROR" || watcherStatus === "ERROR"
+              ? "bg-rose-500/10 border-rose-500/30 text-rose-600 dark:text-rose-400"
+              : "bg-emerald-500/10 border-emerald-500/30 text-emerald-700 dark:text-emerald-300"
+          }`}
+        >
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="flex items-center gap-2 font-bold">
+              {watcherStatus === "AUTH_ERROR" || watcherStatus === "ERROR" ? (
+                <AlertTriangle className="w-4 h-4 text-rose-500 shrink-0" />
+              ) : (
+                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping shrink-0" />
+              )}
+              <span>
+                {watcherStatus === "AUTH_ERROR" || watcherStatus === "ERROR"
+                  ? watcherError || "Live Messenger Bot encountered an error"
+                  : `💬 24/7 Live Facebook Messenger Bot Active on "${activeChannel.name}" — Scan #${watcherCheckCount} (${
+                      settings.mode === "AUTO" ? "Auto-Reply Mode" : "Manual Review Mode"
+                    })`}
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setShowTerminalLogs((v) => !v)}
+                className="px-2.5 py-1 rounded-lg border bg-background/80 text-foreground font-semibold hover:bg-background transition flex items-center gap-1"
+              >
+                <Terminal className="w-3.5 h-3.5" />
+                <span>{showTerminalLogs ? "Hide Live Logs" : "View Live Logs"}</span>
+              </button>
+            </div>
+          </div>
+
+          {showTerminalLogs && watcherLogs && (
+            <pre className="p-3 rounded-lg bg-slate-950 text-emerald-400 font-mono text-[11px] overflow-x-auto max-h-48 leading-relaxed border border-slate-800">
+              {watcherLogs}
+            </pre>
+          )}
+        </div>
+      )}
 
       {/* Control Banner: Operating Mode & Category Selector */}
       <div className="border border-border bg-card p-4 rounded-xl shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4 text-xs">
@@ -317,13 +442,14 @@ export function InboxAssistantCenter({ currentMode }: InboxAssistantCenterProps)
           <div className="flex items-center space-x-2">
             <span
               className={`w-2.5 h-2.5 rounded-full ${
-                settings.isRunning ? "bg-blue-600 animate-pulse" : "bg-muted-foreground"
+                settings.isRunning ? "bg-emerald-500 animate-pulse" : "bg-muted-foreground"
               }`}
             />
-            <span className="font-semibold text-foreground">
-              {settings.isRunning ? "Status: Continuous Running" : "Status: Paused"}
+            <span className="font-bold text-foreground">
+              {settings.isRunning ? "24/7 ACTIVE" : "PAUSED"}
             </span>
             <button
+              type="button"
               onClick={toggleRunning}
               className={`px-2.5 py-1 rounded text-[11px] font-semibold transition ${
                 settings.isRunning
@@ -331,7 +457,7 @@ export function InboxAssistantCenter({ currentMode }: InboxAssistantCenterProps)
                   : "bg-blue-600 text-white hover:bg-blue-700 shadow-xs"
               }`}
             >
-              {settings.isRunning ? "Pause" : "Start"}
+              {settings.isRunning ? "Pause" : "Activate"}
             </button>
           </div>
 
@@ -340,17 +466,7 @@ export function InboxAssistantCenter({ currentMode }: InboxAssistantCenterProps)
           {/* Operating Mode Buttons */}
           <div className="flex items-center space-x-1 bg-muted/60 p-1 rounded-lg border border-border">
             <button
-              onClick={() => setOperatingMode("MANUAL")}
-              className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition ${
-                settings.mode === "MANUAL"
-                  ? "bg-blue-600 text-white shadow-xs"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              <UserCheck className="w-3.5 h-3.5" />
-              <span>Manual Reply (Review & Approve)</span>
-            </button>
-            <button
+              type="button"
               onClick={() => setOperatingMode("AUTO")}
               className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition ${
                 settings.mode === "AUTO"
@@ -359,7 +475,19 @@ export function InboxAssistantCenter({ currentMode }: InboxAssistantCenterProps)
               }`}
             >
               <Bot className="w-3.5 h-3.5" />
-              <span>Auto Reply (Delayed)</span>
+              <span>Auto Reply (Instant Live Bot)</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setOperatingMode("MANUAL")}
+              className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition ${
+                settings.mode === "MANUAL"
+                  ? "bg-blue-600 text-white shadow-xs"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <UserCheck className="w-3.5 h-3.5" />
+              <span>Manual Reply (Review &amp; Approve)</span>
             </button>
           </div>
         </div>
@@ -376,6 +504,7 @@ export function InboxAssistantCenter({ currentMode }: InboxAssistantCenterProps)
           ).map((cat) => (
             <button
               key={cat.id}
+              type="button"
               onClick={() => setCategoryStyle(cat.id)}
               className={`px-3 py-1 rounded-lg text-xs font-semibold transition border ${
                 settings.activeCategory === cat.id
@@ -393,7 +522,7 @@ export function InboxAssistantCenter({ currentMode }: InboxAssistantCenterProps)
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <div className="border border-border bg-card p-4 rounded-xl shadow-xs flex flex-col justify-between">
           <div className="flex items-center justify-between text-muted-foreground text-xs font-semibold">
-            <span>Active Conversations</span>
+            <span>Live Conversations</span>
             <MessageSquare className="w-4 h-4 text-blue-600 dark:text-blue-400" />
           </div>
           <div className="mt-2 flex items-baseline justify-between">
@@ -401,7 +530,7 @@ export function InboxAssistantCenter({ currentMode }: InboxAssistantCenterProps)
               {metrics.totalConvs}
             </span>
             <span className="text-[10px] font-medium text-muted-foreground">
-              Marketplace & Pages
+              Synced from Messenger
             </span>
           </div>
         </div>
@@ -431,7 +560,7 @@ export function InboxAssistantCenter({ currentMode }: InboxAssistantCenterProps)
               {metrics.autoRepliedCount}
             </span>
             <span className="text-[10px] font-medium text-muted-foreground">
-              Graph API Sent
+              Live Messenger Sent
             </span>
           </div>
         </div>
@@ -455,6 +584,7 @@ export function InboxAssistantCenter({ currentMode }: InboxAssistantCenterProps)
       {/* Tabs Selector */}
       <div className="flex items-center space-x-2 border-b border-border pb-2 overflow-x-auto no-scrollbar flex-nowrap">
         <button
+          type="button"
           onClick={() => setActiveTab("INBOX")}
           className={`flex items-center space-x-2 px-4 py-2 rounded-lg text-xs font-semibold transition shrink-0 ${
             activeTab === "INBOX"
@@ -467,6 +597,7 @@ export function InboxAssistantCenter({ currentMode }: InboxAssistantCenterProps)
         </button>
 
         <button
+          type="button"
           onClick={() => setActiveTab("TEMPLATES")}
           className={`flex items-center space-x-2 px-4 py-2 rounded-lg text-xs font-semibold transition shrink-0 ${
             activeTab === "TEMPLATES"
@@ -479,6 +610,7 @@ export function InboxAssistantCenter({ currentMode }: InboxAssistantCenterProps)
         </button>
 
         <button
+          type="button"
           onClick={() => setActiveTab("RULES")}
           className={`flex items-center space-x-2 px-4 py-2 rounded-lg text-xs font-semibold transition shrink-0 ${
             activeTab === "RULES"
@@ -487,10 +619,11 @@ export function InboxAssistantCenter({ currentMode }: InboxAssistantCenterProps)
           }`}
         >
           <Sliders className="w-3.5 h-3.5" />
-          <span>Automation & Delay Rules</span>
+          <span>Automation &amp; Delay Rules</span>
         </button>
 
         <button
+          type="button"
           onClick={() => setActiveTab("LEDGER")}
           className={`flex items-center space-x-2 px-4 py-2 rounded-lg text-xs font-semibold transition shrink-0 ${
             activeTab === "LEDGER"
@@ -536,6 +669,7 @@ export function InboxAssistantCenter({ currentMode }: InboxAssistantCenterProps)
                   return (
                     <button
                       key={conv.id}
+                      type="button"
                       onClick={() => setSelectedConvId(conv.id)}
                       className={`w-full p-3.5 text-left flex items-start space-x-3 transition ${
                         isSelected
@@ -568,7 +702,7 @@ export function InboxAssistantCenter({ currentMode }: InboxAssistantCenterProps)
                         </div>
 
                         <p className="text-[11px] text-muted-foreground truncate">
-                          "{conv.lastMessageText}"
+                          &ldquo;{conv.lastMessageText}&rdquo;
                         </p>
                       </div>
 
@@ -602,7 +736,7 @@ export function InboxAssistantCenter({ currentMode }: InboxAssistantCenterProps)
                         </span>
                       </div>
                       <span className="text-[11px] text-muted-foreground">
-                        Page: <strong>{selectedConversation.pageName}</strong> • Intent:{" "}
+                        Channel: <strong>{selectedConversation.pageName}</strong> • Intent:{" "}
                         <strong className="text-blue-600 dark:text-blue-400">
                           {selectedConversation.category}
                         </strong>
@@ -614,7 +748,7 @@ export function InboxAssistantCenter({ currentMode }: InboxAssistantCenterProps)
                     className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border flex items-center space-x-1 ${
                       selectedConversation.status === "WAITING_REPLY"
                         ? "bg-amber-50 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300 border-amber-200/60"
-                        : "bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300 border-blue-200/60"
+                        : "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border-emerald-200/60"
                     }`}
                   >
                     {selectedConversation.status === "WAITING_REPLY" ? (
@@ -622,7 +756,7 @@ export function InboxAssistantCenter({ currentMode }: InboxAssistantCenterProps)
                     ) : (
                       <>
                         <Check className="w-3 h-3 mr-1 inline" />
-                        <span>Replied</span>
+                        <span>Replied on Live Messenger</span>
                       </>
                     )}
                   </span>
@@ -646,7 +780,9 @@ export function InboxAssistantCenter({ currentMode }: InboxAssistantCenterProps)
                           ) : msg.sender === "AI_ASSISTANT" ? (
                             <>
                               <Bot className="w-3 h-3 text-blue-600 dark:text-blue-400" />
-                              <span className="font-bold text-blue-600 dark:text-blue-400">AI Auto-Reply</span>
+                              <span className="font-bold text-blue-600 dark:text-blue-400">
+                                AI Live Messenger Reply
+                              </span>
                             </>
                           ) : (
                             <>
@@ -670,8 +806,8 @@ export function InboxAssistantCenter({ currentMode }: InboxAssistantCenterProps)
 
                         {!isCustomer && (
                           <span className="text-[10px] text-muted-foreground font-medium mt-1 flex items-center space-x-1">
-                            <Check className="w-3 h-3 text-blue-600" />
-                            <span>Delivered via Graph API 200</span>
+                            <Check className="w-3 h-3 text-emerald-500" />
+                            <span>Delivered via Live Facebook Messenger</span>
                           </span>
                         )}
                       </div>
@@ -679,47 +815,50 @@ export function InboxAssistantCenter({ currentMode }: InboxAssistantCenterProps)
                   })}
                 </div>
 
-                {/* AI Suggested Replies Box (When in Manual Mode & suggestions exist) */}
-                {selectedConversation.status === "WAITING_REPLY" &&
-                  selectedConversation.aiSuggestions.length > 0 && (
-                    <div className="p-3 border-t border-border bg-blue-50/40 dark:bg-blue-950/20 space-y-2">
-                      <div className="flex items-center justify-between">
-                        <span className="text-[11px] font-bold text-blue-600 dark:text-blue-400 flex items-center space-x-1.5">
-                          <Sparkles className="w-3.5 h-3.5" />
-                          <span>AI Suggested Responses ({selectedConversation.category} Style):</span>
-                        </span>
-                        <span className="text-[10px] text-muted-foreground">Click to Approve or Edit</span>
-                      </div>
-
-                      <div className="space-y-1.5">
-                        {selectedConversation.aiSuggestions.map((sugg, idx) => (
-                          <div
-                            key={idx}
-                            className="p-2.5 bg-card border border-border rounded-xl flex items-center justify-between gap-3 shadow-xs"
-                          >
-                            <p className="text-[11px] text-foreground font-medium flex-1">
-                              "{sugg}"
-                            </p>
-                            <div className="flex items-center space-x-1.5 shrink-0">
-                              <button
-                                onClick={() => setReplyInput(sugg)}
-                                className="px-2.5 py-1 rounded-lg border border-border text-[11px] font-semibold hover:bg-muted text-foreground transition"
-                              >
-                                Edit
-                              </button>
-                              <button
-                                onClick={() => handleApproveSuggestion(sugg)}
-                                className="px-3 py-1 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-[11px] font-semibold shadow-xs transition flex items-center space-x-1"
-                              >
-                                <Check className="w-3.5 h-3.5 mr-0.5" />
-                                <span>Approve & Send</span>
-                              </button>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
+                {/* AI Suggested Replies Box */}
+                {selectedConversation.aiSuggestions.length > 0 && (
+                  <div className="p-3 border-t border-border bg-blue-50/40 dark:bg-blue-950/20 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[11px] font-bold text-blue-600 dark:text-blue-400 flex items-center space-x-1.5">
+                        <Sparkles className="w-3.5 h-3.5" />
+                        <span>AI Suggested Responses ({selectedConversation.category} Style):</span>
+                      </span>
+                      <span className="text-[10px] text-muted-foreground">
+                        Click Approve to send directly to Live Messenger
+                      </span>
                     </div>
-                  )}
+
+                    <div className="space-y-1.5">
+                      {selectedConversation.aiSuggestions.map((sugg, idx) => (
+                        <div
+                          key={idx}
+                          className="p-2.5 bg-card border border-border rounded-xl flex items-center justify-between gap-3 shadow-xs"
+                        >
+                          <p className="text-[11px] text-foreground font-medium flex-1">
+                            &ldquo;{sugg}&rdquo;
+                          </p>
+                          <div className="flex items-center space-x-1.5 shrink-0">
+                            <button
+                              type="button"
+                              onClick={() => setReplyInput(sugg)}
+                              className="px-2.5 py-1 rounded-lg border border-border text-[11px] font-semibold hover:bg-muted text-foreground transition"
+                            >
+                              Edit
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleApproveSuggestion(sugg)}
+                              className="px-3 py-1 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-[11px] font-semibold shadow-xs transition flex items-center space-x-1"
+                            >
+                              <Check className="w-3.5 h-3.5 mr-0.5" />
+                              <span>Approve &amp; Send Live</span>
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
                 {/* Ready Templates Quick Bar */}
                 <div className="p-2 border-t border-border bg-muted/20 flex items-center space-x-2 overflow-x-auto no-scrollbar">
@@ -730,6 +869,7 @@ export function InboxAssistantCenter({ currentMode }: InboxAssistantCenterProps)
                   {templates.slice(0, 3).map((tpl) => (
                     <button
                       key={tpl.id}
+                      type="button"
                       onClick={() => handleInsertTemplate(tpl.content)}
                       className="px-2.5 py-1 rounded-lg bg-background border border-border text-[11px] font-medium hover:bg-muted truncate max-w-[160px] shrink-0 transition"
                     >
@@ -737,6 +877,7 @@ export function InboxAssistantCenter({ currentMode }: InboxAssistantCenterProps)
                     </button>
                   ))}
                   <button
+                    type="button"
                     onClick={() => setActiveTab("TEMPLATES")}
                     className="text-[10px] text-blue-600 dark:text-blue-400 font-semibold hover:underline shrink-0"
                   >
@@ -745,10 +886,13 @@ export function InboxAssistantCenter({ currentMode }: InboxAssistantCenterProps)
                 </div>
 
                 {/* Reply Composer */}
-                <form onSubmit={handleSendReply} className="p-3 border-t border-border bg-card flex items-center space-x-2">
+                <form
+                  onSubmit={handleSendReply}
+                  className="p-3 border-t border-border bg-card flex items-center space-x-2"
+                >
                   <input
                     type="text"
-                    placeholder="Type customized reply or select from AI suggestions..."
+                    placeholder="Type customized reply to send directly to Live Facebook Messenger..."
                     value={replyInput}
                     onChange={(e) => setReplyInput(e.target.value)}
                     className="flex-1 px-3 py-2 border border-border rounded-xl bg-background text-xs min-h-[40px] focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition"
@@ -757,7 +901,7 @@ export function InboxAssistantCenter({ currentMode }: InboxAssistantCenterProps)
                     type="submit"
                     className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl shadow-xs transition flex items-center space-x-1.5 min-h-[40px]"
                   >
-                    <span>Send</span>
+                    <span>Send Live</span>
                     <Send className="w-3.5 h-3.5" />
                   </button>
                 </form>
@@ -765,7 +909,9 @@ export function InboxAssistantCenter({ currentMode }: InboxAssistantCenterProps)
             ) : (
               <div className="flex-1 flex flex-col items-center justify-center p-8 text-center text-muted-foreground space-y-2">
                 <MessageSquare className="w-10 h-10 opacity-40 text-blue-600" />
-                <p className="font-semibold text-foreground">Select a conversation to view chat history</p>
+                <p className="font-semibold text-foreground">
+                  Select a conversation to view chat history
+                </p>
               </div>
             )}
           </div>
@@ -785,6 +931,7 @@ export function InboxAssistantCenter({ currentMode }: InboxAssistantCenterProps)
               </p>
             </div>
             <button
+              type="button"
               onClick={() => setIsTemplateModalOpen(true)}
               className="flex items-center space-x-1.5 px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition shadow-xs min-h-[36px]"
             >
@@ -806,6 +953,7 @@ export function InboxAssistantCenter({ currentMode }: InboxAssistantCenterProps)
                       {tpl.category}
                     </span>
                     <button
+                      type="button"
                       onClick={() => deleteTemplate(tpl.id)}
                       className="p-1 rounded hover:bg-red-500/10 text-muted-foreground hover:text-red-500 transition"
                       title="Delete template"
@@ -816,19 +964,23 @@ export function InboxAssistantCenter({ currentMode }: InboxAssistantCenterProps)
                 </div>
 
                 <p className="text-[11px] text-muted-foreground bg-muted/20 p-2.5 rounded-lg leading-relaxed">
-                  "{tpl.content}"
+                  &ldquo;{tpl.content}&rdquo;
                 </p>
 
                 <div className="flex items-center justify-between pt-1">
                   <div className="flex flex-wrap gap-1">
                     {tpl.tags.map((tag) => (
-                      <span key={tag} className="text-[10px] px-2 py-0.5 bg-muted rounded font-medium text-muted-foreground">
+                      <span
+                        key={tag}
+                        className="text-[10px] px-2 py-0.5 bg-muted rounded font-medium text-muted-foreground"
+                      >
                         #{tag}
                       </span>
                     ))}
                   </div>
 
                   <button
+                    type="button"
                     onClick={() => {
                       handleInsertTemplate(tpl.content)
                       setActiveTab("INBOX")
@@ -850,7 +1002,9 @@ export function InboxAssistantCenter({ currentMode }: InboxAssistantCenterProps)
       {activeTab === "RULES" && (
         <div className="border border-border bg-card p-5 rounded-2xl space-y-5 shadow-xs text-xs max-w-3xl">
           <div className="border-b border-border pb-3">
-            <h3 className="font-bold text-sm text-foreground">AI Automation & Anti-Detection Rules</h3>
+            <h3 className="font-bold text-sm text-foreground">
+              AI Automation &amp; Anti-Detection Rules
+            </h3>
             <p className="text-[11px] text-muted-foreground">
               Configure human-like response behavior to keep your Facebook accounts 100% safe from Meta rate limits.
             </p>
@@ -867,29 +1021,29 @@ export function InboxAssistantCenter({ currentMode }: InboxAssistantCenterProps)
               </div>
               <input
                 type="range"
-                min="10"
-                max="180"
-                step="5"
+                min="3"
+                max="60"
+                step="1"
                 value={settings.humanDelaySeconds}
-                onChange={() => {}}
+                onChange={(e) => updateHumanDelay(Number(e.target.value))}
                 className="w-full accent-blue-600 cursor-pointer"
               />
               <p className="text-[11px] text-muted-foreground">
-                Simulates real typing delay (30s - 180s) before sending auto-replies to appear as natural human interaction.
+                Simulates natural human typing delay before sending auto-replies in Live Facebook Messenger.
               </p>
             </div>
 
             {/* Unknown Intent Fallback Policy */}
             <div className="border border-border p-4 rounded-xl bg-muted/20 space-y-2">
               <span className="font-bold text-foreground block">
-                Unknown Query Fallback & Motivation Sequence:
+                Unknown Query Fallback &amp; Motivation Sequence:
               </span>
               <p className="text-muted-foreground text-[11px]">
                 If a customer asks a question outside your product knowledge base, the AI automatically dispatches a motivational
                 follow-up message along with your predefined Fallback Template (<code>tpl-4</code>) and alerts human operators.
               </p>
               <div className="p-2.5 bg-background border border-border rounded-lg text-[11px] font-mono text-muted-foreground">
-                Fallback Action: Auto-send catalog link & escalate to human operator queue.
+                Fallback Action: Auto-send catalog link &amp; escalate to human operator queue.
               </div>
             </div>
           </div>
@@ -902,9 +1056,9 @@ export function InboxAssistantCenter({ currentMode }: InboxAssistantCenterProps)
       {activeTab === "LEDGER" && (
         <div className="border border-border bg-card rounded-2xl shadow-xs overflow-hidden text-xs">
           <div className="p-3.5 bg-muted/40 border-b border-border flex items-center justify-between font-bold text-foreground">
-            <span>Graph API Message Delivery Logs ({conversations.length})</span>
+            <span>Live Messenger Delivery Logs ({conversations.length})</span>
             <span className="text-[11px] text-muted-foreground font-normal">
-              100% Graph API POST verification records
+              Real-time Facebook Messenger &amp; Business Suite Inbox records
             </span>
           </div>
 
@@ -925,16 +1079,18 @@ export function InboxAssistantCenter({ currentMode }: InboxAssistantCenterProps)
                     </span>
                   </div>
                   <p className="text-muted-foreground text-[11px]">
-                    Last Message: "{conv.lastMessageText}"
+                    Last Message: &ldquo;{conv.lastMessageText}&rdquo;
                   </p>
                 </div>
 
                 <div className="flex items-center space-x-3 shrink-0">
                   <div className="text-right">
-                    <span className="text-xs font-bold text-blue-600 dark:text-blue-400 block">
-                      SUCCESS_200
+                    <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 block">
+                      {conv.status === "REPLIED" ? "LIVE_DELIVERED" : "WAITING_REPLY"}
                     </span>
-                    <span className="text-[10px] text-muted-foreground">{conv.lastMessageTime}</span>
+                    <span className="text-[10px] text-muted-foreground">
+                      {conv.lastMessageTime}
+                    </span>
                   </div>
                 </div>
               </div>
@@ -955,6 +1111,7 @@ export function InboxAssistantCenter({ currentMode }: InboxAssistantCenterProps)
                 <h3 className="font-bold text-base text-foreground">Create Message Template</h3>
               </div>
               <button
+                type="button"
                 onClick={() => setIsTemplateModalOpen(false)}
                 className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground transition"
               >
@@ -1014,98 +1171,6 @@ export function InboxAssistantCenter({ currentMode }: InboxAssistantCenterProps)
                   className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs shadow-xs transition min-h-[36px]"
                 >
                   Save to Library
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* ======================================================== */}
-      {/* MODAL: SIMULATE INCOMING CUSTOMER MESSAGE                */}
-      {/* ======================================================== */}
-      {isSimModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-card border border-border rounded-2xl w-full max-w-lg shadow-2xl p-6 space-y-4 animate-in fade-in zoom-in-95">
-            <div className="flex items-center justify-between border-b border-border pb-3">
-              <div className="flex items-center space-x-2">
-                <Sparkles className="w-5 h-5 text-blue-600 dark:text-blue-400" />
-                <h3 className="font-bold text-base text-foreground">
-                  Simulate Incoming Customer Query
-                </h3>
-              </div>
-              <button
-                onClick={() => setIsSimModalOpen(false)}
-                className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground transition"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            <form onSubmit={handleSimulateSubmit} className="space-y-3.5 text-xs">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <label className="font-semibold text-foreground">Customer Name</label>
-                  <input
-                    type="text"
-                    required
-                    value={simName}
-                    onChange={(e) => setSimName(e.target.value)}
-                    className="w-full px-3 py-2 border border-border rounded-lg bg-background text-xs focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition min-h-[38px]"
-                  />
-                </div>
-
-                <div className="space-y-1">
-                  <label className="font-semibold text-foreground">Target Facebook Page</label>
-                  <select
-                    value={simPage}
-                    onChange={(e) => setSimPage(e.target.value)}
-                    className="w-full px-3 py-2 border border-border rounded-lg bg-background text-xs focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition min-h-[38px]"
-                  >
-                    <option value="Fashion Hub Official">Fashion Hub Official</option>
-                    <option value="Tech Gadgets BD">Tech Gadgets BD</option>
-                    <option value="Organic Foods Bangladesh">Organic Foods Bangladesh</option>
-                  </select>
-                </div>
-              </div>
-
-              <div className="space-y-1">
-                <label className="font-semibold text-foreground">Conversion Intent</label>
-                <select
-                  value={simCategory}
-                  onChange={(e) => setSimCategory(e.target.value as any)}
-                  className="w-full px-3 py-2 border border-border rounded-lg bg-background text-xs focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition min-h-[38px]"
-                >
-                  <option value="Sales Conversion">Sales Conversion (Purchase & Discount)</option>
-                  <option value="Lead Conversion">Lead Conversion (Specs & Warranty)</option>
-                  <option value="Visit Conversion">Visit Conversion (Showroom Location)</option>
-                </select>
-              </div>
-
-              <div className="space-y-1">
-                <label className="font-semibold text-foreground">Customer Message Body</label>
-                <textarea
-                  rows={3}
-                  required
-                  value={simMessage}
-                  onChange={(e) => setSimMessage(e.target.value)}
-                  className="w-full px-3 py-2 border border-border rounded-lg bg-background text-xs focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition"
-                />
-              </div>
-
-              <div className="pt-2 border-t border-border flex items-center justify-end space-x-2">
-                <button
-                  type="button"
-                  onClick={() => setIsSimModalOpen(false)}
-                  className="px-4 py-2 rounded-lg border border-border hover:bg-muted font-semibold text-xs transition min-h-[36px]"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs shadow-xs transition min-h-[36px]"
-                >
-                  Trigger Webhook Message
                 </button>
               </div>
             </form>
