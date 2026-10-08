@@ -369,127 +369,153 @@ async function runWatcher(configPath) {
       // Scan page for comments safely
       let detectedComments = [];
       try {
-        detectedComments = await safeEvaluate(page, (configuredReplyText) => {
-          // 1. Prefer explicit top-level comment articles (avoiding outer post article & nested reply articles)
-          let commentArticles = Array.from(
-            document.querySelectorAll('div[role="article"][aria-label*="Comment by" i], div[role="article"][aria-label*="মন্তব্য" i]')
-          );
-
-          // 2. Fallback if Facebook uses different aria-labels
-          if (commentArticles.length === 0) {
-            const allArticles = Array.from(document.querySelectorAll('div[role="article"]'));
-            commentArticles = allArticles.filter((art) => {
-              const aria = (art.getAttribute("aria-label") || "").toLowerCase();
-              if (aria.startsWith("reply by") || aria.includes("এর উত্তর")) return false;
-              // Exclude outer post container that wraps comment articles
-              const hasChildComment = allArticles.some(
-                (other) => other !== art && art.contains(other) && (other.getAttribute("aria-label") || "").toLowerCase().includes("comment")
-              );
-              return !hasChildComment;
-            });
-          }
-
-          const botReplySignatures = [
-            (configuredReplyText || "").trim().slice(0, 25).toLowerCase(),
-            "ইনবক্সে পাঠানো হয়েছে",
-            "মেসেঞ্জার চেক করুন",
-            "ইনবক্স চেক করুন",
-            "বিস্তারিত তথ্য আপনার ইনবক্সে",
-          ].filter((s) => s && s.length >= 6);
-
-          const list = [];
-
-          commentArticles.forEach((art, idx) => {
-            const ariaLabel = art.getAttribute("aria-label") || "";
-            if (/^reply by/i.test(ariaLabel) || ariaLabel.includes("এর উত্তর")) return;
-
-            const text = (art.innerText || "").trim();
-            if (!text || text.length < 2) return;
-
-            const isAuthor = text.toLowerCase().includes("author") || text.includes("লেখক");
-
-            // Check for buttons under this comment
-            const buttons = Array.from(art.querySelectorAll('div[role="button"], span[role="button"], a[role="button"]'));
-            const hasReplyBtn = buttons.some((b) => {
-              const bt = (b.innerText || b.getAttribute("aria-label") || "").trim().toLowerCase();
-              return bt === "reply" || bt === "উত্তর দিন" || bt.includes("reply") || bt.includes("উত্তর");
-            });
-
-            const hasMessageBtn = buttons.some((b) => {
-              const bt = (b.innerText || b.getAttribute("aria-label") || "").trim().toLowerCase();
-              return bt === "send message" || bt === "বার্তা পাঠান" || bt.includes("send message") || bt.includes("বার্তা পাঠান");
-            });
-
-            if (!hasReplyBtn) return;
-
-            // Extract commenter name cleanly
-            let author = "";
-            const ariaMatch = ariaLabel.match(/Comment by (.+?)(?: \d+| about | an? | just now| yesterday|$)/i);
-            if (ariaMatch && ariaMatch[1]) {
-              author = ariaMatch[1].trim();
+        detectedComments = await safeEvaluate(
+          page,
+          (configuredReplyText, ownerTargetName) => {
+            // Detect active owner identity from "Comment as <Owner>" input box if present
+            let activeOwnerName = "";
+            const commentAsBox = document.querySelector(
+              'div[role="textbox"][aria-label*="Comment as " i], div[role="textbox"][aria-label*="হিসাবে মন্তব্য" i]'
+            );
+            if (commentAsBox) {
+              const label = commentAsBox.getAttribute("aria-label") || "";
+              const m = label.match(/Comment as (.+)$/i) || label.match(/^(.+?) হিসাবে মন্তব্য/i);
+              if (m && m[1]) activeOwnerName = m[1].trim().toLowerCase();
             }
-            if (!author) {
-              const nameEl = art.querySelector('a[role="link"] span, h3 span, strong span, a span');
-              author = nameEl ? (nameEl.innerText || nameEl.textContent || "").trim() : "";
+            const cleanTargetOwner = (ownerTargetName || "")
+              .replace(/\(Personal ID\)/gi, "")
+              .split("—")[0]
+              .trim()
+              .toLowerCase();
+
+            // 1. Prefer explicit top-level comment articles (avoiding outer post article & nested reply articles)
+            let commentArticles = Array.from(
+              document.querySelectorAll('div[role="article"][aria-label*="Comment by" i], div[role="article"][aria-label*="মন্তব্য" i]')
+            );
+
+            // 2. Fallback if Facebook uses different aria-labels
+            if (commentArticles.length === 0) {
+              const allArticles = Array.from(document.querySelectorAll('div[role="article"]'));
+              commentArticles = allArticles.filter((art) => {
+                const aria = (art.getAttribute("aria-label") || "").toLowerCase();
+                if (aria.startsWith("reply by") || aria.includes("এর উত্তর")) return false;
+                // Exclude outer post container that wraps comment articles
+                const hasChildComment = allArticles.some(
+                  (other) => other !== art && art.contains(other) && (other.getAttribute("aria-label") || "").toLowerCase().includes("comment")
+                );
+                return !hasChildComment;
+              });
             }
 
-            const lines = text.split("\n").map((l) => l.trim()).filter(Boolean);
-            if (!author) {
-              author = lines[0] || "Facebook User";
-            }
+            const botReplySignatures = [
+              (configuredReplyText || "").trim().slice(0, 25).toLowerCase(),
+              "ইনবক্সে পাঠানো হয়েছে",
+              "মেসেঞ্জার চেক করুন",
+              "ইনবক্স চেক করুন",
+              "বিস্তারিত তথ্য আপনার ইনবক্সে",
+            ].filter((s) => s && s.length >= 6);
 
-            // Filter out button labels and metadata from body text
-            const bodyLines = lines.filter((l) => {
-              const low = l.toLowerCase();
-              if (l === author) return false;
-              if (
-                low === "like" ||
-                low === "reply" ||
-                low === "send message" ||
-                low === "see translation" ||
-                low === "author" ||
-                low === "follow" ||
-                low === "top fan" ||
-                low === "see response" ||
-                low.includes("see response") ||
-                low.includes("রেসপন্স দেখুন")
-              )
-                return false;
-              if (low.includes("·") || /^\d+\s*[mhdwy]$/i.test(low) || low.includes("ago") || low === "just now") return false;
-              if (low.includes("পছন্দ") || low.includes("উত্তর") || low.includes("বার্তা পাঠান") || low === "লেখক") return false;
-              return true;
+            const list = [];
+
+            commentArticles.forEach((art, idx) => {
+              const ariaLabel = art.getAttribute("aria-label") || "";
+              if (/^reply by/i.test(ariaLabel) || ariaLabel.includes("এর উত্তর")) return;
+
+              const text = (art.innerText || "").trim();
+              if (!text || text.length < 2) return;
+
+              // Check for buttons under this comment
+              const buttons = Array.from(art.querySelectorAll('div[role="button"], span[role="button"], a[role="button"]'));
+              const hasReplyBtn = buttons.some((b) => {
+                const bt = (b.innerText || b.getAttribute("aria-label") || "").trim().toLowerCase();
+                return bt === "reply" || bt === "উত্তর দিন" || bt.includes("reply") || bt.includes("উত্তর");
+              });
+
+              const hasMessageBtn = buttons.some((b) => {
+                const bt = (b.innerText || b.getAttribute("aria-label") || "").trim().toLowerCase();
+                return bt === "send message" || bt === "বার্তা পাঠান" || bt.includes("send message") || bt.includes("বার্তা পাঠান");
+              });
+
+              if (!hasReplyBtn) return;
+
+              // Extract commenter name cleanly
+              let author = "";
+              const ariaMatch = ariaLabel.match(/Comment by (.+?)(?: \d+| about | an? | just now| yesterday|$)/i);
+              if (ariaMatch && ariaMatch[1]) {
+                author = ariaMatch[1].trim();
+              }
+              if (!author) {
+                const nameEl = art.querySelector('a[role="link"] span, h3 span, strong span, a span');
+                author = nameEl ? (nameEl.innerText || nameEl.textContent || "").trim() : "";
+              }
+
+              const lines = text.split("\n").map((l) => l.trim()).filter(Boolean);
+              if (!author) {
+                author = lines[0] || "Facebook User";
+              }
+
+              const lowerAuthor = author.trim().toLowerCase();
+              const isAuthor =
+                /\bauthor\b/i.test(text) ||
+                text.includes("লেখক") ||
+                (activeOwnerName && lowerAuthor === activeOwnerName) ||
+                (cleanTargetOwner && lowerAuthor === cleanTargetOwner);
+
+              // Filter out button labels and metadata from body text
+              const bodyLines = lines.filter((l) => {
+                const low = l.toLowerCase();
+                if (l === author) return false;
+                if (
+                  low === "like" ||
+                  low === "reply" ||
+                  low === "send message" ||
+                  low === "see translation" ||
+                  low === "author" ||
+                  low === "follow" ||
+                  low === "top fan" ||
+                  low === "see response" ||
+                  low.includes("see response") ||
+                  low.includes("রেসপন্স দেখুন")
+                )
+                  return false;
+                if (low.includes("·") || /^\d+\s*[mhdwy]$/i.test(low) || low.includes("ago") || low === "just now") return false;
+                if (low.includes("পছন্দ") || low.includes("উত্তর") || low.includes("বার্তা পাঠান") || low === "লেখক") return false;
+                return true;
+              });
+              const body = bodyLines.join(" ").trim() || (lines[lines.length - 1] || text);
+              const lowerBody = body.toLowerCase();
+
+              // Check if this comment itself is a bot auto-reply
+              const isBotOwnReply = botReplySignatures.some((sig) => lowerBody.includes(sig));
+
+              // Check if a reply already exists in the DOM thread right below/inside this comment
+              const parentThread = art.parentElement ? art.parentElement.parentElement || art.parentElement : art;
+              const threadText = (parentThread ? parentThread.innerText || "" : "").toLowerCase();
+              const hasExistingBotReply =
+                !isBotOwnReply &&
+                (botReplySignatures.some((sig) => threadText.includes(sig)) ||
+                  /\b\d+\s+repl(?:y|ies)\b/i.test(threadText) ||
+                  threadText.includes("view 1 reply") ||
+                  threadText.includes("১টি উত্তর দেখুন"));
+
+              list.push({
+                index: idx,
+                author,
+                isAuthor,
+                isBotOwnReply,
+                hasExistingBotReply,
+                text: body,
+                fullText: text,
+                hasReplyBtn,
+                hasMessageBtn,
+              });
             });
-            const body = bodyLines.join(" ").trim() || (lines[lines.length - 1] || text);
-            const lowerBody = body.toLowerCase();
 
-            // Check if this comment itself is a bot auto-reply
-            const isBotOwnReply = botReplySignatures.some((sig) => lowerBody.includes(sig));
-
-            // Check if a reply already exists in the DOM thread right below/inside this comment
-            const parentThread = art.parentElement ? art.parentElement.parentElement || art.parentElement : art;
-            const threadText = (parentThread ? parentThread.innerText || "" : "").toLowerCase();
-            const hasExistingBotReply =
-              !isBotOwnReply &&
-              (botReplySignatures.some((sig) => threadText.includes(sig)) ||
-                /\b\d+\s+repl(?:y|ies)\b/i.test(threadText) ||
-                threadText.includes("view 1 reply") ||
-                threadText.includes("১টি উত্তর দেখুন"));
-
-            list.push({
-              index: idx,
-              author,
-              isAuthor,
-              isBotOwnReply,
-              hasExistingBotReply,
-              text: body,
-              fullText: text,
-              hasReplyBtn,
-              hasMessageBtn,
-            });
-          });
-
-          return list;
-        }, customPublicReply || "");
+            return list;
+          },
+          customPublicReply || "",
+          targetName || ""
+        );
       } catch (scanErr) {
         console.warn(`Scan error (will retry next check): ${scanErr.message}`);
         await sleep(3000);
@@ -513,6 +539,13 @@ async function runWatcher(configPath) {
         const commentKey = `${item.author}:::${cleanSnippet.slice(0, 40)}`;
 
         if (processedComments.has(commentKey)) {
+          continue;
+        }
+
+        // Strictly skip post owner / author's own comments — only reply to other users' comments!
+        if (item.isAuthor) {
+          console.log(`ℹ️ Skipping post owner/author comment (${item.author}): "${item.text.slice(0, 35)}..."`);
+          processedComments.add(commentKey);
           continue;
         }
 
@@ -683,17 +716,23 @@ async function runWatcher(configPath) {
                 await sleep(400);
 
                 console.log(`   ⌨️ Inserting AI nested public reply into comment box...`);
-                const insertedViaExec = await page.evaluate(
+                await page.evaluate(
                   (el, textToInsert) => {
                     el.focus();
-                    const ok = document.execCommand("insertText", false, textToInsert);
-                    return ok && (el.innerText || "").trim().length > 0;
+                    document.execCommand("insertText", false, textToInsert);
                   },
                   boxToUse,
                   ai.reply
                 );
+                await sleep(350);
 
-                if (!insertedViaExec) {
+                const hasInsertedText = await page.evaluate(
+                  (el, snippet) => (el.innerText || "").includes(snippet),
+                  boxToUse,
+                  ai.reply.slice(0, 12)
+                );
+
+                if (!hasInsertedText) {
                   for (const char of ai.reply) {
                     await page.keyboard.type(char, { delay: 20 });
                   }
