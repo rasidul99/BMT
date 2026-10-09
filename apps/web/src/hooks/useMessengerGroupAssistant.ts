@@ -2,23 +2,51 @@
 
 import { useState, useEffect, useCallback, useMemo } from "react"
 
+export interface ConnectedMessengerAccount {
+  id: string
+  name: string
+  rawName: string
+  sourceType: "Page" | "Personal ID"
+  uid: string
+  status: string
+}
+
+export interface LiveSessionStatus {
+  hasCookie: boolean
+  hasAccessToken: boolean
+  authMode: string
+  cUserId: string
+  updatedAt: string | null
+  is24x7BotActive: boolean
+}
+
 export interface MessengerGroup {
   id: string
   name: string
   threadId: string
+  threadUrl?: string
   assignedAccountId: string
   assignedAccountName: string
   memberCount: number
   maxCapacity: number
-  category: "Resellers Wholesale" | "E-Commerce Buyers" | "Gadget Hunters" | "Organic Food" | "General VIP"
+  category:
+    | "Resellers Wholesale"
+    | "E-Commerce Buyers"
+    | "Gadget Hunters"
+    | "Organic Food"
+    | "General VIP"
   lastMessageSent?: string
+  lastMessagePreview?: string
   status: "Active" | "Idle" | "Almost Full" | "Full"
+  isLiveMessengerThread?: boolean
+  sourceType?: "Page" | "Personal ID"
 }
 
 export interface CampaignMessageLog {
   id: string
   groupId: string
   groupName: string
+  threadId?: string
   accountId: string
   accountName: string
   sentMessageText: string
@@ -44,68 +72,29 @@ export interface MessengerGroupCampaign {
   logs: CampaignMessageLog[]
 }
 
-const STORAGE_KEY_GROUPS = "bmt_messenger_groups"
-const STORAGE_KEY_CAMPAIGNS = "bmt_messenger_group_campaigns"
-
-const INITIAL_GROUPS: MessengerGroup[] = [
+const DEFAULT_CONNECTED_ACCOUNTS: ConnectedMessengerAccount[] = [
   {
-    id: "grp-msg-1",
-    name: "BD Wholesalers & Resellers VIP Group 04",
-    threadId: "m_thread_88912301",
-    assignedAccountId: "acc-101",
-    assignedAccountName: "Farhan Ahmed (Business)",
-    memberCount: 242,
-    maxCapacity: 250,
-    category: "Resellers Wholesale",
-    lastMessageSent: "10 mins ago",
+    id: "61595136714776",
+    name: "Test Next (Page)",
+    rawName: "Test Next",
+    sourceType: "Page",
+    uid: "61595136714776",
     status: "Active",
   },
   {
-    id: "grp-msg-2",
-    name: "Dhaka Gadget Deals & Import Chat 01",
-    threadId: "m_thread_77812302",
-    assignedAccountId: "acc-101",
-    assignedAccountName: "Farhan Ahmed (Business)",
-    memberCount: 238,
-    maxCapacity: 250,
-    category: "Gadget Hunters",
-    lastMessageSent: "1 hour ago",
+    id: "61560588090925",
+    name: "Rasidul Islam Sajib — Personal ID (61560588090925)",
+    rawName: "Rasidul Islam Sajib",
+    sourceType: "Personal ID",
+    uid: "61560588090925",
     status: "Active",
   },
   {
-    id: "grp-msg-3",
-    name: "USA E-Com Dropship Community Group",
-    threadId: "m_thread_66712303",
-    assignedAccountId: "acc-102",
-    assignedAccountName: "Sarah Jenkins (E-Com)",
-    memberCount: 248,
-    maxCapacity: 250,
-    category: "E-Commerce Buyers",
-    lastMessageSent: "3 hours ago",
-    status: "Almost Full",
-  },
-  {
-    id: "grp-msg-4",
-    name: "BD Organic Food & Pure Honey Sellers",
-    threadId: "m_thread_55612304",
-    assignedAccountId: "acc-103",
-    assignedAccountName: "Tanvir Rahman (Local Sales)",
-    memberCount: 195,
-    maxCapacity: 250,
-    category: "Organic Food",
-    lastMessageSent: "Yesterday",
-    status: "Idle",
-  },
-  {
-    id: "grp-msg-5",
-    name: "Fashion & Lifestyle Retailers Club 02",
-    threadId: "m_thread_44512305",
-    assignedAccountId: "acc-103",
-    assignedAccountName: "Tanvir Rahman (Local Sales)",
-    memberCount: 215,
-    maxCapacity: 250,
-    category: "Resellers Wholesale",
-    lastMessageSent: "2 days ago",
+    id: "101909799416254",
+    name: "Nature's Cure (Page)",
+    rawName: "Nature's Cure",
+    sourceType: "Page",
+    uid: "101909799416254",
     status: "Active",
   },
 ]
@@ -113,72 +102,151 @@ const INITIAL_GROUPS: MessengerGroup[] = [
 export function useMessengerGroupAssistant() {
   const [groups, setGroups] = useState<MessengerGroup[]>([])
   const [campaigns, setCampaigns] = useState<MessengerGroupCampaign[]>([])
+  const [connectedAccounts, setConnectedAccounts] = useState<ConnectedMessengerAccount[]>(
+    DEFAULT_CONNECTED_ACCOUNTS
+  )
+  const [sessionInfo, setSessionInfo] = useState<LiveSessionStatus>({
+    hasCookie: true,
+    hasAccessToken: false,
+    authMode: "COOKIE",
+    cUserId: "61560588090925",
+    updatedAt: null,
+    is24x7BotActive: true,
+  })
   const [isLoaded, setIsLoaded] = useState(false)
+  const [isSyncing, setIsSyncing] = useState(false)
   const [activeRunningId, setActiveRunningId] = useState<string | null>(null)
 
-  // Initialize
-  useEffect(() => {
-    if (typeof window === "undefined") return
-
+  const fetchLiveState = useCallback(async () => {
     try {
-      const savedGroups = localStorage.getItem(STORAGE_KEY_GROUPS)
-      setGroups(savedGroups ? JSON.parse(savedGroups) : INITIAL_GROUPS)
+      const res = await fetch("/api/facebook-bot/messenger-group", { cache: "no-store" })
+      if (!res.ok) return
+      const data = await res.json()
+      if (!data.success) return
 
-      const savedCampaigns = localStorage.getItem(STORAGE_KEY_CAMPAIGNS)
-      setCampaigns(savedCampaigns ? JSON.parse(savedCampaigns) : [])
-    } catch {
-      setGroups(INITIAL_GROUPS)
-      setCampaigns([])
-    }
-
-    setIsLoaded(true)
-  }, [])
-
-  // Save Groups
-  const saveGroups = useCallback((newGroups: MessengerGroup[]) => {
-    setGroups(newGroups)
-    if (typeof window !== "undefined") {
-      localStorage.setItem(STORAGE_KEY_GROUPS, JSON.stringify(newGroups))
-    }
-  }, [])
-
-  // Save Campaigns
-  const saveCampaigns = useCallback((newCampaigns: MessengerGroupCampaign[]) => {
-    setCampaigns(newCampaigns)
-    if (typeof window !== "undefined") {
-      localStorage.setItem(STORAGE_KEY_CAMPAIGNS, JSON.stringify(newCampaigns))
-    }
-  }, [])
-
-  // Add New Messenger Group
-  const addGroup = useCallback((group: Omit<MessengerGroup, "id" | "status">) => {
-    const newGroup: MessengerGroup = {
-      ...group,
-      id: `grp-msg-${Date.now()}`,
-      status: group.memberCount >= 246 ? "Almost Full" : "Active",
-    }
-    saveGroups([newGroup, ...groups])
-  }, [groups, saveGroups])
-
-  // Invite / Add Followers to Group (Note requirement from Page 3)
-  const addFollowersToGroup = useCallback((groupId: string, followerCount: number) => {
-    const updated = groups.map((g) => {
-      if (g.id === groupId) {
-        const newCount = Math.min(g.maxCapacity, g.memberCount + followerCount)
-        return {
-          ...g,
-          memberCount: newCount,
-          status: (newCount >= 250 ? "Full" : newCount >= 245 ? "Almost Full" : "Active") as MessengerGroup["status"],
-        }
+      if (data.session) {
+        setSessionInfo(data.session)
       }
-      return g
-    })
-    saveGroups(updated)
-  }, [groups, saveGroups])
+      if (Array.isArray(data.connectedAccounts) && data.connectedAccounts.length > 0) {
+        setConnectedAccounts(data.connectedAccounts)
+      }
+      if (Array.isArray(data.liveGroups)) {
+        setGroups(data.liveGroups)
+      }
+      if (Array.isArray(data.campaigns)) {
+        setCampaigns(data.campaigns)
+        const sendingCamp = data.campaigns.find((c: MessengerGroupCampaign) => c.status === "Sending")
+        setActiveRunningId(sendingCamp ? sendingCamp.id : null)
+      }
+    } catch {
+      // Ignore transient poll errors
+    } finally {
+      setIsLoaded(true)
+    }
+  }, [])
 
-  // Create & Dispatch Bulk Group Campaign
+  // Initial load + automatic polling for live Messenger state & campaign delivery logs
+  useEffect(() => {
+    fetchLiveState()
+    const timer = setInterval(() => {
+      fetchLiveState()
+    }, 3000)
+    return () => clearInterval(timer)
+  }, [fetchLiveState])
+
+  // Sync Live Messenger Groups & Threads from Real Facebook Account / Page
+  const syncLiveGroups = useCallback(
+    async (account: ConnectedMessengerAccount) => {
+      setIsSyncing(true)
+      try {
+        const res = await fetch("/api/facebook-bot/messenger-group", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            action: "SYNC_LIVE_GROUPS",
+            targetId: account.id,
+            targetName: account.rawName,
+            sourceType: account.sourceType,
+          }),
+        })
+        const data = await res.json()
+        if (data.success && Array.isArray(data.liveGroups)) {
+          setGroups(data.liveGroups)
+        }
+        return data
+      } finally {
+        setTimeout(() => setIsSyncing(false), 1200)
+      }
+    },
+    []
+  )
+
+  // Add or Create Real Messenger Group
+  const addGroup = useCallback(
+    async (payload: {
+      name: string
+      threadUrlOrId?: string
+      assignedAccountId: string
+      assignedAccountName: string
+      sourceType?: "Page" | "Personal ID"
+      memberCount: number
+      category: MessengerGroup["category"]
+      openLiveComposer?: boolean
+      welcomeMessage?: string
+    }) => {
+      const res = await fetch("/api/facebook-bot/messenger-group", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "ADD_OR_CREATE_GROUP",
+          ...payload,
+        }),
+      })
+      const data = await res.json()
+      if (data.success && Array.isArray(data.liveGroups)) {
+        setGroups(data.liveGroups)
+      }
+      return data
+    },
+    []
+  )
+
+  // Delete Group
+  const deleteGroup = useCallback(async (groupId: string) => {
+    const res = await fetch("/api/facebook-bot/messenger-group", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "DELETE_GROUP",
+        groupId,
+      }),
+    })
+    const data = await res.json()
+    if (data.success && Array.isArray(data.liveGroups)) {
+      setGroups(data.liveGroups)
+    }
+  }, [])
+
+  // Invite / Add Followers to Group
+  const addFollowersToGroup = useCallback(async (groupId: string, followerCount: number) => {
+    const res = await fetch("/api/facebook-bot/messenger-group", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "INVITE_FOLLOWERS",
+        groupId,
+        followerCount,
+      }),
+    })
+    const data = await res.json()
+    if (data.success && Array.isArray(data.liveGroups)) {
+      setGroups(data.liveGroups)
+    }
+  }, [])
+
+  // Create & Dispatch Real Bulk Group Campaign on Live Facebook Messenger
   const launchCampaign = useCallback(
-    (
+    async (
       title: string,
       masterMessage: string,
       selectedGroupIds: string[],
@@ -187,104 +255,40 @@ export function useMessengerGroupAssistant() {
       aiVariantEnabled: boolean
     ) => {
       const selectedGroups = groups.filter((g) => selectedGroupIds.includes(g.id))
-      const campaignId = `camp-${Date.now()}`
+      if (selectedGroups.length === 0) return null
 
-      // Generate AI High-CTA Variations if enabled
-      const initialLogs: CampaignMessageLog[] = selectedGroups.map((grp, index) => {
-        let textToSend = masterMessage
-        if (aiVariantEnabled) {
-          const ctaVariations = [
-            `🔥 [Special Notice for ${grp.name}]: ${masterMessage} 👉 Grab yours before stock ends: https://bmt.link/deal`,
-            `⚡ Exclusive Community Update: ${masterMessage} 📩 Inbox us for direct VIP pricing: https://bmt.link/vip`,
-            `📢 Announcement: ${masterMessage} 🎁 Limited slots remaining!`,
-          ]
-          textToSend = ctaVariations[index % ctaVariations.length]
-        }
-
-        return {
-          id: `log-msg-${Date.now()}-${index}`,
-          groupId: grp.id,
-          groupName: grp.name,
-          accountId: grp.assignedAccountId,
-          accountName: grp.assignedAccountName,
-          sentMessageText: textToSend,
-          isAiVariant: aiVariantEnabled,
-          sentAt: "In Queue",
-          status: "PENDING",
-          latencyMs: 0,
-        }
+      const res = await fetch("/api/facebook-bot/messenger-group", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "DISPATCH_CAMPAIGN",
+          title,
+          masterMessage,
+          selectedGroups,
+          messagesPerAccount,
+          delayMinutes,
+          aiVariantEnabled,
+        }),
       })
-
-      const newCampaign: MessengerGroupCampaign = {
-        id: campaignId,
-        title,
-        masterMessage,
-        targetGroupIds: selectedGroupIds,
-        messagesPerAccount,
-        delayMinutes,
-        aiVariantEnabled,
-        status: "Sending",
-        totalTarget: selectedGroupIds.length,
-        sentCount: 0,
-        progressPercent: 0,
-        startedAt: "Just now",
-        logs: initialLogs,
-      }
-
-      const updatedCampaigns = [newCampaign, ...campaigns]
-      saveCampaigns(updatedCampaigns)
-      setActiveRunningId(campaignId)
-
-      // Simulate Real Graph API Sending Queue
-      let currentSent = 0
-      const total = initialLogs.length
-
-      const interval = setInterval(() => {
-        currentSent += 1
-        const percent = Math.round((currentSent / total) * 100)
-
-        setCampaigns((prev) =>
-          prev.map((c) => {
-            if (c.id === campaignId) {
-              const updatedLogs: CampaignMessageLog[] = c.logs.map((l, idx) => {
-                if (idx < currentSent) {
-                  return {
-                    ...l,
-                    status: "DELIVERED_200",
-                    sentAt: "Just now",
-                    latencyMs: Math.floor(Math.random() * 300) + 400,
-                  }
-                }
-                return l
-              })
-
-              const isDone = currentSent >= total
-              return {
-                ...c,
-                sentCount: currentSent,
-                progressPercent: percent,
-                status: isDone ? "Completed" : "Sending",
-                logs: updatedLogs,
-              }
-            }
-            return c
-          })
-        )
-
-        if (currentSent >= total) {
-          clearInterval(interval)
-          setActiveRunningId(null)
+      const data = await res.json()
+      if (data.success) {
+        if (Array.isArray(data.campaigns)) {
+          setCampaigns(data.campaigns)
         }
-      }, 1500)
+        if (data.campaign?.id) {
+          setActiveRunningId(data.campaign.id)
+        }
+      }
+      return data
     },
-    [groups, campaigns, saveCampaigns]
+    [groups]
   )
 
   // Metrics
   const metrics = useMemo(() => {
     const totalGroups = groups.length
-    const totalMembers = groups.reduce((acc, g) => acc + g.memberCount, 0)
-    const totalDelivered = campaigns.reduce((acc, c) => acc + c.sentCount, 0)
+    const totalMembers = groups.reduce((acc, g) => acc + (Number(g.memberCount) || 0), 0)
+    const totalDelivered = campaigns.reduce((acc, c) => acc + (Number(c.sentCount) || 0), 0)
     const activeCampaignsCount = campaigns.filter((c) => c.status === "Sending").length
 
     return {
@@ -297,11 +301,16 @@ export function useMessengerGroupAssistant() {
 
   return {
     isLoaded,
+    isSyncing,
+    sessionInfo,
+    connectedAccounts,
     groups,
     campaigns,
     activeRunningId,
     metrics,
+    syncLiveGroups,
     addGroup,
+    deleteGroup,
     addFollowersToGroup,
     launchCampaign,
   }
