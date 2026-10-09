@@ -56,7 +56,7 @@ function parseCookies(rawCookieStr) {
     const name = item.slice(0, eqIdx).trim();
     const value = item.slice(eqIdx + 1).trim();
 
-    if (!name || !value) continue;
+    if (!name || !value || name === "alsfid" || value.includes('"')) continue;
 
     cookies.push({
       name,
@@ -1500,7 +1500,9 @@ async function runInboxBot(configPath) {
       const hasCUser = currentBrowserCookies.some((c) => c.name === "c_user");
       const hasXs = currentBrowserCookies.some((c) => c.name === "xs");
       if (hasCUser && hasXs) {
-        const coreCookies = currentBrowserCookies.filter((c) => c.name !== "i_user");
+        const coreCookies = currentBrowserCookies.filter(
+          (c) => c.name !== "i_user" && c.name !== "alsfid" && !String(c.value || "").includes('"')
+        );
         const serialized = coreCookies.map((c) => `${c.name}=${c.value}`).join(";");
         liveBaseCookies = parseCookies(serialized);
         let existingSess = {};
@@ -1584,7 +1586,9 @@ async function runInboxBot(configPath) {
     }
 
     const baseToUse = customChannelCookies.length > 0 ? customChannelCookies : liveBaseCookies;
-    const filteredCookies = baseToUse.filter((c) => c.name !== "i_user");
+    const filteredCookies = baseToUse.filter(
+      (c) => c.name !== "i_user" && c.name !== "alsfid" && !String(c.value || "").includes('"')
+    );
     if (isNumericPage) {
       filteredCookies.push({
         name: "i_user",
@@ -1598,7 +1602,15 @@ async function runInboxBot(configPath) {
       });
     }
     if (filteredCookies.length > 0) {
-      await page.setCookie(...filteredCookies);
+      try {
+        await page.setCookie(...filteredCookies);
+      } catch (_) {
+        for (const c of filteredCookies) {
+          try {
+            await page.setCookie(c);
+          } catch (_) {}
+        }
+      }
     }
   }
 
