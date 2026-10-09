@@ -72,10 +72,10 @@ export interface InboxAutomationSettings {
   monitoredPages: string[]
 }
 
-const STORAGE_KEY_CONVERSATIONS = "bmt_inbox_conversations_v2"
+const STORAGE_KEY_CONVERSATIONS = "bmt_inbox_conversations_v3"
 const STORAGE_KEY_SETTINGS = "bmt_inbox_settings_v2"
 const STORAGE_KEY_TEMPLATES = "bmt_inbox_templates_v2"
-const STORAGE_KEY_PRODUCTS = "bmt_inbox_trained_products_v1"
+const STORAGE_KEY_PRODUCTS = "bmt_inbox_trained_products_v2"
 const STORAGE_KEY_STORE_PROFILE = "bmt_inbox_store_profile_v1"
 
 const sanitizeText = (text: string): string => {
@@ -102,8 +102,8 @@ export const DEFAULT_STORE_PROFILE: StoreKnowledgeProfile = {
 export const DEFAULT_TRAINED_PRODUCTS: TrainedProduct[] = [
   {
     id: "prod-1",
-    name: "Premium Smart Watch Ultra",
-    keywords: "watch, smart watch, ultra, ঘড়ি, স্মার্ট ওয়াচ, ওয়াচ, ঘড়ি",
+    name: "Premium Smart Watch Ultra X9",
+    keywords: "watch, smart watch, ultra, x9, ultra x9, ঘড়ি, স্মার্ট ওয়াচ, ওয়াচ, ঘড়ি",
     regularPrice: "৩,৯৯০ টাকা",
     offerPrice: "২,৪৯০ টাকা",
     stockStatus: "IN_STOCK",
@@ -176,14 +176,29 @@ const INITIAL_CONVERSATIONS: InboxConversation[] = [
     category: "Sales Conversion",
     unreadCount: 0,
     lastMessageText:
-      "আসসালামু আলাইকুম Rasidul Islam Sajib! আমাদের স্পেশাল অফার প্রাইজ ২,৪৯০ টাকা (সারাদেশে ফ্রি ক্যাশ অন হোম ডেলিভারি)। অর্ডার কনফার্ম করতে আপনার নাম, পূর্ণ ঠিকানা ও মোবাইল নম্বর দিন।",
-    lastMessageTime: "00:15",
+      'আসসালামু আলাইকুম Rasidul Islam Sajib! জি, আমাদের "Premium Smart Watch Ultra X9" বর্তমানে স্টকে এভেইলেবল আছে (স্পেশাল অফার প্রাইজ মাত্র ২,৪৯০ টাকা, রেগুলার প্রাইজ ৩,৯৯০ টাকা)। সারাদেশে ফ্রি ক্যাশ অন হোম ডেলিভারি। অর্ডার কনফার্ম করতে আপনার নাম, পূর্ণ ঠিকানা ও মোবাইল নম্বর দিন।',
+    lastMessageTime: "10:17",
     status: "REPLIED",
     aiSuggestions: [
-      "আসসালামু আলাইকুম Rasidul Islam Sajib! আমাদের স্পেশাল অফার প্রাইজ ২,৪৯০ টাকা (সারাদেশে ফ্রি ক্যাশ অন হোম ডেলিভারি)। অর্ডার কনফার্ম করতে আপনার নাম, পূর্ণ ঠিকানা ও মোবাইল নম্বর দিন।",
-      "ধন্যবাদ আপনার বার্তার জন্য! প্রোডাক্টটি স্টকে আছে। অর্ডার করতে আপনার ডেলিভারি ঠিকানা ও ফোন নম্বরটি শেয়ার করুন।",
+      'আসসালামু আলাইকুম Rasidul Islam Sajib! জি, আমাদের "Premium Smart Watch Ultra X9" বর্তমানে স্টকে এভেইলেবল আছে (স্পেশাল অফার প্রাইজ মাত্র ২,৪৯০ টাকা, রেগুলার প্রাইজ ৩,৯৯০ টাকা)। সারাদেশে ফ্রি ক্যাশ অন হোম ডেলিভারি। অর্ডার কনফার্ম করতে আপনার নাম, পূর্ণ ঠিকানা ও মোবাইল নম্বর দিন।',
+      'এতে রয়েছে Super AMOLED HD ডিসপ্লে, ১০০% ওয়াটারপ্রুফ (IP68), ব্লুটুথ কলিং এবং ১ বছরের অফিসিয়াল ওয়ারেন্টি। অর্ডার করতে আপনার নাম, ঠিকানা ও ফোন নম্বর দিন।',
     ],
     messages: [
+      {
+        id: "m-live-0",
+        sender: "CUSTOMER",
+        text: "hello",
+        timestamp: "Yesterday",
+        status: "DELIVERED",
+      },
+      {
+        id: "m-live-0-reply",
+        sender: "AI_ASSISTANT",
+        text: "আসসালামু আলাইকুম! ওয়াচটির ঈদ স্পেশাল অফার প্রাইজ মাত্র ২,৪৯০ টাকা (সারাদেশে ফ্রি হোম ডেলিভারি)। অর্ডার করতে নাম, পূর্ণ ঠিকানা ও মোবাইল নম্বর দিন।",
+        timestamp: "Yesterday",
+        status: "SENT",
+        graphApiStatus: "SUCCESS_200",
+      },
       {
         id: "m-live-1",
         sender: "CUSTOMER",
@@ -196,6 +211,21 @@ const INITIAL_CONVERSATIONS: InboxConversation[] = [
         sender: "AI_ASSISTANT",
         text: "আসসালামু আলাইকুম Rasidul Islam Sajib! আমাদের স্পেশাল অফার প্রাইজ ২,৪৯০ টাকা (সারাদেশে ফ্রি ক্যাশ অন হোম ডেলিভারি)। অর্ডার কনফার্ম করতে আপনার নাম, পূর্ণ ঠিকানা ও মোবাইল নম্বর দিন।",
         timestamp: "00:15",
+        status: "SENT",
+        graphApiStatus: "SUCCESS_200",
+      },
+      {
+        id: "m-live-3",
+        sender: "CUSTOMER",
+        text: "Premium Smart Watch Ultra X9\neta ki ache?",
+        timestamp: "10:17",
+        status: "DELIVERED",
+      },
+      {
+        id: "m-live-4",
+        sender: "AI_ASSISTANT",
+        text: 'আসসালামু আলাইকুম Rasidul Islam Sajib! জি, আমাদের "Premium Smart Watch Ultra X9" বর্তমানে স্টকে এভেইলেবল আছে (স্পেশাল অফার প্রাইজ মাত্র ২,৪৯০ টাকা, রেগুলার প্রাইজ ৩,৯৯০ টাকা)। সারাদেশে ফ্রি ক্যাশ অন হোম ডেলিভারি। অর্ডার কনফার্ম করতে আপনার নাম, পূর্ণ ঠিকানা ও মোবাইল নম্বর দিন।',
+        timestamp: "10:17",
         status: "SENT",
         graphApiStatus: "SUCCESS_200",
       },
@@ -614,22 +644,91 @@ export function useInboxAssistant() {
   )
 
   const selectedConversation = useMemo(() => {
-    return conversations.find((c) => c.id === selectedConvId) || conversations[0] || null
-  }, [conversations, selectedConvId])
+    const conv = conversations.find((c) => c.id === selectedConvId) || conversations[0] || null
+    if (!conv) return null
+
+    // Find the latest customer message in this conversation to compute live trained AI suggestions
+    const customerMsgs = conv.messages.filter((m) => m.sender === "CUSTOMER")
+    const latestCustomerText =
+      customerMsgs.length > 0
+        ? customerMsgs[customerMsgs.length - 1].text
+        : conv.lastMessageText || ""
+
+    const dynamicAiReply = generatePreviewTrainedAnswer(
+      latestCustomerText,
+      conv.customerName,
+      products,
+      storeProfile
+    )
+
+    const mergedSuggestions = Array.from(
+      new Set([dynamicAiReply, ...(conv.aiSuggestions || [])].filter(Boolean))
+    ).slice(0, 2)
+
+    return {
+      ...conv,
+      aiSuggestions: mergedSuggestions,
+    }
+  }, [conversations, selectedConvId, products, storeProfile])
 
   const syncLiveConversations = useCallback((incoming: InboxConversation[]) => {
     if (!Array.isArray(incoming) || incoming.length === 0) return
     setConversations((prev) => {
+      const existingByCustomer = new Map<string, InboxConversation>()
+      prev.forEach((existing) => {
+        existingByCustomer.set(existing.customerName.toLowerCase(), existing)
+      })
+
       const mergedMap = new Map<string, InboxConversation>()
       incoming.forEach((inc) => {
-        mergedMap.set(inc.customerName.toLowerCase(), inc)
+        const key = inc.customerName.toLowerCase()
+        const existing = existingByCustomer.get(key)
+        const cleanIncomingMsgs = (inc.messages || []).filter(
+          (m) => m.text && m.text.trim() !== "প্রোডাক্ট সম্পর্কে বিস্তারিত জানতে চাই"
+        )
+
+        if (existing) {
+          const cleanExistingMsgs = (existing.messages || []).filter(
+            (m) => m.text && m.text.trim() !== "প্রোডাক্ট সম্পর্কে বিস্তারিত জানতে চাই"
+          )
+
+          let finalMessages = cleanIncomingMsgs
+          if (cleanIncomingMsgs.length < cleanExistingMsgs.length) {
+            // Preserve earlier thread history and append any newly detected messages
+            const seenNorm = new Set(
+              cleanExistingMsgs.map((m) => `${m.sender}:${m.text.replace(/\s+/g, " ").trim()}`)
+            )
+            const appended = [...cleanExistingMsgs]
+            for (const msg of cleanIncomingMsgs) {
+              const normKey = `${msg.sender}:${msg.text.replace(/\s+/g, " ").trim()}`
+              if (!seenNorm.has(normKey)) {
+                appended.push(msg)
+                seenNorm.add(normKey)
+              }
+            }
+            finalMessages = appended
+          }
+
+          mergedMap.set(key, {
+            ...existing,
+            ...inc,
+            messages: finalMessages.length > 0 ? finalMessages : existing.messages,
+          })
+        } else {
+          mergedMap.set(key, {
+            ...inc,
+            messages: cleanIncomingMsgs.length > 0 ? cleanIncomingMsgs : inc.messages,
+          })
+        }
       })
+
       prev.forEach((existing) => {
         const key = existing.customerName.toLowerCase()
         if (!mergedMap.has(key)) {
           mergedMap.set(key, existing)
         }
       })
+
       const next = Array.from(mergedMap.values())
       if (typeof window !== "undefined") {
         localStorage.setItem(STORAGE_KEY_CONVERSATIONS, JSON.stringify(next))

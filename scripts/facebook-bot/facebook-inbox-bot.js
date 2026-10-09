@@ -689,18 +689,127 @@ async function runInboxBot(configPath) {
     const settledUrl = page.url();
     console.log(`📍 Settled Inbox URL: ${settledUrl}`);
 
-    const isLoggedOut = await safeEvaluate(page, () => {
-      const hasPass = Boolean(document.querySelector('input[type="password"], input[name="pass"]'));
-      const bodyText = document.body ? document.body.innerText : "";
-      return (
-        hasPass ||
-        (bodyText.includes("Create new account") && bodyText.includes("Forgotten password?"))
-      );
-    });
+    async function checkIsLoggedOut() {
+      const currentUrl = page.url() || "";
+      if (
+        currentUrl.includes("index.php?next=") ||
+        currentUrl.includes("/login") ||
+        currentUrl.includes("loginpage")
+      ) {
+        return true;
+      }
+      return await safeEvaluate(page, () => {
+        const hasPass = Boolean(document.querySelector('input[type="password"], input[name="pass"]'));
+        const bodyText = document.body ? document.body.innerText : "";
+        return (
+          hasPass ||
+          (bodyText.includes("Create new account") && bodyText.includes("Forgotten password?")) ||
+          (bodyText.includes("Use another profile") && bodyText.includes("Create new account")) ||
+          bodyText.includes("Get started with\nbusiness tools from Meta")
+        );
+      });
+    }
+
+    async function extractActiveThreadChatBubbles(customerName, convId, fallbackTime) {
+      try {
+        const rawBubbles = await safeEvaluate(
+          page,
+          (cName) => {
+            const ignorePhrases = [
+              "is responding to a comment",
+              "view comment",
+              "write a message",
+              "type a message",
+              "press enter to send",
+              "sent ",
+              "delivered",
+              "active now",
+              "end-to-end encrypted",
+            ];
+
+            const candidates = Array.from(document.querySelectorAll('div[dir="auto"], span[dir="auto"], div[role="row"]'));
+            const collected = [];
+
+            for (const el of candidates) {
+              const r = el.getBoundingClientRect();
+              // Active conversation message pane is in the center/right area (x: 360..930, y: 115..765)
+              if (r.x < 360 || r.x > 920 || r.y < 115 || r.y > 765) continue;
+              if (r.width < 18 || r.width > 560 || r.height < 16 || r.height > 320) continue;
+
+              // Skip container elements that wrap multiple distinct message rows
+              const childDirs = el.querySelectorAll('div[dir="auto"]');
+              if (childDirs.length > 2) continue;
+
+              const text = (el.innerText || "").trim();
+              if (!text || text.length < 1 || text.length > 900) continue;
+
+              const lowerT = text.toLowerCase();
+              if (lowerT === (cName || "").toLowerCase() || lowerT === "aa") continue;
+              if (/^\d{1,2}:\d{2}(\s*[ap]m)?$/i.test(text)) continue;
+              if (/^(today|yesterday|\d+m|\d+h|\d+d)\b/i.test(text) && text.length < 18) continue;
+              if (ignorePhrases.some((ph) => lowerT.includes(ph))) continue;
+
+              // Determine if bubble is sent by Page/AI (right side or our AI greeting) vs Customer (left side)
+              const isPageReply =
+                r.x >= 535 ||
+                text.startsWith("আসসালামু আলাইকুম") ||
+                text.startsWith("অসংখ্য ধন্যবাদ") ||
+                text.startsWith("ধন্যবাদ আপনার বার্তার জন্য");
+
+              collected.push({
+                text,
+                sender: isPageReply ? "AI_ASSISTANT" : "CUSTOMER",
+                x: Math.round(r.x),
+                y: Math.round(r.y),
+              });
+            }
+
+            // Sort top-to-bottom by vertical position
+            collected.sort((a, b) => a.y - b.y);
+
+            // Deduplicate overlapping/nested DOM nodes with identical or substring text at similar y
+            const deduped = [];
+            for (const item of collected) {
+              const prev = deduped[deduped.length - 1];
+              if (
+                prev &&
+                Math.abs(prev.y - item.y) < 24 &&
+                (prev.text === item.text || prev.text.includes(item.text) || item.text.includes(prev.text))
+              ) {
+                if (item.text.length > prev.text.length) {
+                  deduped[deduped.length - 1] = item;
+                }
+                continue;
+              }
+              deduped.push(item);
+            }
+
+            return deduped.slice(-12);
+          },
+          customerName
+        );
+
+        if (!Array.isArray(rawBubbles) || rawBubbles.length === 0) return null;
+
+        // Merge consecutive CUSTOMER bubbles that were sent together at the bottom (e.g. product name + "eta ki ache?")
+        return rawBubbles.map((b, idx) => ({
+          id: `${convId}-m-${idx + 1}`,
+          sender: b.sender,
+          text: b.text,
+          timestamp: idx === rawBubbles.length - 1 ? fallbackTime || "Just now" : fallbackTime || "Today",
+          status: b.sender === "CUSTOMER" ? "DELIVERED" : "SENT",
+          ...(b.sender === "AI_ASSISTANT" ? { graphApiStatus: "SUCCESS_200" } : {}),
+        }));
+      } catch (_) {
+        return null;
+      }
+    }
+
+    const isLoggedOut = await checkIsLoggedOut();
 
     if (isLoggedOut) {
       const authErr =
-        "❌ ফেসবুক সেশন কুকি (c_user ও xs) লগআউট বা মেয়াদোত্তীর্ণ হয়ে গেছে! অনুগ্রহ করে Facebook Market (100 Accounts) থেকে নতুন কুকি আপডেট করুন।";
+        "❌ ফেসবুক সেশন কুকি (c_user ও xs) লগআউট বা মেয়াদোত্তীর্ণ হয়ে গেছে! উপরে 'Update FB Cookie' বাটনে ক্লিক করে নতুন কুকি পেস্ট করুন।";
       console.error(authErr);
       updateStatus({
         status: "AUTH_ERROR",
@@ -722,6 +831,22 @@ async function runInboxBot(configPath) {
         break;
       }
 
+      if (await checkIsLoggedOut()) {
+        const authErr =
+          "❌ ফেসবুক সেশন কুকি (c_user ও xs) লগআউট বা মেয়াদোত্তীর্ণ হয়ে গেছে! উপরে 'Update FB Cookie' বাটনে ক্লিক করে নতুন কুকি পেস্ট করুন।";
+        console.error(authErr);
+        updateStatus({
+          status: "AUTH_ERROR",
+          error: authErr,
+          sourceType,
+          targetId,
+          targetName,
+          checkCount: check,
+          conversations: liveConversations,
+        });
+        break;
+      }
+
       const runtime = getRuntimeSettings();
       const currentMode = runtime.mode || initialMode;
       const isRunning = runtime.isRunning !== false;
@@ -732,7 +857,6 @@ async function runInboxBot(configPath) {
         const rawList = Array.isArray(runtime.monitoredChannels) && runtime.monitoredChannels.length > 0
           ? runtime.monitoredChannels
           : monitoredChannels;
-        // Filter channels that have either a real numeric Page ID or Personal ID
         const rotatableChannels = rawList.filter(
           (ch) =>
             ch &&
@@ -889,54 +1013,78 @@ async function runInboxBot(configPath) {
         const lastBotSnippet =
           lastBotRepliesByCustomer.get(customerChanKey) || lastBotRepliesByCustomer.get(lowerCustomer);
 
+        const chanSlug = activeChanName.toLowerCase().replace(/[^a-z0-9]+/g, "-");
+        const convId = `fb-live-${chanSlug}-${lowerCustomer.replace(/[^a-z0-9]+/g, "-")}`;
+
+        // Click the first/unread thread so we can read all real chat bubbles inside the right-hand Messenger pane!
+        if (i === 0 || !th.isRepliedByPage) {
+          try {
+            await page.mouse.click(th.x, th.y);
+            await sleep(1200);
+          } catch (_) {}
+        }
+
+        const extractedBubbles =
+          i === 0 || !th.isRepliedByPage
+            ? await extractActiveThreadChatBubbles(th.customerName, convId, th.lastMessageTime)
+            : null;
+
+        // Combine consecutive trailing CUSTOMER bubbles so multi-line/multi-bubble queries (e.g. "Premium Smart Watch Ultra X9" + "eta ki ache?") are understood together!
+        let fullCustomerQuery = th.cleanPreview;
         let isReplied =
           th.isRepliedByPage ||
           Boolean(lastBotSnippet && th.cleanPreview.startsWith(lastBotSnippet.slice(0, 25)));
 
+        if (Array.isArray(extractedBubbles) && extractedBubbles.length > 0) {
+          const lastBubble = extractedBubbles[extractedBubbles.length - 1];
+          isReplied = lastBubble.sender === "AI_ASSISTANT";
+
+          // Collect trailing customer bubbles (or last customer bubble group before AI reply)
+          const trailingCustomerTexts = [];
+          for (let bIdx = extractedBubbles.length - 1; bIdx >= 0; bIdx--) {
+            if (extractedBubbles[bIdx].sender === "CUSTOMER") {
+              trailingCustomerTexts.unshift(extractedBubbles[bIdx].text);
+            } else if (trailingCustomerTexts.length > 0) {
+              break;
+            }
+          }
+          if (trailingCustomerTexts.length > 0) {
+            fullCustomerQuery = trailingCustomerTexts.join("\n");
+          }
+        }
+
         const aiResult = generateTrainedAiResponse(
-          th.cleanPreview,
+          fullCustomerQuery,
           th.customerName,
           runtime,
           currentActiveChannel
         );
-        const chanSlug = activeChanName.toLowerCase().replace(/[^a-z0-9]+/g, "-");
-        const convId = `fb-live-${chanSlug}-${lowerCustomer.replace(/[^a-z0-9]+/g, "-")}`;
 
-        let lastText = th.cleanPreview;
-        const messages = [];
+        let lastText =
+          Array.isArray(extractedBubbles) && extractedBubbles.length > 0
+            ? extractedBubbles[extractedBubbles.length - 1].text
+            : th.cleanPreview;
 
-        if (!isReplied) {
-          messages.push({
-            id: `${convId}-m1`,
-            sender: "CUSTOMER",
-            text: th.cleanPreview,
-            timestamp: th.lastMessageTime,
-            status: "DELIVERED",
-          });
-        } else {
-          messages.push({
-            id: `${convId}-m1`,
-            sender: "CUSTOMER",
-            text: "প্রোডাক্ট সম্পর্কে বিস্তারিত জানতে চাই",
-            timestamp: th.lastMessageTime,
-            status: "DELIVERED",
-          });
-          messages.push({
-            id: `${convId}-m2`,
-            sender: "AI_ASSISTANT",
-            text: th.cleanPreview,
-            timestamp: th.lastMessageTime,
-            status: "SENT",
-            graphApiStatus: "SUCCESS_200",
-          });
-        }
+        const messages =
+          Array.isArray(extractedBubbles) && extractedBubbles.length > 0
+            ? extractedBubbles
+            : [
+                {
+                  id: `${convId}-m1`,
+                  sender: isReplied ? "AI_ASSISTANT" : "CUSTOMER",
+                  text: th.cleanPreview,
+                  timestamp: th.lastMessageTime,
+                  status: isReplied ? "SENT" : "DELIVERED",
+                  ...(isReplied ? { graphApiStatus: "SUCCESS_200" } : {}),
+                },
+              ];
 
         // 3. If AUTO mode is active and this customer is WAITING_REPLY, send trained AI auto-reply!
-        const sig = `${activeChanName.toLowerCase()}:::${lowerCustomer}:::${th.cleanPreview.slice(0, 60).toLowerCase()}`;
+        const sig = `${activeChanName.toLowerCase()}:::${lowerCustomer}:::${fullCustomerQuery.slice(0, 80).toLowerCase()}`;
         if (isRunning && currentMode === "AUTO" && !isReplied && !autoRepliedSignatures.has(sig)) {
           const autoReplyText = aiResult.suggestions[0];
           console.log(
-            `\n🤖 [TRAINED AI AUTO-REPLY | ${activeChanName}] Customer "${th.customerName}" asked: "${th.cleanPreview}"`
+            `\n🤖 [TRAINED AI AUTO-REPLY | ${activeChanName}] Customer "${th.customerName}" asked: "${fullCustomerQuery.replace(/\n/g, " | ")}"`
           );
           console.log(`   💡 AI Answer: "${autoReplyText}"`);
           console.log(`   ⏳ Applying human-like delay (${Math.min(humanDelaySeconds, 6)}s)...`);
@@ -944,7 +1092,7 @@ async function runInboxBot(configPath) {
 
           try {
             await page.mouse.click(th.x, th.y);
-            await sleep(2000);
+            await sleep(1500);
             await sendTextInActiveThread(page, autoReplyText);
 
             autoRepliedSignatures.add(sig);

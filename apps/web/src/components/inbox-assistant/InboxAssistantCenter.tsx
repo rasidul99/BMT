@@ -117,6 +117,8 @@ export function InboxAssistantCenter({ currentMode }: InboxAssistantCenterProps)
   const [showTerminalLogs, setShowTerminalLogs] = useState<boolean>(false)
   const [isStartingBot, setIsStartingBot] = useState<boolean>(false)
   const autoStartedRef = useRef<boolean>(false)
+  const chatScrollContainerRef = useRef<HTMLDivElement>(null)
+  const [showAiSuggestions, setShowAiSuggestions] = useState<boolean>(true)
 
   // Template Modal State
   const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false)
@@ -352,7 +354,10 @@ export function InboxAssistantCenter({ currentMode }: InboxAssistantCenterProps)
     })
 
     customChannels.forEach((ch) => {
-      if (!list.some((item) => item.key === ch.key || item.id === ch.id)) {
+      const existingIdx = list.findIndex((item) => item.key === ch.key || item.id === ch.id)
+      if (existingIdx >= 0) {
+        list[existingIdx] = { ...list[existingIdx], ...ch, enabled: true }
+      } else {
         list.push({ ...ch, enabled: true })
       }
     })
@@ -437,7 +442,10 @@ export function InboxAssistantCenter({ currentMode }: InboxAssistantCenterProps)
     }
 
     // Sync updated monitoredChannels with running 24/7 bot immediately
-    const nextAllChannels = [...channelOptions, newItem]
+    const nextAllChannels = [
+      ...channelOptions.filter((c) => c.id !== cleanId),
+      newItem,
+    ]
     fetch("/api/facebook-bot/inbox-assistant", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -451,9 +459,15 @@ export function InboxAssistantCenter({ currentMode }: InboxAssistantCenterProps)
     setNewChannelId("")
     setNewChannelCookie("")
     setIsAddChannelModalOpen(false)
-    showToast(
-      `নতুন ${newChannelType} "${cleanName}" যুক্ত হয়েছে এবং ২৪/৭ মেসেঞ্জার AI বটের তালিকায় সিঙ্ক হয়েছে!`
-    )
+
+    if (newItem.cookieString) {
+      setSelectedChannelKey(newItem.key)
+      handleStartLiveInboxBot({ reuseIfActive: false, customChannel: newItem })
+    } else {
+      showToast(
+        `নতুন ${newChannelType} "${cleanName}" যুক্ত হয়েছে এবং ২৪/৭ মেসেঞ্জার AI বটের তালিকায় সিঙ্ক হয়েছে!`
+      )
+    }
   }
 
   // Start or Connect to 24/7 Live Facebook Messenger Bot
@@ -568,6 +582,13 @@ export function InboxAssistantCenter({ currentMode }: InboxAssistantCenterProps)
 
     return () => clearInterval(interval)
   }, [activeJobId, syncLiveConversations, settings.isRunning, isStartingBot])
+
+  // Auto-scroll Live Chat Box to the latest Messenger bubble
+  useEffect(() => {
+    if (chatScrollContainerRef.current) {
+      chatScrollContainerRef.current.scrollTop = chatScrollContainerRef.current.scrollHeight
+    }
+  }, [selectedConversation?.id, selectedConversation?.messages.length])
 
   const filteredConversations = useMemo(() => {
     return conversations.filter((c) => {
@@ -974,10 +995,24 @@ export function InboxAssistantCenter({ currentMode }: InboxAssistantCenterProps)
               </span>
             </div>
             <div className="flex items-center gap-2">
+              {(watcherStatus === "AUTH_ERROR" || watcherStatus === "ERROR") && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setNewChannelType(activeChannel.sourceType === "Personal ID" ? "Personal ID" : "Page")
+                    setNewChannelName(activeChannel.sourceType === "ALL" ? "Test Next" : activeChannel.name)
+                    setNewChannelId(activeChannel.sourceType === "ALL" ? "61595136714776" : activeChannel.id)
+                    setIsAddChannelModalOpen(true)
+                  }}
+                  className="px-2.5 py-1 rounded-lg bg-rose-600 hover:bg-rose-500 text-white font-bold transition flex items-center gap-1 cursor-pointer shadow-xs"
+                >
+                  <span>🔑 Update FB Session Cookie</span>
+                </button>
+              )}
               <button
                 type="button"
                 onClick={() => setShowTerminalLogs((v) => !v)}
-                className="px-2.5 py-1 rounded-lg border bg-background/80 text-foreground font-semibold hover:bg-background transition flex items-center gap-1"
+                className="px-2.5 py-1 rounded-lg border bg-background/80 text-foreground font-semibold hover:bg-background transition flex items-center gap-1 cursor-pointer"
               >
                 <Terminal className="w-3.5 h-3.5" />
                 <span>{showTerminalLogs ? "Hide Live Logs" : "View Live Logs"}</span>
@@ -1617,10 +1652,10 @@ export function InboxAssistantCenter({ currentMode }: InboxAssistantCenterProps)
           </div>
 
           {/* Right Pane: Active Thread & Reply Composer (7 cols) */}
-          <div className="lg:col-span-7 flex flex-col min-h-[420px] lg:h-[650px] overflow-hidden bg-background">
+          <div className="lg:col-span-7 flex flex-col min-h-[520px] lg:h-[680px] overflow-hidden bg-background">
             {selectedConversation ? (
               <>
-                <div className="p-3.5 border-b border-border bg-card flex items-center justify-between">
+                <div className="p-3.5 border-b border-border bg-card flex items-center justify-between shrink-0">
                   <div className="flex items-center space-x-3">
                     <div className="w-8 h-8 rounded-full bg-blue-600 text-white font-bold flex items-center justify-center text-xs shadow-xs">
                       {selectedConversation.customerName.charAt(0)}
@@ -1632,6 +1667,9 @@ export function InboxAssistantCenter({ currentMode }: InboxAssistantCenterProps)
                         </span>
                         <span className="text-[10px] bg-muted px-2 py-0.5 rounded text-muted-foreground font-semibold">
                           {selectedConversation.platform}
+                        </span>
+                        <span className="text-[10px] px-2 py-0.5 rounded bg-blue-500/10 text-blue-500 font-bold">
+                          {selectedConversation.messages.length} Messages
                         </span>
                       </div>
                       <span className="text-[11px] text-muted-foreground">
@@ -1661,7 +1699,12 @@ export function InboxAssistantCenter({ currentMode }: InboxAssistantCenterProps)
                   </span>
                 </div>
 
-                <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-muted/5">
+                {/* Live Messenger Chronological Chat History Stream */}
+                <div
+                  ref={chatScrollContainerRef}
+                  data-testid="live-chat-messages-stream"
+                  className="flex-1 min-h-[340px] overflow-y-auto p-4 space-y-3.5 bg-muted/5"
+                >
                   {selectedConversation.messages.map((msg) => {
                     const isCustomer = msg.sender === "CUSTOMER"
                     return (
@@ -1673,19 +1716,21 @@ export function InboxAssistantCenter({ currentMode }: InboxAssistantCenterProps)
                           {isCustomer ? (
                             <>
                               <User className="w-3 h-3" />
-                              <span>{selectedConversation.customerName}</span>
+                              <span className="font-semibold text-foreground/90">
+                                {selectedConversation.customerName}
+                              </span>
                             </>
                           ) : msg.sender === "AI_ASSISTANT" ? (
                             <>
                               <Bot className="w-3 h-3 text-blue-600 dark:text-blue-400" />
                               <span className="font-bold text-blue-600 dark:text-blue-400">
-                                AI Live Messenger Reply
+                                {selectedConversation.pageName} (AI Live Reply)
                               </span>
                             </>
                           ) : (
                             <>
                               <Store className="w-3 h-3 text-blue-600 dark:text-blue-400" />
-                              <span>{selectedConversation.pageName}</span>
+                              <span className="font-bold">{selectedConversation.pageName}</span>
                             </>
                           )}
                           <span>•</span>
@@ -1693,9 +1738,9 @@ export function InboxAssistantCenter({ currentMode }: InboxAssistantCenterProps)
                         </div>
 
                         <div
-                          className={`max-w-[80%] p-3 rounded-2xl text-xs leading-relaxed ${
+                          className={`max-w-[82%] px-3.5 py-2.5 rounded-2xl text-xs leading-relaxed whitespace-pre-line ${
                             isCustomer
-                              ? "bg-card border border-border text-foreground rounded-tl-xs shadow-xs"
+                              ? "bg-card border border-border text-foreground rounded-tl-xs shadow-xs font-medium"
                               : "bg-blue-600 text-white rounded-tr-xs shadow-xs"
                           }`}
                         >
@@ -1713,49 +1758,65 @@ export function InboxAssistantCenter({ currentMode }: InboxAssistantCenterProps)
                   })}
                 </div>
 
+                {/* Compact & Collapsible AI Suggested Responses */}
                 {selectedConversation.aiSuggestions.length > 0 && (
-                  <div className="p-3 border-t border-border bg-blue-50/40 dark:bg-blue-950/20 space-y-2">
+                  <div className="px-3 py-2 border-t border-border bg-blue-50/40 dark:bg-blue-950/20 space-y-1.5 shrink-0">
                     <div className="flex items-center justify-between">
-                      <span className="text-[11px] font-bold text-blue-600 dark:text-blue-400 flex items-center space-x-1.5">
+                      <button
+                        type="button"
+                        onClick={() => setShowAiSuggestions((v) => !v)}
+                        className="text-[11px] font-bold text-blue-600 dark:text-blue-400 flex items-center space-x-1.5 cursor-pointer hover:underline"
+                      >
                         <Sparkles className="w-3.5 h-3.5" />
                         <span>
-                          AI Suggested Responses (Trained on {products.length} Products):
+                          AI Suggested Reply (Trained on {products.length} Products)
                         </span>
-                      </span>
-                      <span className="text-[10px] text-muted-foreground">
-                        Click Approve to send directly to Live Messenger
-                      </span>
+                        <ChevronDown
+                          className={`w-3.5 h-3.5 transition-transform ${
+                            showAiSuggestions ? "rotate-180" : ""
+                          }`}
+                        />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setShowAiSuggestions((v) => !v)}
+                        className="text-[10px] text-muted-foreground hover:text-foreground font-semibold cursor-pointer"
+                      >
+                        {showAiSuggestions ? "Minimize" : "Show AI Suggestion"}
+                      </button>
                     </div>
 
-                    <div className="space-y-1.5">
-                      {selectedConversation.aiSuggestions.map((sugg, idx) => (
-                        <div
-                          key={idx}
-                          className="p-2.5 bg-card border border-border rounded-xl flex items-center justify-between gap-3 shadow-xs"
-                        >
-                          <p className="text-[11px] text-foreground font-medium flex-1">
-                            &ldquo;{sugg}&rdquo;
-                          </p>
-                          <div className="flex items-center space-x-1.5 shrink-0">
-                            <button
-                              type="button"
-                              onClick={() => setReplyInput(sugg)}
-                              className="px-2.5 py-1 rounded-lg border border-border text-[11px] font-semibold hover:bg-muted text-foreground transition"
-                            >
-                              Edit
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => handleApproveSuggestion(sugg)}
-                              className="px-3 py-1 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-[11px] font-semibold shadow-xs transition flex items-center space-x-1"
-                            >
-                              <Check className="w-3.5 h-3.5 mr-0.5" />
-                              <span>Approve &amp; Send Live</span>
-                            </button>
+                    {showAiSuggestions && (
+                      <div className="space-y-1.5 max-h-[110px] overflow-y-auto pr-1">
+                        {selectedConversation.aiSuggestions.slice(0, 1).map((sugg, idx) => (
+                          <div
+                            key={idx}
+                            className="p-2 bg-card border border-border rounded-xl flex items-center justify-between gap-2.5 shadow-xs"
+                          >
+                            <p className="text-[11px] text-foreground font-medium flex-1 line-clamp-2 leading-snug">
+                              &ldquo;{sugg}&rdquo;
+                            </p>
+                            <div className="flex items-center space-x-1.5 shrink-0">
+                              <button
+                                type="button"
+                                onClick={() => setReplyInput(sugg)}
+                                className="px-2 py-1 rounded-lg border border-border text-[10px] font-semibold hover:bg-muted text-foreground transition cursor-pointer"
+                              >
+                                Edit
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleApproveSuggestion(sugg)}
+                                className="px-2.5 py-1 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-[10px] font-bold shadow-xs transition flex items-center space-x-1 cursor-pointer"
+                              >
+                                <Check className="w-3 h-3 mr-0.5" />
+                                <span>Approve &amp; Send Live</span>
+                              </button>
+                            </div>
                           </div>
-                        </div>
-                      ))}
-                    </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 )}
 
