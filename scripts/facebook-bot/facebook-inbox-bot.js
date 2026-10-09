@@ -805,24 +805,95 @@ async function runInboxBot(configPath) {
       }
     }
 
-    const isLoggedOut = await checkIsLoggedOut();
+    let lastKnownCookieStr = cookieString || "";
 
-    if (isLoggedOut) {
-      const authErr =
-        "❌ ফেসবুক সেশন কুকি (c_user ও xs) লগআউট বা মেয়াদোত্তীর্ণ হয়ে গেছে! উপরে 'Update FB Cookie' বাটনে ক্লিক করে নতুন কুকি পেস্ট করুন।";
-      console.error(authErr);
-      updateStatus({
-        status: "AUTH_ERROR",
-        error: authErr,
-        sourceType,
-        targetId,
-        targetName,
-        checkCount: 0,
-        conversations: [],
-      });
-      await sleep(5000);
-      await browser.close();
-      return;
+    async function waitUntilLoggedIn(currentCheck) {
+      while (await checkIsLoggedOut()) {
+        if (isSuperseded()) return false;
+        const authErr =
+          "❌ ফেসবুক সেশন কুকি লগ-আউট হয়ে গেছে, তাই মেসেঞ্জারে নতুন রিপ্লাই পাঠানো যায়নি! বটের ওপেন হওয়া Chrome উইন্ডোতে লগইন করুন অথবা ডানপাশের '🔑 Update FB Session Cookie' বাটনে ক্লিক করে নতুন কুকি দিন — কানেক্ট হওয়া মাত্রই মেসেঞ্জারে অটো-রিপ্লাই চলে যাবে।";
+        console.error(authErr);
+        updateStatus({
+          status: "AUTH_ERROR",
+          error: authErr,
+          sourceType,
+          targetId,
+          targetName,
+          checkCount: currentCheck,
+          conversations: liveConversations,
+        });
+
+        await sleep(4000);
+
+        // Check if active-session.json was updated with a new cookie from the UI
+        if (fs.existsSync(sessionFilePath)) {
+          try {
+            const sess = JSON.parse(fs.readFileSync(sessionFilePath, "utf8"));
+            if (sess.cookieString && sess.cookieString !== lastKnownCookieStr) {
+              lastKnownCookieStr = sess.cookieString;
+              const freshCookies = parseCookies(lastKnownCookieStr);
+              if (targetId && /^\d+$/.test(targetId)) {
+                freshCookies.push({
+                  name: "i_user",
+                  value: targetId,
+                  domain: ".facebook.com",
+                  path: "/",
+                  secure: true,
+                  sameSite: "Lax",
+                });
+              }
+              await page.setCookie(...freshCookies);
+              await page.goto("https://www.facebook.com/messages/t/", {
+                waitUntil: "domcontentloaded",
+                timeout: 45000,
+              });
+              await sleep(4000);
+            }
+          } catch (_) {}
+        }
+      }
+
+      // User logged in inside the browser window or via cookie! Persist updated cookies to active-session.json
+      try {
+        const currentBrowserCookies = await page.cookies("https://www.facebook.com");
+        const hasCUser = currentBrowserCookies.some((c) => c.name === "c_user");
+        const hasXs = currentBrowserCookies.some((c) => c.name === "xs");
+        if (hasCUser && hasXs) {
+          const serialized = currentBrowserCookies.map((c) => `${c.name}=${c.value}`).join(";");
+          lastKnownCookieStr = serialized;
+          fs.writeFileSync(
+            sessionFilePath,
+            JSON.stringify(
+              {
+                accountName: targetName || "Main Facebook Profile",
+                cookieString: serialized,
+                updatedAt: new Date().toISOString(),
+              },
+              null,
+              2
+            ),
+            "utf8"
+          );
+        }
+      } catch (_) {}
+
+      const curUrl = page.url() || "";
+      if (!curUrl.includes("/messages") && !curUrl.includes("/latest/inbox")) {
+        await page.goto("https://www.facebook.com/messages/t/", {
+          waitUntil: "domcontentloaded",
+          timeout: 45000,
+        });
+        await sleep(4000);
+      }
+      return true;
+    }
+
+    if (await checkIsLoggedOut()) {
+      const ok = await waitUntilLoggedIn(0);
+      if (!ok) {
+        await browser.close();
+        return;
+      }
     }
 
     for (let check = 1; check <= maxChecks; check++) {
@@ -832,19 +903,8 @@ async function runInboxBot(configPath) {
       }
 
       if (await checkIsLoggedOut()) {
-        const authErr =
-          "❌ ফেসবুক সেশন কুকি (c_user ও xs) লগআউট বা মেয়াদোত্তীর্ণ হয়ে গেছে! উপরে 'Update FB Cookie' বাটনে ক্লিক করে নতুন কুকি পেস্ট করুন।";
-        console.error(authErr);
-        updateStatus({
-          status: "AUTH_ERROR",
-          error: authErr,
-          sourceType,
-          targetId,
-          targetName,
-          checkCount: check,
-          conversations: liveConversations,
-        });
-        break;
+        const ok = await waitUntilLoggedIn(check);
+        if (!ok) break;
       }
 
       const runtime = getRuntimeSettings();

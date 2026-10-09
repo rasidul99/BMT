@@ -72,7 +72,7 @@ export interface InboxAutomationSettings {
   monitoredPages: string[]
 }
 
-const STORAGE_KEY_CONVERSATIONS = "bmt_inbox_conversations_v3"
+const STORAGE_KEY_CONVERSATIONS = "bmt_inbox_conversations_v4"
 const STORAGE_KEY_SETTINGS = "bmt_inbox_settings_v2"
 const STORAGE_KEY_TEMPLATES = "bmt_inbox_templates_v2"
 const STORAGE_KEY_PRODUCTS = "bmt_inbox_trained_products_v2"
@@ -174,27 +174,18 @@ const INITIAL_CONVERSATIONS: InboxConversation[] = [
     pageName: "Test Next",
     platform: "Facebook Page",
     category: "Sales Conversion",
-    unreadCount: 0,
-    lastMessageText:
-      'আসসালামু আলাইকুম Rasidul Islam Sajib! জি, আমাদের "Premium Smart Watch Ultra X9" বর্তমানে স্টকে এভেইলেবল আছে (স্পেশাল অফার প্রাইজ মাত্র ২,৪৯০ টাকা, রেগুলার প্রাইজ ৩,৯৯০ টাকা)। সারাদেশে ফ্রি ক্যাশ অন হোম ডেলিভারি। অর্ডার কনফার্ম করতে আপনার নাম, পূর্ণ ঠিকানা ও মোবাইল নম্বর দিন।',
+    unreadCount: 1,
+    lastMessageText: "Premium Smart Watch Ultra X9 — eta ki ache?",
     lastMessageTime: "10:17",
-    status: "REPLIED",
+    status: "WAITING_REPLY",
     aiSuggestions: [
       'আসসালামু আলাইকুম Rasidul Islam Sajib! জি, আমাদের "Premium Smart Watch Ultra X9" বর্তমানে স্টকে এভেইলেবল আছে (স্পেশাল অফার প্রাইজ মাত্র ২,৪৯০ টাকা, রেগুলার প্রাইজ ৩,৯৯০ টাকা)। সারাদেশে ফ্রি ক্যাশ অন হোম ডেলিভারি। অর্ডার কনফার্ম করতে আপনার নাম, পূর্ণ ঠিকানা ও মোবাইল নম্বর দিন।',
-      'এতে রয়েছে Super AMOLED HD ডিসপ্লে, ১০০% ওয়াটারপ্রুফ (IP68), ব্লুটুথ কলিং এবং ১ বছরের অফিসিয়াল ওয়ারেন্টি। অর্ডার করতে আপনার নাম, ঠিকানা ও ফোন নম্বর দিন।',
     ],
     messages: [
       {
-        id: "m-live-0",
-        sender: "CUSTOMER",
-        text: "hello",
-        timestamp: "Yesterday",
-        status: "DELIVERED",
-      },
-      {
         id: "m-live-0-reply",
         sender: "AI_ASSISTANT",
-        text: "আসসালামু আলাইকুম! ওয়াচটির ঈদ স্পেশাল অফার প্রাইজ মাত্র ২,৪৯০ টাকা (সারাদেশে ফ্রি হোম ডেলিভারি)। অর্ডার করতে নাম, পূর্ণ ঠিকানা ও মোবাইল নম্বর দিন।",
+        text: "আসসালামু আলাইকুম! আমাদের প্রিমিয়াম ওয়াচটির রেগুলার মূল্য ৩,৯৯০ টাকা, তবে ঈদ ধামাকা অফারে পাচ্ছেন মাত্র ২,৪৯০ টাকায় (সারাদেশে ফ্রি ক্যাশ অন ডেলিভারি)! অর্ডার করতে এখনই আপনার নাম, পূর্ণ ঠিকানা ও মোবাইল নম্বর দিন।",
         timestamp: "Yesterday",
         status: "SENT",
         graphApiStatus: "SUCCESS_200",
@@ -220,14 +211,6 @@ const INITIAL_CONVERSATIONS: InboxConversation[] = [
         text: "Premium Smart Watch Ultra X9\neta ki ache?",
         timestamp: "10:17",
         status: "DELIVERED",
-      },
-      {
-        id: "m-live-4",
-        sender: "AI_ASSISTANT",
-        text: 'আসসালামু আলাইকুম Rasidul Islam Sajib! জি, আমাদের "Premium Smart Watch Ultra X9" বর্তমানে স্টকে এভেইলেবল আছে (স্পেশাল অফার প্রাইজ মাত্র ২,৪৯০ টাকা, রেগুলার প্রাইজ ৩,৯৯০ টাকা)। সারাদেশে ফ্রি ক্যাশ অন হোম ডেলিভারি। অর্ডার কনফার্ম করতে আপনার নাম, পূর্ণ ঠিকানা ও মোবাইল নম্বর দিন।',
-        timestamp: "10:17",
-        status: "SENT",
-        graphApiStatus: "SUCCESS_200",
       },
     ],
   },
@@ -747,17 +730,16 @@ export function useInboxAssistant() {
             id: `m-${Date.now()}`,
             sender: senderType,
             text: replyText,
-            timestamp: "Just now",
-            status: "SENT",
-            graphApiStatus: "SUCCESS_200",
+            timestamp: "Sending to Messenger...",
+            status: "PENDING_APPROVAL",
           }
 
           return {
             ...conv,
             unreadCount: 0,
-            status: "REPLIED" as const,
+            status: "WAITING_REPLY" as const,
             lastMessageText: replyText,
-            lastMessageTime: "Just now",
+            lastMessageTime: "Queueing...",
             messages: [...conv.messages, newMsg],
           }
         }

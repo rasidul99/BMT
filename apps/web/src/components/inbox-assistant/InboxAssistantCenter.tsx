@@ -608,18 +608,41 @@ export function InboxAssistantCenter({ currentMode }: InboxAssistantCenterProps)
     if (e) e.preventDefault()
     if (!replyInput.trim() || !selectedConversation) return
 
+    if (watcherStatus === "AUTH_ERROR" || watcherStatus === "ERROR") {
+      setNewChannelType(activeChannel.sourceType === "Personal ID" ? "Personal ID" : "Page")
+      setNewChannelName(activeChannel.sourceType === "ALL" ? "Test Next" : activeChannel.name)
+      setNewChannelId(activeChannel.sourceType === "ALL" ? "61595136714776" : activeChannel.id)
+      setIsAddChannelModalOpen(true)
+      showToast(
+        "⚠️ ফেসবুক সেশন লগ-আউট হয়ে আছে! আগে নতুন কুকি পেস্ট করে কানেক্ট করুন, তাহলে মেসেঞ্জারে সরাসরি রিপ্লাই যাবে।"
+      )
+      return
+    }
+
     sendReply(selectedConversation.id, replyInput.trim(), "PAGE")
     setReplyInput("")
     showToast(
-      `Reply dispatched to "${selectedConversation.customerName}" on Live Facebook Messenger!`
+      `Reply queued for live delivery to "${selectedConversation.customerName}" on Facebook Messenger...`
     )
   }
 
   const handleApproveSuggestion = (text: string) => {
     if (!selectedConversation) return
+
+    if (watcherStatus === "AUTH_ERROR" || watcherStatus === "ERROR") {
+      setNewChannelType(activeChannel.sourceType === "Personal ID" ? "Personal ID" : "Page")
+      setNewChannelName(activeChannel.sourceType === "ALL" ? "Test Next" : activeChannel.name)
+      setNewChannelId(activeChannel.sourceType === "ALL" ? "61595136714776" : activeChannel.id)
+      setIsAddChannelModalOpen(true)
+      showToast(
+        "⚠️ ফেসবুক সেশন লগ-আউট হয়ে আছে! আগে নতুন কুকি পেস্ট করে কানেক্ট করুন, তাহলে মেসেঞ্জারে সরাসরি রিপ্লাই যাবে।"
+      )
+      return
+    }
+
     sendReply(selectedConversation.id, text, "AI_ASSISTANT")
     showToast(
-      `AI Reply approved & dispatched to "${selectedConversation.customerName}" on Live Messenger!`
+      `AI Reply queued for live delivery to "${selectedConversation.customerName}" on Messenger...`
     )
   }
 
@@ -1749,8 +1772,19 @@ export function InboxAssistantCenter({ currentMode }: InboxAssistantCenterProps)
 
                         {!isCustomer && (
                           <span className="text-[10px] text-muted-foreground font-medium mt-1 flex items-center space-x-1">
-                            <Check className="w-3 h-3 text-emerald-500" />
-                            <span>Delivered via Live Facebook Messenger</span>
+                            {msg.status === "PENDING_APPROVAL" ? (
+                              <>
+                                <Clock className="w-3 h-3 text-amber-500 animate-spin" />
+                                <span className="text-amber-500 font-semibold">
+                                  Queued for Live Facebook Messenger (Waiting for Bot Delivery...)
+                                </span>
+                              </>
+                            ) : (
+                              <>
+                                <Check className="w-3 h-3 text-emerald-500" />
+                                <span>Delivered via Live Facebook Messenger</span>
+                              </>
+                            )}
                           </span>
                         )}
                       </div>
