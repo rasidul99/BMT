@@ -119,22 +119,73 @@ const DEFAULT_PRODUCTS = [
 ];
 
 /**
- * Trained Multi-Intent Product AI Engine
- * Understands queries about:
- * - Product Catalog ("কি কি প্রোডাক্ট আছে?")
- * - Price / Discount ("দাম কত?", "অফার প্রাইজ কত?")
- * - Stock Status ("স্টক আছে নাকি নাই?", "পাওয়া যাবে?")
- * - Variants / Colors / Box Contents ("কি কি কালার আছে?", "বক্সে কি কি থাকবে?")
- * - Why Product is Good / Quality / Features ("কেন ভালো?", "কোয়ালিটি কেমন?", "ফিচার কি?")
- * - Warranty / Guarantee ("ওয়ারেন্টি আছে?")
- * - Delivery / Courier ("ডেলিভারি চার্জ কত?", "কতদিন লাগবে?")
- * - Showroom / Location ("শোরুম কোথায়?")
- * - Order Confirmation (Phone number / Address detection)
+ * Helper to extract a friendly Bangladeshi human address ("ভাইয়া" / "আপু" or "<FirstName> ভাইয়া")
+ * Real humans in Messenger never repeat the full 3-word Facebook profile name on every message!
  */
-function generateTrainedAiResponse(text, customerName, runtime = {}, channelContext = {}) {
+function getHumanAddress(customerName) {
+  const raw = (customerName || "").trim();
+  const lower = raw.toLowerCase();
+  const femaleHints = [
+    "akter",
+    "begum",
+    "khatun",
+    "jahan",
+    "sultana",
+    "parvin",
+    "nusrat",
+    "farzana",
+    "tania",
+    "sadia",
+    "mim",
+    "sumaiya",
+    "jannat",
+    "fatema",
+    "sharmin",
+    "tasnim",
+    "rubina",
+    "salma",
+    "mst",
+    "আক্তার",
+    "বেগম",
+    "খাতুন",
+    "জাহান",
+    "সুলতানা",
+    "নুসরাত",
+    "ফারজানা",
+    "তানিয়া",
+    "সাদিয়া",
+    "মিম",
+    "সুমাইয়া",
+    "জান্নাত",
+    "ফাতেমা",
+  ];
+  const isFemale = femaleHints.some((h) => lower.includes(h));
+  const honorific = isFemale ? "আপু" : "ভাইয়া";
+
+  const tokens = raw
+    .split(/\s+/)
+    .map((t) => t.replace(/[^a-zA-Z\u0980-\u09FF]/g, ""))
+    .filter((t) => t.length >= 2 && !/^(md|mst|mohammad|muhammad|al|sk|sheikh)$/i.test(t));
+
+  const shortName = tokens[0] || "";
+  return {
+    honorific,
+    shortName,
+    firstTurnAddress: shortName ? `${shortName} ${honorific}` : honorific,
+  };
+}
+
+/**
+ * Context-Aware, Humanized Multi-Intent Conversational AI Engine (Banglish + Bangla + English)
+ * - Remembers the full conversation history (`conversationHistory`)
+ * - Greets ONLY on the first turn (or when customer says Salam/Hello), never repeating "আসসালামু আলাইকুম <Full Name>!" on follow-up questions
+ * - Remembers which product was discussed earlier in the chat when the customer asks follow-up questions
+ * - Answers the exact question asked (e.g. "ekhon order dile kobe pabo?", "eta ki chutto bacchara use korte parbe?", "kom rakhen", "advance dite hobe naki?") in a warm, natural Bangladeshi human moderator tone without dumping a static template
+ */
+function generateTrainedAiResponse(text, customerName, runtime = {}, channelContext = {}, conversationHistory = []) {
   const rawMsg = (text || "").trim();
   const lower = rawMsg.toLowerCase();
-  const cleanName = customerName || "স্যার";
+  const { honorific, firstTurnAddress } = getHumanAddress(customerName);
 
   const allProducts =
     Array.isArray(runtime.products) && runtime.products.length > 0
@@ -159,38 +210,95 @@ function generateTrainedAiResponse(text, customerName, runtime = {}, channelCont
     ...DEFAULT_STORE_PROFILE,
     ...(runtime.storeProfile || {}),
   };
-  const templates = Array.isArray(runtime.templates) ? runtime.templates : [];
 
-  // 1. Check if customer provided a phone number (01xxxxxxxxx) to confirm an order
+  // Analyze conversation history for context awareness
+  const historyList = Array.isArray(conversationHistory) ? conversationHistory : [];
+  // Find previous AI messages before the current trailing customer turn
+  let lastCustomerStartIdx = historyList.length;
+  for (let i = historyList.length - 1; i >= 0; i--) {
+    if (historyList[i].sender === "CUSTOMER") {
+      lastCustomerStartIdx = i;
+    } else if (lastCustomerStartIdx < historyList.length) {
+      break;
+    }
+  }
+  const priorMessages = historyList.slice(0, lastCustomerStartIdx);
+  const priorAiMessages = priorMessages.filter((m) => m.sender === "AI_ASSISTANT" || m.sender === "PAGE");
+  const hasAlreadyGreeted = priorAiMessages.length > 0;
+  const turnIndex = priorAiMessages.length;
+  const lastAiText = priorAiMessages.length > 0 ? priorAiMessages[priorAiMessages.length - 1].text || "" : "";
+  const recentlyAskedOrderInfo =
+    lastAiText.includes("নাম, পূর্ণ ঠিকানা") ||
+    lastAiText.includes("নাম, ঠিকানা ও মোবাইল") ||
+    lastAiText.includes("মোবাইল নম্বর");
+  const alreadyMentionedPrice = priorAiMessages.some(
+    (m) => (m.text || "").includes("টাকা") || (m.text || "").includes("প্রাইজ")
+  );
+
+  // Natural conversational openers for follow-up turns (varied so consecutive messages never look robotic)
+  const followUpOpeners = [
+    `জি ${honorific},`,
+    `হ্যাঁ ${honorific},`,
+    `অবশ্যই ${honorific},`,
+    `${honorific},`,
+  ];
+  const naturalOpener = hasAlreadyGreeted
+    ? followUpOpeners[turnIndex % followUpOpeners.length]
+    : `আসসালামু আলাইকুম ${firstTurnAddress}!`;
+
+  // 1. Check if customer provided a Bangladeshi phone number (01xxxxxxxxx) to confirm an order
   const phoneMatch = rawMsg.match(/(?:\+?88)?01[3-9]\d{8}/);
   if (phoneMatch) {
-    const orderReply = `অসংখ্য ধন্যবাদ ${cleanName}! আপনার মোবাইল নম্বর (${phoneMatch[0]}) ও অর্ডারের তথ্য আমরা পেয়েছি। আমাদের প্রতিনিধি খুব দ্রুত কল করে আপনার অর্ডারটি কনফার্ম করবেন। (${storeProfile.deliveryTime})। জরুরি প্রয়োজনে কল করুন: ${storeProfile.helplineNumber}।`;
+    const orderReply = `অসংখ্য ধন্যবাদ ${firstTurnAddress}! আপনার মোবাইল নম্বর (${phoneMatch[0]}) ও অর্ডারের তথ্য আমরা নোট করে নিয়েছি। আমাদের প্রতিনিধি খুব দ্রুত কল করে অর্ডারটি কনফার্ম করবেন। (${storeProfile.deliveryTime})। 😊`;
     return {
       category: "Sales Conversion",
       suggestions: [orderReply],
     };
   }
 
-  // 2. Match specific product by name or keywords
-  let matchedProduct = null;
-  for (const prod of products) {
-    const nameTokens = [prod.name || ""]
-      .concat((prod.keywords || "").split(","))
-      .map((k) => k.trim().toLowerCase())
-      .filter((k) => k.length >= 2);
+  // 2. Match product from current message OR remember from earlier messages in the conversation!
+  function findProductInText(searchStr) {
+    const sLower = (searchStr || "").toLowerCase();
+    for (const prod of products) {
+      const nameTokens = [prod.name || ""]
+        .concat((prod.keywords || "").split(","))
+        .map((k) => k.trim().toLowerCase())
+        .filter((k) => k.length >= 2);
+      if (nameTokens.some((tok) => sLower.includes(tok))) {
+        return prod;
+      }
+    }
+    return null;
+  }
 
-    if (nameTokens.some((tok) => lower.includes(tok))) {
-      matchedProduct = prod;
-      break;
+  let matchedProduct = findProductInText(rawMsg);
+  if (!matchedProduct && historyList.length > 0) {
+    for (let i = historyList.length - 1; i >= 0; i--) {
+      const found = findProductInText(historyList[i].text || "");
+      if (found) {
+        matchedProduct = found;
+        break;
+      }
     }
   }
 
   const primaryProduct =
     matchedProduct || products.find((p) => p.isDefaultProduct) || products[0] || DEFAULT_PRODUCTS[0];
 
-  // 3. Detect all customer intents in the message
+  // 3. Comprehensive Banglish + Bangla + English Conversational Intent Detection
+  const hasSalam =
+    /\b(salam|assalamu|slm|সালাম|আসসালামু)\b/i.test(lower);
+  const isPureGreeting =
+    /^(hi+|hello+|hlw+|hey+|salam|assalamu alaikum|slm|হাই|হ্যালো|সালাম|আসসালামু আলাইকুম|ভাইয়া|ভাইয়া|ভাই|কেউ আছেন|আছেন)\s*[?!.]*$/i.test(
+      rawMsg
+    );
+  const isPureAck =
+    /^(ok+|okay|accha|acha|hmm+|hm+|thanks|thank you|tnx|dhonnobad|আচ্ছা|ঠিক আছে|ওকে|হুম|ধন্যবাদ|পরে জানাবো|দেখি)\s*[?!.👍😊]*$/i.test(
+      rawMsg
+    );
+
   const asksAllProductsCatalog =
-    !matchedProduct &&
+    !findProductInText(rawMsg) &&
     products.length > 1 &&
     (lower.includes("কি কি প্রোডাক্ট") ||
       lower.includes("কী কী প্রোডাক্ট") ||
@@ -198,37 +306,128 @@ function generateTrainedAiResponse(text, customerName, runtime = {}, channelCont
       lower.includes("কি কি পাওয়া যায়") ||
       lower.includes("সব প্রোডাক্ট") ||
       lower.includes("ক্যাটালগ") ||
+      lower.includes("ki ki product") ||
+      lower.includes("ar ki ache") ||
       lower.includes("all product") ||
-      lower.includes("catalog") ||
-      lower.includes("list"));
+      lower.includes("catalog"));
 
+  // Delivery Timing ("ekhon order dile kobe pabo?", "koto din lagbe?", "kokhon pabo?", "ajke dile kal pabo?")
+  const asksDeliveryTime =
+    lower.includes("kobe pabo") ||
+    lower.includes("kokhon pabo") ||
+    lower.includes("kobe diben") ||
+    lower.includes("koto din") ||
+    lower.includes("kotodin") ||
+    lower.includes("order dile kobe") ||
+    lower.includes("ajke dile") ||
+    lower.includes("kal pabo") ||
+    lower.includes("time koto") ||
+    lower.includes("কবে পাব") ||
+    lower.includes("কখন পাব") ||
+    lower.includes("কতদিন") ||
+    lower.includes("কত দিন") ||
+    lower.includes("আজকে অর্ডার") ||
+    lower.includes("কালকে পাব");
+
+  // Delivery Charge / Advance / Cash on Delivery ("delivery charge koto", "advance dite hobe naki", "bkash", "check kore")
+  const asksDeliveryOrPayment =
+    lower.includes("ডেলিভারি") ||
+    lower.includes("চার্জ") ||
+    lower.includes("কুরিয়ার") ||
+    lower.includes("কুরিয়ার") ||
+    lower.includes("ক্যাশ অন") ||
+    lower.includes("অগ্রিম") ||
+    lower.includes("এডভান্স") ||
+    lower.includes("চেক করে") ||
+    lower.includes("delivery") ||
+    lower.includes("courier") ||
+    lower.includes("charge") ||
+    lower.includes("advance") ||
+    lower.includes("adv ") ||
+    lower.includes("bkash") ||
+    lower.includes("nagad") ||
+    lower.includes("cash on") ||
+    lower.includes("age taka") ||
+    lower.includes("check kore");
+
+  // Suitability / Kids / Age / Gender / Wrist Fit / Gift ("eta ki chutto bacchara use korte parbe?", "meyera porte parbe?", "hat e fit hobe?")
+  const asksSuitabilityKids =
+    lower.includes("baccha") ||
+    lower.includes("chutto") ||
+    lower.includes("choto") ||
+    lower.includes("kids") ||
+    lower.includes("baby") ||
+    lower.includes("boyos") ||
+    lower.includes("বাচ্চা") ||
+    lower.includes("ছোট") ||
+    lower.includes("বয়স");
+
+  const asksSuitabilityGeneral =
+    asksSuitabilityKids ||
+    lower.includes("use korte parbe") ||
+    lower.includes("use kora jabe") ||
+    lower.includes("porte parbe") ||
+    lower.includes("pora jabe") ||
+    lower.includes("hat e") ||
+    lower.includes("hate fit") ||
+    lower.includes("meye") ||
+    lower.includes("chele") ||
+    lower.includes("gift") ||
+    lower.includes("ইউজ করতে পারবে") ||
+    lower.includes("ব্যবহার করতে পারবে") ||
+    lower.includes("পরতে পারবে") ||
+    lower.includes("হাতে ফিট") ||
+    lower.includes("মেয়েরা") ||
+    lower.includes("ছেলেরা") ||
+    lower.includes("গিফট");
+
+  // Bargaining / Discount ("kom rakhen", "komaia rakhen", "discount den", "kom hobe")
+  const asksBargain =
+    lower.includes("kom rakhen") ||
+    lower.includes("komaia") ||
+    lower.includes("komano") ||
+    lower.includes("kom hobe") ||
+    lower.includes("koto rakhben") ||
+    lower.includes("last price") ||
+    lower.includes("fixed price") ||
+    lower.includes("discount") ||
+    lower.includes("কম রাখেন") ||
+    lower.includes("কমান") ||
+    lower.includes("কম হবে") ||
+    lower.includes("ডিসকাউন্ট") ||
+    lower.includes("লাস্ট প্রাইজ");
+
+  // Price Inquiry ("dam koto", "price koto", "koto taka", "pp")
   const asksPrice =
+    asksBargain ||
     lower.includes("দাম") ||
     lower.includes("মূল্য") ||
-    lower.includes("কত") ||
-    lower.includes("টাকা") ||
+    lower.includes("কত টাকা") ||
     lower.includes("প্রাইজ") ||
     lower.includes("অফার") ||
-    lower.includes("ডিসকাউন্ট") ||
     lower.includes("price") ||
     lower.includes("rate") ||
     lower.includes("cost") ||
     lower.includes("dam") ||
-    lower.includes("koto") ||
-    lower.includes("pp");
+    lower.includes("taka") ||
+    /\b(koto|pp)\b/i.test(lower);
 
+  // Stock / Availability ("eta ki ache?", "stock ache?", "pawa jabe?")
   const asksStock =
     lower.includes("স্টক") ||
     lower.includes("পাওয়া যাবে") ||
     lower.includes("পাওয়া যাবে") ||
     lower.includes("আছে নাকি") ||
     lower.includes("আছে কি") ||
+    lower.includes("এটা কি আছে") ||
     lower.includes("এভেইলেবল") ||
     lower.includes("নাকি নাই") ||
     lower.includes("stock") ||
     lower.includes("available") ||
-    lower.includes("ache");
+    lower.includes("pawa jabe") ||
+    /\b(ache|ase)\b/i.test(lower);
 
+  // Variants / Colors / Box Contents / Straps ("color ki ki", "strap", "belt", "box e ki thakbe")
   const asksVariants =
     lower.includes("কি কি আছে") ||
     lower.includes("কী কী আছে") ||
@@ -238,13 +437,51 @@ function generateTrainedAiResponse(text, customerName, runtime = {}, channelCont
     lower.includes("বক্সে") ||
     lower.includes("সাথে কি") ||
     lower.includes("ভ্যারিয়েন্ট") ||
+    lower.includes("বেল্ট") ||
+    lower.includes("স্ট্র্যাপ") ||
     lower.includes("color") ||
     lower.includes("colour") ||
     lower.includes("size") ||
     lower.includes("variant") ||
+    lower.includes("strap") ||
+    lower.includes("belt") ||
+    lower.includes("box") ||
+    lower.includes("sathe ki") ||
     lower.includes("ki ki ache");
 
+  // Specific Feature Questions (Waterproof, Battery, Calling/Phone connection, Quality)
+  const asksWaterproof =
+    lower.includes("waterproof") ||
+    lower.includes("water") ||
+    lower.includes("pani") ||
+    lower.includes("vije") ||
+    lower.includes("ওয়াটারপ্রুফ") ||
+    lower.includes("পানি") ||
+    lower.includes("ভিজে");
+
+  const asksBattery =
+    lower.includes("battery") ||
+    lower.includes("charge") ||
+    lower.includes("backup") ||
+    lower.includes("ব্যাটারি") ||
+    lower.includes("চার্জ") ||
+    lower.includes("ব্যাকআপ");
+
+  const asksCallingOrConnect =
+    lower.includes("call") ||
+    lower.includes("kotha bola") ||
+    lower.includes("bluetooth") ||
+    lower.includes("connect") ||
+    lower.includes("android") ||
+    lower.includes("iphone") ||
+    lower.includes("কল করা") ||
+    lower.includes("কথা বলা") ||
+    lower.includes("কানেক্ট");
+
   const asksWhyGood =
+    asksWaterproof ||
+    asksBattery ||
+    asksCallingOrConnect ||
     lower.includes("কেন ভালো") ||
     lower.includes("কেন নিব") ||
     lower.includes("কোয়ালিটি") ||
@@ -252,14 +489,18 @@ function generateTrainedAiResponse(text, customerName, runtime = {}, channelCont
     lower.includes("কেমন") ||
     lower.includes("ফিচার") ||
     lower.includes("সুবিধা") ||
-    lower.includes("উপকারিতা") ||
     lower.includes("ভালো হবে") ||
     lower.includes("কাজ কি") ||
     lower.includes("বৈশিষ্ট্য") ||
+    lower.includes("অরিজিনাল") ||
+    lower.includes("টেকসই") ||
     lower.includes("quality") ||
     lower.includes("feature") ||
     lower.includes("benefit") ||
     lower.includes("details") ||
+    lower.includes("original") ||
+    lower.includes("valo hobe") ||
+    lower.includes("tikbe") ||
     lower.includes("বিস্তারিত") ||
     lower.includes("keno valo") ||
     lower.includes("kemon");
@@ -270,18 +511,11 @@ function generateTrainedAiResponse(text, customerName, runtime = {}, channelCont
     lower.includes("গ্যারান্টি") ||
     lower.includes("নষ্ট হলে") ||
     lower.includes("রিপ্লেস") ||
+    lower.includes("সমস্যা হলে") ||
     lower.includes("warranty") ||
-    lower.includes("guarantee");
-
-  const asksDelivery =
-    lower.includes("ডেলিভারি") ||
-    lower.includes("চার্জ") ||
-    lower.includes("কুরিয়ার") ||
-    lower.includes("কুরিয়ার") ||
-    lower.includes("কতদিন") ||
-    lower.includes("ক্যাশ অন") ||
-    lower.includes("delivery") ||
-    lower.includes("courier");
+    lower.includes("guarantee") ||
+    lower.includes("nosto hole") ||
+    lower.includes("replace");
 
   const asksLocation =
     lower.includes("লোকেশন") ||
@@ -293,9 +527,58 @@ function generateTrainedAiResponse(text, customerName, runtime = {}, channelCont
     lower.includes("location") ||
     lower.includes("showroom") ||
     lower.includes("shop") ||
+    lower.includes("dokan") ||
+    lower.includes("office") ||
+    lower.includes("kothay") ||
     lower.includes("address");
 
-  // 4. If customer asks what products are available in the store
+  const asksPhotoOrVideo =
+    lower.includes("chobi") ||
+    lower.includes("pic") ||
+    lower.includes("photo") ||
+    lower.includes("video") ||
+    lower.includes("ছবি") ||
+    lower.includes("পিক") ||
+    lower.includes("ভিডিও");
+
+  const asksHowToOrder =
+    lower.includes("order korbo") ||
+    lower.includes("kivabe nibo") ||
+    lower.includes("kivabe order") ||
+    lower.includes("nite chai") ||
+    lower.includes("order dibo") ||
+    lower.includes("নিতে চাই") ||
+    lower.includes("অর্ডার করবো") ||
+    lower.includes("অর্ডার করতে চাই") ||
+    lower.includes("কিভাবে নিব") ||
+    lower.includes("কিভাবে অর্ডার");
+
+  const mentionsCustomerArea =
+    /\b(dhaka|dhakay|mirpur|uttara|dhanmondi|mohammadpur|banani|gulshan|badda|jatrabari|savar|gazipur|narayanganj|chittagong|ctg|sylhet|rajshahi|khulna|barisal|rangpur|comilla|cumilla|bogra|mymensingh|ঢাকা|ঢাকায়|মিরপুর|উত্তরা|ধানমন্ডি|চট্টগ্রাম|সিলেট|রাজশাহী|খুলনা|গাজীপুর|নারায়ণগঞ্জ)\b/i.test(
+      lower
+    );
+
+  // 4. Handle Pure Greeting ("Hi", "Hello", "Assalamu Alaikum", "ভাইয়া")
+  if (isPureGreeting) {
+    const reply = hasSalam
+      ? `ওয়ালাইকুম আসসালাম ${firstTurnAddress}! কেমন আছেন? জি বলুন, আপনাকে কীভাবে সহযোগিতা করতে পারি? 😊`
+      : `হ্যালো ${firstTurnAddress}! কেমন আছেন? জি বলুন, আমাদের কোন প্রোডাক্টটি সম্পর্কে জানতে চাচ্ছেন? 😊`;
+    return {
+      category: "Lead Conversion",
+      suggestions: [reply],
+    };
+  }
+
+  // 5. Handle Pure Acknowledgment ("Ok", "Accha", "Hmm", "Thanks")
+  if (isPureAck) {
+    const reply = `অসংখ্য ধন্যবাদ ${honorific}! আপনার সুবিধামতো যেকোনো সময় নাম, ঠিকানা ও মোবাইল নম্বর দিলেই আমরা অর্ডারটি প্রসেস করে দেবো। যেকোনো প্রয়োজনে নক দেবেন। 😊`;
+    return {
+      category: "Lead Conversion",
+      suggestions: [reply],
+    };
+  }
+
+  // 6. Handle Full Store Catalog Inquiry
   if (asksAllProductsCatalog) {
     const productLines = products
       .map((p, idx) => {
@@ -304,24 +587,24 @@ function generateTrainedAiResponse(text, customerName, runtime = {}, channelCont
             ? "(স্টক আউট)"
             : p.stockStatus === "LIMITED_STOCK"
             ? "(সীমিত স্টক)"
-            : "(স্টকে আছে)";
+            : "(রেডি স্টক)";
         return `${idx + 1}. ${p.name} — অফার প্রাইজ: ${p.offerPrice} ${stBadge}`;
       })
       .join(" | ");
-    const catalogReply = `আসসালামু আলাইকুম ${cleanName}! আমাদের বর্তমান প্রোডাক্টসমূহ: ${productLines}। ${storeProfile.deliveryPolicy}। আপনি কোন প্রোডাক্টটি সম্পর্কে বিস্তারিত জানতে বা অর্ডার করতে চান?`;
+    const catalogReply = `${naturalOpener} আমাদের কাছে বর্তমানে এই প্রোডাক্টগুলো পাচ্ছেন: ${productLines}। আপনি কোন প্রোডাক্টটি সম্পর্কে জানতে চাচ্ছেন ${honorific}?`;
     return {
       category: "Sales Conversion",
       suggestions: [catalogReply],
     };
   }
 
-  // 5. Handle OUT_OF_STOCK product immediately if customer asks about it
+  // 7. Handle OUT_OF_STOCK product
   if (primaryProduct.stockStatus === "OUT_OF_STOCK") {
     const alternative = products.find((p) => p.id !== primaryProduct.id && p.stockStatus !== "OUT_OF_STOCK");
-    const outReply = `আসসালামু আলাইকুম ${cleanName}! দুঃখিত, আমাদের "${primaryProduct.name}" প্রোডাক্টটি বর্তমানে স্টক আউট (Out of Stock) রয়েছে।${
+    const outReply = `${naturalOpener} দুঃখিত, আমাদের "${primaryProduct.name}" প্রোডাক্টটি এই মুহূর্তে স্টক আউট হয়ে গেছে।${
       alternative
-        ? ` তবে আমাদের "${alternative.name}" বর্তমানে স্টকে আছে (অফার প্রাইজ: ${alternative.offerPrice}, ${alternative.whyGoodFeatures})। আপনি চাইলে এটি অর্ডার করতে পারেন!`
-        : ` নতুন স্টক আসা মাত্র আমরা আপনাকে জানাবো। যেকোনো তথ্যের জন্য কল করুন: ${storeProfile.helplineNumber}।`
+        ? ` তবে আমাদের "${alternative.name}" এখন রেডি স্টকে আছে (অফার প্রাইজ: ${alternative.offerPrice})। আপনি চাইলে এটি দেখতে পারেন!`
+        : ` নতুন স্টক আসা মাত্রই আমরা আপনাকে জানাবো ইনশাআল্লাহ।`
     }`;
     return {
       category: "Sales Conversion",
@@ -329,87 +612,192 @@ function generateTrainedAiResponse(text, customerName, runtime = {}, channelCont
     };
   }
 
-  // 6. Compose dynamic response from the trained product fields based on detected intents
-  const parts = [`আসসালামু আলাইকুম ${cleanName}!`];
+  // 8. Build Contextual, Humanized Conversational Reply for Specific Intents
+  const replySegments = [];
   let category = "Sales Conversion";
+  let followUpQuestion = "";
 
-  const hasSpecificIntent =
-    asksPrice ||
-    asksStock ||
-    asksVariants ||
-    asksWhyGood ||
-    asksWarranty ||
-    asksDelivery ||
-    asksLocation;
+  // Intent: Suitability (Kids / Small Wrists / Girls / Men / Gift / General Usage)
+  if (asksSuitabilityGeneral) {
+    if (asksSuitabilityKids) {
+      replySegments.push(
+        `অবশ্যই ব্যবহার করতে পারবে! এটার সাথে অ্যাডজাস্টেবল নরম সিলিকন স্ট্র্যাপ দেওয়া থাকে, তাই ছোট বা বড় যে কারো হাতেই খুব সুন্দরভাবে ফিট হয়। আর ঘড়িটা বেশ হালকা ও আরামদায়ক হওয়ায় ছোট বাচ্চারাও খুব সহজে পরতে পারবে। 😊`
+      );
+    } else if (lower.includes("meye") || lower.includes("মেয়ে") || lower.includes("gift") || lower.includes("গিফট")) {
+      replySegments.push(
+        `ছেলে-মেয়ে উভয়েই এটি খুব সুন্দরভাবে পরতে পারবেন এবং প্রিমিয়াম বক্স প্যাকেজিং থাকায় গিফট দেওয়ার জন্যও এটি একদম পারফেক্ট! 👌`
+      );
+    } else {
+      replySegments.push(
+        `এটি যেকোনো বয়সের মানুষ খুব আরামে ব্যবহার করতে পারবেন, কারণ সাথে অ্যাডজাস্টেবল স্ট্র্যাপ দেওয়া আছে যা যেকোনো হাতে সুন্দরভাবে ফিট হয়।`
+      );
+    }
+    category = "Lead Conversion";
+  }
 
+  // Intent: Delivery Timing ("ekhon order dile kobe pabo?")
+  if (asksDeliveryTime) {
+    replySegments.push(
+      `এখন অর্ডার কনফার্ম করলে ${storeProfile.deliveryTime} ইনশাআল্লাহ। আর ডেলিভারি ম্যানের সামনে প্রোডাক্ট হাতে পেয়ে চেক করে এরপর পেমেন্ট করতে পারবেন।`
+    );
+    if (!mentionsCustomerArea) {
+      followUpQuestion = `আপনি কি ঢাকার ভেতরে নিবেন নাকি ঢাকার বাইরে ${honorific}?`;
+    }
+  }
+
+  // Intent: Delivery Charge / Advance / Cash on Delivery
+  if (asksDeliveryOrPayment && !asksDeliveryTime) {
+    if (
+      lower.includes("advance") ||
+      lower.includes("bkash") ||
+      lower.includes("age taka") ||
+      lower.includes("অগ্রিম") ||
+      lower.includes("এডভান্স")
+    ) {
+      replySegments.push(
+        `না ${honorific}, কোনো অগ্রীম ১ টাকাও দিতে হবে না! ${storeProfile.deliveryPolicy}। প্রোডাক্ট আগে হাতে পাবেন, দেখে চেক করবেন, তারপর ডেলিভারি ম্যানকে পেমেন্ট করবেন। 👍`
+      );
+    } else {
+      replySegments.push(`${storeProfile.deliveryPolicy} (${storeProfile.deliveryTime})।`);
+    }
+  }
+
+  // Intent: Bargaining vs Price
+  if (asksBargain) {
+    replySegments.push(
+      `এটার রেগুলার প্রাইজ তো ${primaryProduct.regularPrice || "৩,৯৯০ টাকা"}, আমরা অলরেডি ডিসকাউন্ট দিয়ে একদম স্পেশাল অফার প্রাইজে মাত্র ${primaryProduct.offerPrice}-এ দিচ্ছি, সাথে ফ্রি হোম ডেলিভারিও থাকছে! প্রোডাক্টটা হাতে পেলেই কোয়ালিটি দেখে আপনার ভালো লাগবে ইনশাআল্লাহ। 😊`
+    );
+  } else if (asksPrice && !asksStock) {
+    replySegments.push(
+      primaryProduct.regularPrice
+        ? `"${primaryProduct.name}"-এর রেগুলার প্রাইজ ${primaryProduct.regularPrice}, তবে এখন অফারে পাচ্ছেন মাত্র ${primaryProduct.offerPrice}-এ (সাথে সারাদেশে ফ্রি হোম ডেলিভারি)!`
+        : `"${primaryProduct.name}"-এর স্পেশাল অফার প্রাইজ পরবে মাত্র ${primaryProduct.offerPrice} (ফ্রি হোম ডেলিভারি)!`
+    );
+  }
+
+  // Intent: Stock / Availability ("eta ki ache?")
   if (asksStock) {
-    const stockMsg =
+    const stockNote =
       primaryProduct.stockStatus === "LIMITED_STOCK"
-        ? `জি, আমাদের "${primaryProduct.name}" বর্তমানে সীমিত স্টকে (Limited Stock) এভেইলেবল আছে (${primaryProduct.stockQuantityText || "দ্রুত অর্ডার করুন"})।`
-        : `জি, আমাদের "${primaryProduct.name}" বর্তমানে স্টকে এভেইলেবল আছে (${primaryProduct.stockQuantityText || "রেডি স্টক"})।`;
-    parts.push(stockMsg);
+        ? `হ্যাঁ, আমাদের "${primaryProduct.name}" এখন সীমিত স্টকে এভেইলেবল আছে।`
+        : `হ্যাঁ, আমাদের "${primaryProduct.name}" এখন রেডি স্টকে আছে।`;
+    const priceAddon = !alreadyMentionedPrice
+      ? ` স্পেশাল অফার প্রাইজ মাত্র ${primaryProduct.offerPrice}${
+          primaryProduct.regularPrice ? ` (রেগুলার প্রাইজ ${primaryProduct.regularPrice})` : ""
+        }।`
+      : "";
+    replySegments.push(`${stockNote}${priceAddon}`);
+    if (!followUpQuestion) {
+      followUpQuestion = `আপনি কি অর্ডার করতে চাচ্ছেন ${honorific}?`;
+    }
   }
 
-  if (asksPrice) {
-    const priceMsg = primaryProduct.regularPrice
-      ? `"${primaryProduct.name}"-এর রেগুলার প্রাইজ ${primaryProduct.regularPrice}, তবে বর্তমানে স্পেশাল অফার প্রাইজ মাত্র ${primaryProduct.offerPrice}!`
-      : `"${primaryProduct.name}"-এর স্পেশাল অফার প্রাইজ মাত্র ${primaryProduct.offerPrice}!`;
-    parts.push(priceMsg);
-  }
-
+  // Intent: Variants / Colors / Box Contents / Straps
   if (asksVariants && primaryProduct.variantsAndContents) {
-    parts.push(`যা যা থাকছে: ${primaryProduct.variantsAndContents}।`);
+    replySegments.push(`${primaryProduct.variantsAndContents}।`);
+    if (!followUpQuestion) {
+      followUpQuestion = `আপনি কোন কালারটি নিতে চাচ্ছেন ${honorific}?`;
+    }
   }
 
-  if (asksWhyGood && primaryProduct.whyGoodFeatures) {
-    parts.push(`কেন এটি সেরা: ${primaryProduct.whyGoodFeatures}।`);
+  // Intent: Specific Features (Waterproof / Battery / Calling / General Quality)
+  if (asksWhyGood) {
+    if (asksWaterproof && !asksBattery && !asksCallingOrConnect) {
+      replySegments.push(
+        `এটি ১০০% IP68 ওয়াটারপ্রুফ! তাই হাত ধোয়া, বৃষ্টি বা ঘামের পানিতে কোনো সমস্যাই হবে না ইনশাআল্লাহ।`
+      );
+    } else if (asksBattery && !asksWaterproof && !asksCallingOrConnect) {
+      replySegments.push(
+        `এটার ব্যাটারি ব্যাকআপ খুবই ভালো — একবার ফুল চার্জ দিলে রেগুলার ইউজে ৫-৭ দিন অনায়াসে চলে যাবে, আর সাথে ওয়্যারলেস ম্যাগনেটিক চার্জারও থাকছে।`
+      );
+    } else if (asksCallingOrConnect && !asksWaterproof && !asksBattery) {
+      replySegments.push(
+        `যেকোনো Android বা iPhone-এর সাথে ব্লুটুথ দিয়ে কানেক্ট করে ঘড়ি থেকেই সরাসরি কল রিসিভ ও কথা বলা যাবে, এবং সব নোটিফিকেশনও দেখা যাবে! 🔥`
+      );
+    } else if (primaryProduct.whyGoodFeatures) {
+      replySegments.push(
+        `নিশ্চিন্তে নিতে পারেন! ${primaryProduct.whyGoodFeatures}। তাছাড়া ডেলিভারি ম্যানের সামনে চেক করে নেওয়ার সুবিধা তো থাকছেই।`
+      );
+    }
     category = "Lead Conversion";
   }
 
+  // Intent: Warranty / Guarantee
   if (asksWarranty && primaryProduct.warrantyInfo) {
-    parts.push(`ওয়ারেন্টি সুবিধা: ${primaryProduct.warrantyInfo}।`);
+    replySegments.push(
+      `এই প্রোডাক্টের সাথে পাচ্ছেন ${primaryProduct.warrantyInfo}। তাই যেকোনো সমস্যা হলে সরাসরি আমাদের থেকে রিপ্লেসমেন্ট সুবিধা পাবেন।`
+    );
     category = "Lead Conversion";
   }
 
-  if (asksDelivery) {
-    parts.push(`ডেলিভারি তথ্য: ${storeProfile.deliveryPolicy} (${storeProfile.deliveryTime})।`);
+  // Intent: Real Photo / Video
+  if (asksPhotoOrVideo) {
+    replySegments.push(
+      `পোস্টে দেওয়া ছবিগুলো আমাদের নিজেদের প্রোডাক্টেরই রিয়েল ছবি! আর সবচেয়ে বড় সুবিধা হলো ডেলিভারি ম্যানের সামনে বক্স খুলে ঘড়িটি নিজের হাতে দেখে ও চেক করে তারপর টাকা দিতে পারবেন। 😊`
+    );
   }
 
+  // Intent: Showroom / Location
   if (asksLocation) {
-    parts.push(`আমাদের শোরুমের ঠিকানা: ${storeProfile.showroomAddress}। হেল্পলাইন: ${storeProfile.helplineNumber}।`);
+    replySegments.push(
+      `আমাদের শোরুমের ঠিকানা: ${storeProfile.showroomAddress}। আপনি চাইলে সরাসরি শোরুমে এসেও দেখে নিতে পারেন, অথবা বাসায় বসে ক্যাশ অন ডেলিভারিতেও অর্ডার করতে পারেন (হেল্পলাইন: ${storeProfile.helplineNumber})।`
+    );
     category = "Visit Conversion";
   }
 
-  // If customer sent a general greeting ("হ্যালো", "Hi", "ভাইয়া") or general inquiry without specific keyword
-  if (!hasSpecificIntent) {
-    parts.push(
-      `আমাদের "${primaryProduct.name}" বর্তমানে স্টকে আছে। স্পেশাল অফার প্রাইজ মাত্র ${primaryProduct.offerPrice}${
-        primaryProduct.regularPrice ? ` (রেগুলার প্রাইজ ${primaryProduct.regularPrice})` : ""
-      }। বিশেষত্ব: ${primaryProduct.whyGoodFeatures}।`
+  // Intent: How to Order / "Nite chai"
+  if (asksHowToOrder) {
+    replySegments.push(
+      `অর্ডার করার জন্য শুধু আপনার নাম, সম্পূর্ণ ঠিকানা (থানা ও জেলাসহ) এবং সচল মোবাইল নম্বরটি এখানে লিখে দিন — আমরা এখনই আপনার অর্ডারটি কনফার্ম করে দিচ্ছি! 😊`
     );
-  } else if (!asksDelivery && !asksLocation) {
-    // Append concise delivery policy when answering price/stock/features
-    parts.push(`${storeProfile.deliveryPolicy}।`);
   }
 
-  if (!asksLocation) {
-    parts.push(`অর্ডার কনফার্ম করতে আপনার নাম, পূর্ণ ঠিকানা ও মোবাইল নম্বর দিন।`);
+  // Intent: Customer replied with their City/Area (e.g. "Dhakay", "Mirpur", "Chittagong")
+  if (replySegments.length === 0 && mentionsCustomerArea) {
+    replySegments.push(
+      `ওখানে আমাদের দ্রুত হোম ডেলিভারি সার্ভিস চালু আছে (${storeProfile.deliveryTime})! অর্ডারটি বুক করে পাঠানোর জন্য আপনার নাম, সম্পূর্ণ ঠিকানা ও মোবাইল নম্বরটি একটু লিখে দিন প্লিজ। 😊`
+    );
   }
 
-  const primaryReply = parts.join(" ");
-
-  // Secondary suggestion (detailed product overview)
-  const secondaryReply = `আসসালামু আলাইকুম ${cleanName}! "${primaryProduct.name}" — অফার মূল্য: ${primaryProduct.offerPrice}। ${primaryProduct.variantsAndContents}। বিশেষ সুবিধা: ${primaryProduct.whyGoodFeatures} (${primaryProduct.warrantyInfo})। অর্ডার করতে নাম, ঠিকানা ও ফোন নম্বর দিন।`;
-
-  const suggestions = [primaryReply, secondaryReply];
-  const matchingTpl = templates.find((t) => t.category === category);
-  if (matchingTpl && matchingTpl.content && !suggestions.includes(matchingTpl.content)) {
-    suggestions.push(matchingTpl.content);
+  // 9. Fallback when no specific keyword matched
+  if (replySegments.length === 0) {
+    if (!hasAlreadyGreeted) {
+      // First message in conversation (e.g., customer sent product card or general inquiry)
+      replySegments.push(
+        `হ্যাঁ, আমাদের "${primaryProduct.name}" এখন রেডি স্টকে আছে। স্পেশাল অফার প্রাইজ মাত্র ${primaryProduct.offerPrice}${
+          primaryProduct.regularPrice ? ` (রেগুলার প্রাইজ ${primaryProduct.regularPrice})` : ""
+        }। সাথে থাকছে ${storeProfile.deliveryPolicy}।`
+      );
+      followUpQuestion = `আপনি কি অর্ডার করতে চাচ্ছেন নাকি কোনো বিষয়ে জানতে চান ${honorific}? 😊`;
+    } else {
+      // Follow-up message in an ongoing chat — never dump the template again!
+      replySegments.push(
+        `আমাদের "${primaryProduct.name}" প্রোডাক্টটিতে থাকছে ${primaryProduct.whyGoodFeatures} এবং ${primaryProduct.warrantyInfo}। প্রোডাক্টটি হাতে পেয়ে চেক করে নিতে পারবেন। আর কিছু জানার থাকলে বলুন অথবা অর্ডার করতে নাম, ঠিকানা ও মোবাইল নম্বর দিন। 😊`
+      );
+    }
+  } else {
+    // Append a gentle, non-repetitive follow-up or CTA only when appropriate
+    if (followUpQuestion) {
+      replySegments.push(followUpQuestion);
+    } else if (
+      !recentlyAskedOrderInfo &&
+      !asksLocation &&
+      !asksSuitabilityGeneral &&
+      !asksHowToOrder &&
+      (asksPrice || asksBargain)
+    ) {
+      replySegments.push(`অর্ডার করতে চাইলে আপনার নাম, পূর্ণ ঠিকানা ও মোবাইল নম্বরটি দিন প্লিজ। 😊`);
+    }
   }
+
+  const primaryReply = `${naturalOpener} ${replySegments.join(" ")}`.replace(/\s+/g, " ").trim();
+
+  // Secondary alternative suggestion for the UI panel
+  const secondaryReply = `জি ${honorific}, "${primaryProduct.name}" (অফার প্রাইজ: ${primaryProduct.offerPrice}) এখন স্টকে আছে। ${storeProfile.deliveryTime} এবং ডেলিভারি ম্যানের সামনে চেক করে পেমেন্ট করতে পারবেন। অর্ডার করতে নাম, ঠিকানা ও মোবাইল নম্বর দিন।`;
 
   return {
     category,
-    suggestions: suggestions.slice(0, 2),
+    suggestions: [primaryReply, secondaryReply],
   };
 }
 
@@ -453,8 +841,8 @@ async function sendTextInActiveThread(page, replyText) {
 
   await sleep(700);
 
-  // In Meta Business Suite Inbox, clicking the Send button (aria-label="Send" / text="Send") dispatches the message
-  const sendBtnCoord = await safeEvaluate(page, () => {
+  // Click the Send button ONCE (never click twice, because once the textbox empties, the button changes to "Send a Like" 👍!)
+  const clickedSendBtn = await safeEvaluate(page, () => {
     const btns = Array.from(
       document.querySelectorAll(
         'div[role="button"][aria-label="Send" i], div[role="button"][aria-label*="Press enter to send" i], button[aria-label="Send" i], div[role="button"]'
@@ -464,23 +852,20 @@ async function sendTextInActiveThread(page, replyText) {
       if (r.width <= 0 || r.height <= 0 || r.y < 500) return false;
       const aria = (b.getAttribute("aria-label") || "").trim().toLowerCase();
       const txt = (b.innerText || "").trim().toLowerCase();
+      if (aria.includes("like") || aria.includes("thumbs")) return false;
       return (
         aria === "send" ||
         aria.includes("press enter to send") ||
         txt === "send"
       );
     });
-    if (btns.length === 0) return null;
+    if (btns.length === 0) return false;
     const target = btns[btns.length - 1];
-    const r = target.getBoundingClientRect();
     target.click();
-    return { x: Math.round(r.x + r.width / 2), y: Math.round(r.y + r.height / 2) };
+    return true;
   });
 
-  if (sendBtnCoord) {
-    await sleep(300);
-    await page.mouse.click(sendBtnCoord.x, sendBtnCoord.y);
-  } else {
+  if (!clickedSendBtn) {
     await page.keyboard.press("Enter");
   }
 
@@ -1149,7 +1534,8 @@ async function runInboxBot(configPath) {
           fullCustomerQuery,
           th.customerName,
           runtime,
-          currentActiveChannel
+          currentActiveChannel,
+          extractedBubbles || []
         );
 
         let lastText =
@@ -1172,7 +1558,10 @@ async function runInboxBot(configPath) {
               ];
 
         // 3. If AUTO mode is active and this customer is WAITING_REPLY, send trained AI auto-reply!
-        const sig = `${activeChanName.toLowerCase()}:::${lowerCustomer}:::${fullCustomerQuery.slice(0, 80).toLowerCase()}`;
+        const customerTurnCount = Array.isArray(extractedBubbles)
+          ? extractedBubbles.filter((b) => b.sender === "CUSTOMER").length
+          : 1;
+        const sig = `${activeChanName.toLowerCase()}:::${lowerCustomer}:::${customerTurnCount}:::${fullCustomerQuery.slice(0, 80).toLowerCase()}`;
         if (isRunning && currentMode === "AUTO" && !isReplied && !autoRepliedSignatures.has(sig)) {
           const autoReplyText = aiResult.suggestions[0];
           console.log(
