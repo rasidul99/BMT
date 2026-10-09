@@ -762,6 +762,77 @@ export function generatePreviewTrainedAnswer(
     lower.includes("কিভাবে নিব") ||
     lower.includes("কিভাবে অর্ডার")
 
+  const asksDeclineOrLater =
+    lower.includes("ekhon nibo na") ||
+    lower.includes("ekhn nibo na") ||
+    lower.includes("akhon nibo na") ||
+    lower.includes("nibo na") ||
+    lower.includes("nebo na") ||
+    lower.includes("lagbe na") ||
+    lower.includes("dorkar nai") ||
+    lower.includes("pore nibo") ||
+    lower.includes("pore janabo") ||
+    lower.includes("pore dekhi") ||
+    lower.includes("chinta kore") ||
+    lower.includes("vebe dekhi") ||
+    lower.includes("bhebe dekhi") ||
+    lower.includes("taka nai") ||
+    lower.includes("budget nai") ||
+    lower.includes("এখন নিবো না") ||
+    lower.includes("এখন নিব না") ||
+    lower.includes("নিবো না") ||
+    lower.includes("নিব না") ||
+    lower.includes("লাগবে না") ||
+    lower.includes("দরকার নেই") ||
+    lower.includes("পরে নিবো") ||
+    lower.includes("পরে নিব") ||
+    lower.includes("পরে জানাবো") ||
+    lower.includes("ভেবে দেখি") ||
+    /\b(not now|maybe later|dont want|don't want|no need)\b/i.test(lower)
+
+  if (asksDeclineOrLater) {
+    return `আচ্ছা ${honorific}, কোনো সমস্যা নেই! 😊 আপনার যখন সুবিধা হয় বা প্রয়োজন পড়ে, তখনই আমাদের নক দিয়েন। ভালো থাকবেন!`
+  }
+
+  const asksIfAiOrBot =
+    /\b(ai|bot|robot|chatgpt|gpt|auto reply|autoreply)\b/i.test(lower) ||
+    lower.includes("tumi ki ai") ||
+    lower.includes("apni ki ai") ||
+    lower.includes("tumi ke") ||
+    lower.includes("apni ke") ||
+    lower.includes("manush naki") ||
+    lower.includes("তুমি কি এআই") ||
+    lower.includes("আপনি কি এআই") ||
+    lower.includes("রোবট") ||
+    lower.includes("বট নাকি") ||
+    lower.includes("মানুষ নাকি") ||
+    lower.includes("অটো রিপ্লাই") ||
+    lower.includes("তুমি কে") ||
+    lower.includes("আপনি কে")
+
+  if (asksIfAiOrBot) {
+    return `না ${honorific}, আমি পেজের কাস্টমার সাপোর্ট মডারেটর বলছি! 😊 আপনার মেসেজের দ্রুত রিপ্লাই দেওয়ার চেষ্টা করছি। কোনো বিষয়ে জানার থাকলে নির্দ্বিধায় বলতে পারেন ${honorific}।`
+  }
+
+  const asksWellBeing =
+    lower.includes("kemon achen") ||
+    lower.includes("kemon asen") ||
+    lower.includes("kmn achen") ||
+    lower.includes("kmn asen") ||
+    lower.includes("kemon acho") ||
+    lower.includes("ki khobor") ||
+    lower.includes("ki obostha") ||
+    lower.includes("কেমন আছেন") ||
+    lower.includes("কেমন আছো") ||
+    lower.includes("কি খবর") ||
+    lower.includes("কী খবর") ||
+    lower.includes("কি অবস্থা") ||
+    /\b(how are you|whats up|what's up)\b/i.test(lower)
+
+  if (asksWellBeing) {
+    return `আলহামদুলিল্লাহ ${honorific}, ভালো আছি! আপনি কেমন আছেন? আমাদের কোনো প্রোডাক্ট সম্পর্কে কিছু জানার থাকলে বলুন ${honorific}। 😊`
+  }
+
   const mentionsCustomerArea =
     /\b(dhaka|dhakay|mirpur|uttara|dhanmondi|mohammadpur|banani|gulshan|badda|jatrabari|savar|gazipur|narayanganj|chittagong|ctg|sylhet|rajshahi|khulna|barisal|rangpur|comilla|cumilla|bogra|mymensingh|ঢাকা|ঢাকায়|মিরপুর|উত্তরা|ধানমন্ডি|চট্টগ্রাম|সিলেট|রাজশাহী|খুলনা|গাজীপুর|নারায়ণগঞ্জ)\b/i.test(
       lower
@@ -899,15 +970,10 @@ export function generatePreviewTrainedAnswer(
   if (replySegments.length === 0) {
     if (!hasAlreadyGreeted) {
       replySegments.push(
-        `হ্যাঁ, আমাদের "${primaryProduct.name}" এখন রেডি স্টকে আছে। স্পেশাল অফার প্রাইজ মাত্র ${primaryProduct.offerPrice}${
-          primaryProduct.regularPrice ? ` (রেগুলার প্রাইজ ${primaryProduct.regularPrice})` : ""
-        }। সাথে থাকছে ${storeProfile.deliveryPolicy}।`
+        `${buildStoreProductListStatement(catalog)}। আমাদের প্রোডাক্ট বা ডেলিভারি সম্পর্কে কিছু জানতে চাইলে নির্দ্বিধায় বলুন ${honorific}! 😊`
       )
-      followUpQuestion = `আপনি কি অর্ডার করতে চাচ্ছেন নাকি কোনো বিষয়ে জানতে চান ${honorific}? 😊`
     } else {
-      replySegments.push(
-        `আমাদের "${primaryProduct.name}" প্রোডাক্টটিতে থাকছে ${primaryProduct.whyGoodFeatures} এবং ${primaryProduct.warrantyInfo}। প্রোডাক্টটি হাতে পেয়ে চেক করে নিতে পারবেন। আর কিছু জানার থাকলে বলুন অথবা অর্ডার করতে নাম, ঠিকানা ও মোবাইল নম্বর দিন। 😊`
-      )
+      return `জি ${honorific}, বলুন কীভাবে আপনাকে সাহায্য করতে পারি? কোনো প্রোডাক্টের ব্যাপারে জানতে চাইলে বা অর্ডার করতে চাইলে নির্দ্বিধায় বলতে পারেন। 😊`
     }
   } else {
     if (followUpQuestion) {

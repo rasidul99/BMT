@@ -99,7 +99,7 @@ export async function POST(req: NextRequest) {
     if (reuseIfActive && fs.existsSync(activeLockFile)) {
       try {
         const lock = JSON.parse(fs.readFileSync(activeLockFile, "utf8"))
-        if (lock.activeJobId && (!targetId || lock.targetId === targetId)) {
+        if (lock.activeJobId) {
           const existingStatusFile = path.join(tempDir, `${lock.activeJobId}-status.json`)
           if (fs.existsSync(existingStatusFile)) {
             const st = JSON.parse(fs.readFileSync(existingStatusFile, "utf8"))
@@ -170,6 +170,24 @@ export async function POST(req: NextRequest) {
       maxChecks: Number(maxChecks) || 86400,
       headless: Boolean(headless),
     }
+
+    // Write activeLockFile immediately so any older running bot process sees isSuperseded() right away!
+    try {
+      fs.writeFileSync(
+        activeLockFile,
+        JSON.stringify(
+          {
+            activeJobId: jobId,
+            targetId: botConfig.targetId,
+            targetName: botConfig.targetName,
+            startedAt: new Date().toISOString(),
+          },
+          null,
+          2
+        ),
+        "utf8"
+      )
+    } catch {}
 
     fs.writeFileSync(configPath, JSON.stringify(botConfig, null, 2), "utf8")
 

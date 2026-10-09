@@ -668,6 +668,59 @@ function generateTrainedAiResponse(text, customerName, runtime = {}, channelCont
       lower
     );
 
+  // Human Conversational Intents: Declining / Postponing ("ekhon nibo na", "pore nibo", "lagbe na", "taka nai")
+  const asksDeclineOrLater =
+    lower.includes("nibo na") ||
+    lower.includes("nebo na") ||
+    lower.includes("lagbe na") ||
+    lower.includes("chai na") ||
+    lower.includes("order korbo na") ||
+    lower.includes("pore nibo") ||
+    lower.includes("pore nebo") ||
+    lower.includes("pore janabo") ||
+    lower.includes("chinta kore") ||
+    lower.includes("vebe dekhi") ||
+    lower.includes("taka nai") ||
+    lower.includes("budget nai") ||
+    lower.includes("samner mashe") ||
+    lower.includes("নিবো না") ||
+    lower.includes("নেবো না") ||
+    lower.includes("লাগবে না") ||
+    lower.includes("চাই না") ||
+    lower.includes("পরে নিব") ||
+    lower.includes("পরে জানাব") ||
+    lower.includes("টাকা নেই") ||
+    lower.includes("বাজেট নেই");
+
+  // Human Conversational Intents: Asking if AI / Bot / Robot / Who is speaking ("tumi ki AI", "bot naki", "apni ke")
+  const asksIfAiOrBot =
+    /\b(ai|bot|robot|chatgpt|gpt|machine|auto\s*reply)\b/i.test(lower) ||
+    lower.includes("tumi ke") ||
+    lower.includes("apni ke") ||
+    lower.includes("manush naki") ||
+    lower.includes("apnar nam") ||
+    lower.includes("tomar nam") ||
+    lower.includes("tumar nam") ||
+    lower.includes("ke bolchen") ||
+    lower.includes("তুমি কি এআই") ||
+    lower.includes("রোবট") ||
+    lower.includes("বট নাকি") ||
+    lower.includes("মানুষ নাকি") ||
+    lower.includes("আপনি কে") ||
+    lower.includes("আপনার নাম");
+
+  // Human Conversational Intents: Small talk / Well-being ("kemon achen", "ki khobor")
+  const asksWellBeing =
+    lower.includes("kemon achen") ||
+    lower.includes("kemon asen") ||
+    lower.includes("kemon aso") ||
+    lower.includes("ki khobor") ||
+    lower.includes("ki obostha") ||
+    lower.includes("khabar kheyechen") ||
+    lower.includes("কেমন আছেন") ||
+    lower.includes("কি খবর") ||
+    lower.includes("কী খবর");
+
   // 4. Handle Pure Greeting ("Hi", "Hello", "Assalamu Alaikum", "ভাইয়া")
   if (isPureGreeting) {
     const reply = hasSalam
@@ -676,15 +729,47 @@ function generateTrainedAiResponse(text, customerName, runtime = {}, channelCont
     return {
       category: "Lead Conversion",
       suggestions: [reply],
+      needsLlmBrain: false,
+    };
+  }
+
+  // 4b. Handle Declining / Postponing ("ekhon nibo na", "pore nibo", "lagbe na")
+  if (asksDeclineOrLater) {
+    const reply = `আচ্ছা ${honorific}, কোনো সমস্যা নেই! 😊 আপনার যখন সুবিধা হয় বা প্রয়োজন পড়ে, তখনই আমাদের নক দিয়েন। ভালো থাকবেন!`;
+    return {
+      category: "Lead Conversion",
+      suggestions: [reply],
+      needsLlmBrain: false,
+    };
+  }
+
+  // 4c. Handle "tumi ki AI" / "bot naki" / "apni ke"
+  if (asksIfAiOrBot) {
+    const reply = `না ${honorific}, আমি পেজের কাস্টমার সাপোর্ট মডারেটর বলছি! 😊 আপনার মেসেজের দ্রুত রিপ্লাই দেওয়ার চেষ্টা করছি। কোনো বিষয়ে জানার থাকলে নির্দ্বিধায় বলতে পারেন ${honorific}।`;
+    return {
+      category: "Lead Conversion",
+      suggestions: [reply],
+      needsLlmBrain: false,
+    };
+  }
+
+  // 4d. Handle Small Talk ("kemon achen", "ki khobor")
+  if (asksWellBeing) {
+    const reply = `আলহামদুলিল্লাহ ${honorific}, ভালো আছি! আপনি কেমন আছেন? আমাদের কোনো প্রোডাক্ট সম্পর্কে কিছু জানার থাকলে বলুন ${honorific}। 😊`;
+    return {
+      category: "Lead Conversion",
+      suggestions: [reply],
+      needsLlmBrain: false,
     };
   }
 
   // 5. Handle Pure Acknowledgment ("Ok", "Accha", "Hmm", "Thanks")
   if (isPureAck) {
-    const reply = `অসংখ্য ধন্যবাদ ${honorific}! আপনার সুবিধামতো যেকোনো সময় নাম, ঠিকানা ও মোবাইল নম্বর দিলেই আমরা অর্ডারটি প্রসেস করে দেবো। যেকোনো প্রয়োজনে নক দেবেন। 😊`;
+    const reply = `অসংখ্য ধন্যবাদ ${honorific}! যেকোনো প্রয়োজনে আমাদের নক দেবেন। ভালো থাকবেন! 😊`;
     return {
       category: "Lead Conversion",
       suggestions: [reply],
+      needsLlmBrain: false,
     };
   }
 
@@ -694,6 +779,7 @@ function generateTrainedAiResponse(text, customerName, runtime = {}, channelCont
     return {
       category: "Sales Conversion",
       suggestions: [catalogReply],
+      needsLlmBrain: false,
     };
   }
 
@@ -708,6 +794,7 @@ function generateTrainedAiResponse(text, customerName, runtime = {}, channelCont
       return {
         category: "Sales Conversion",
         suggestions: [notAvailableReply],
+        needsLlmBrain: false,
       };
     }
   }
@@ -723,6 +810,7 @@ function generateTrainedAiResponse(text, customerName, runtime = {}, channelCont
     return {
       category: "Sales Conversion",
       suggestions: [outReply],
+      needsLlmBrain: false,
     };
   }
 
@@ -873,24 +961,22 @@ function generateTrainedAiResponse(text, customerName, runtime = {}, channelCont
     );
   }
 
-  // 9. Fallback when no specific keyword matched
+  // 9. Open-ended message fallback (NEVER dump product feature/warranty template paragraphs!)
+  let needsLlmBrain = false;
   if (replySegments.length === 0) {
-    if (!hasAlreadyGreeted) {
-      // First message in conversation (e.g., customer sent product card or general inquiry)
+    needsLlmBrain = true;
+    if (!hasAlreadyGreeted && matchedInCurrentMsg) {
       replySegments.push(
-        `হ্যাঁ, আমাদের "${primaryProduct.name}" এখন রেডি স্টকে আছে। স্পেশাল অফার প্রাইজ মাত্র ${primaryProduct.offerPrice}${
-          primaryProduct.regularPrice ? ` (রেগুলার প্রাইজ ${primaryProduct.regularPrice})` : ""
-        }। সাথে থাকছে ${storeProfile.deliveryPolicy}।`
+        `জি, আমাদের "${primaryProduct.name}" এখন রেডি স্টকে আছে (অফার প্রাইজ: ${primaryProduct.offerPrice})। আপনি কি এটি সম্পর্কে কিছু জানতে চাচ্ছেন ${honorific}? 😊`
       );
-      followUpQuestion = `আপনি কি অর্ডার করতে চাচ্ছেন নাকি কোনো বিষয়ে জানতে চান ${honorific}? 😊`;
+    } else if (!hasAlreadyGreeted) {
+      replySegments.push(`কেমন আছেন? জি বলুন, আপনাকে কীভাবে সহযোগিতা করতে পারি? 😊`);
     } else {
-      // Follow-up message in an ongoing chat — never dump the template again!
       replySegments.push(
-        `আমাদের "${primaryProduct.name}" প্রোডাক্টটিতে থাকছে ${primaryProduct.whyGoodFeatures} এবং ${primaryProduct.warrantyInfo}। প্রোডাক্টটি হাতে পেয়ে চেক করে নিতে পারবেন। আর কিছু জানার থাকলে বলুন অথবা অর্ডার করতে নাম, ঠিকানা ও মোবাইল নম্বর দিন। 😊`
+        `বলুন, প্রোডাক্ট বা ডেলিভারি সম্পর্কে আর কোনো কিছু জানার থাকলে নির্দ্বিধায় বলতে পারেন! 😊`
       );
     }
   } else {
-    // Append a gentle, non-repetitive follow-up or CTA only when appropriate
     if (followUpQuestion) {
       replySegments.push(followUpQuestion);
     } else if (
@@ -907,12 +993,76 @@ function generateTrainedAiResponse(text, customerName, runtime = {}, channelCont
   const primaryReply = `${naturalOpener} ${replySegments.join(" ")}`.replace(/\s+/g, " ").trim();
 
   // Secondary alternative suggestion for the UI panel
-  const secondaryReply = `জি ${honorific}, "${primaryProduct.name}" (অফার প্রাইজ: ${primaryProduct.offerPrice}) এখন স্টকে আছে। ${storeProfile.deliveryTime} এবং ডেলিভারি ম্যানের সামনে চেক করে পেমেন্ট করতে পারবেন। অর্ডার করতে নাম, ঠিকানা ও মোবাইল নম্বর দিন।`;
+  const secondaryReply = `জি ${honorific}, ${buildStoreProductListStatement(products, honorific)}`;
 
   return {
     category,
     suggestions: [primaryReply, secondaryReply],
+    needsLlmBrain,
   };
+}
+
+/**
+ * Live Generative LLM Conversational Brain for open-ended human messages in Messenger
+ * Calls OpenAI-compatible endpoint with recent chat history + store knowledgebase so open-ended messages
+ * get a genuinely human 1-2 sentence Bangladeshi Bangla reply.
+ */
+async function generateHumanLlmReply(rawMsg, customerName, runtime = {}, channelContext = {}, conversationHistory = [], fallbackReply = "") {
+  try {
+    const { honorific } = getHumanAddress(customerName);
+    const allProducts =
+      Array.isArray(runtime.products) && runtime.products.length > 0 ? runtime.products : DEFAULT_PRODUCTS;
+    const storeProfile = { ...DEFAULT_STORE_PROFILE, ...(runtime.storeProfile || {}) };
+    const productSummary = allProducts
+      .map((p, i) => `${i + 1}. ${p.name} (অফার প্রাইজ: ${p.offerPrice}, স্টক: ${p.stockStatus})`)
+      .join("; ");
+
+    const recentHistory = (Array.isArray(conversationHistory) ? conversationHistory : [])
+      .slice(-5)
+      .map((m) => `${m.sender === "CUSTOMER" ? "Customer" : "Page Moderator"}: ${m.text}`)
+      .join("\n");
+
+    const systemPrompt = [
+      `You are a real human customer support moderator of the Bangladeshi Facebook Page "${channelContext.name || storeProfile.storeName}".`,
+      `Always reply in natural, warm, colloquial Bangladeshi Bangla in 1 to 2 short sentences maximum.`,
+      `Address the customer as "${honorific}".`,
+      `NEVER repeat "আসসালামু আলাইকুম" if the chat is already ongoing. NEVER dump long product specifications or warranty paragraphs unless the customer specifically asks for them.`,
+      `If the customer says they won't buy now or don't want it (e.g. "ekhon nibo na", "lagbe na"), politely say "আচ্ছা ${honorific}, কোনো সমস্যা নেই! 😊 আপনার যখন সুবিধা হয় বা প্রয়োজন পড়ে তখন নক দিয়েন। ভালো থাকবেন!"`,
+      `If the customer asks if you are AI/bot/robot (e.g. "tumi ki AI"), naturally say "না ${honorific}, আমি পেজের কাস্টমার সাপোর্ট মডারেটর বলছি 😊 আপনার মেসেজের দ্রুত রিপ্লাই দেওয়ার চেষ্টা করছি।"`,
+      `Store Products: ${productSummary}. Delivery: ${storeProfile.deliveryTime}, ${storeProfile.deliveryPolicy}.`,
+      `Output ONLY the final Bangla reply text without quotes or explanations.`,
+    ].join(" ");
+
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 6500);
+    const response = await fetch("https://text.pollinations.ai/openai", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      signal: controller.signal,
+      body: JSON.stringify({
+        model: "openai-fast",
+        messages: [
+          { role: "system", content: systemPrompt },
+          {
+            role: "user",
+            content: recentHistory
+              ? `Recent Chat History:\n${recentHistory}\n\nCustomer's Latest Message: ${rawMsg}`
+              : `Customer's Message: ${rawMsg}`,
+          },
+        ],
+      }),
+    });
+    clearTimeout(timer);
+
+    if (response.ok) {
+      const data = await response.json();
+      const llmText = (data?.choices?.[0]?.message?.content || "").trim().replace(/^["']|["']$/g, "");
+      if (llmText && llmText.length >= 4 && llmText.length <= 450) {
+        return llmText;
+      }
+    }
+  } catch (_) {}
+  return fallbackReply;
 }
 
 async function sendTextInActiveThread(page, replyText) {
@@ -1672,12 +1822,38 @@ async function runInboxBot(configPath) {
               ];
 
         // 3. If AUTO mode is active and this customer is WAITING_REPLY, send trained AI auto-reply!
-        const customerTurnCount = Array.isArray(extractedBubbles)
-          ? extractedBubbles.filter((b) => b.sender === "CUSTOMER").length
-          : 1;
-        const sig = `${activeChanName.toLowerCase()}:::${lowerCustomer}:::${customerTurnCount}:::${fullCustomerQuery.slice(0, 80).toLowerCase()}`;
-        if (isRunning && currentMode === "AUTO" && !isReplied && !autoRepliedSignatures.has(sig)) {
-          const autoReplyText = aiResult.suggestions[0];
+        const repliedStateFile = path.join(tempDir, "inbox-replied-state.json");
+        let persistedRepliedState = {};
+        try {
+          if (fs.existsSync(repliedStateFile)) {
+            persistedRepliedState = JSON.parse(fs.readFileSync(repliedStateFile, "utf8")) || {};
+          }
+        } catch (_) {}
+
+        const normalizedQuery = fullCustomerQuery.trim().toLowerCase();
+        const sig = `${customerChanKey}:::${normalizedQuery.slice(0, 120)}`;
+        const alreadyRepliedPersisted = persistedRepliedState[customerChanKey] === normalizedQuery;
+
+        if (
+          isRunning &&
+          currentMode === "AUTO" &&
+          !isReplied &&
+          !alreadyRepliedPersisted &&
+          !autoRepliedSignatures.has(sig)
+        ) {
+          let autoReplyText = aiResult.suggestions[0];
+          if (aiResult.needsLlmBrain) {
+            autoReplyText = await generateHumanLlmReply(
+              fullCustomerQuery,
+              th.customerName,
+              runtime,
+              currentActiveChannel,
+              extractedBubbles || [],
+              autoReplyText
+            );
+            aiResult.suggestions[0] = autoReplyText;
+          }
+
           console.log(
             `\n🤖 [TRAINED AI AUTO-REPLY | ${activeChanName}] Customer "${th.customerName}" asked: "${fullCustomerQuery.replace(/\n/g, " | ")}"`
           );
@@ -1685,12 +1861,22 @@ async function runInboxBot(configPath) {
           console.log(`   ⏳ Applying human-like delay (${Math.min(humanDelaySeconds, 6)}s)...`);
           await sleep(Math.min(humanDelaySeconds, 6) * 1000);
 
+          if (isSuperseded()) {
+            console.log("🛑 Superseded before sending auto-reply. Aborting duplicate send.");
+            break;
+          }
+
           try {
             await page.mouse.click(th.x, th.y);
             await sleep(1500);
             await sendTextInActiveThread(page, autoReplyText);
 
             autoRepliedSignatures.add(sig);
+            persistedRepliedState[customerChanKey] = normalizedQuery;
+            try {
+              fs.writeFileSync(repliedStateFile, JSON.stringify(persistedRepliedState, null, 2), "utf8");
+            } catch (_) {}
+
             lastBotRepliesByCustomer.set(customerChanKey, autoReplyText.slice(0, 40));
             lastBotRepliesByCustomer.set(lowerCustomer, autoReplyText.slice(0, 40));
             totalAutoRepliesSent++;
