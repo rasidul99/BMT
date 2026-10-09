@@ -42,9 +42,13 @@ function findChromePath() {
 }
 
 function parseCookies(rawCookieStr) {
-  if (!rawCookieStr) return [];
+  if (!rawCookieStr || typeof rawCookieStr !== "string") return [];
+  if (rawCookieStr.includes("bmt_session_token_ok") || rawCookieStr.includes("checkpoint_pending")) {
+    return [];
+  }
   const items = rawCookieStr.split(";").map((s) => s.trim()).filter(Boolean);
   const cookies = [];
+  const ninetyDaysExpiry = Math.floor(Date.now() / 1000) + 86400 * 90;
 
   for (const item of items) {
     const eqIdx = item.indexOf("=");
@@ -59,6 +63,7 @@ function parseCookies(rawCookieStr) {
       value,
       domain: ".facebook.com",
       path: "/",
+      expires: ninetyDaysExpiry,
       httpOnly: ["xs", "datr", "sb", "fr"].includes(name),
       secure: true,
       sameSite: "Lax",
@@ -1160,11 +1165,13 @@ async function runInboxBot(configPath) {
   } = config;
 
   let cookieString = config.cookieString;
+  let activeAccessToken = config.accessToken || "";
   const sessionFilePath = path.resolve(__dirname, "active-session.json");
-  if (!cookieString && fs.existsSync(sessionFilePath)) {
+  if (fs.existsSync(sessionFilePath)) {
     try {
       const sess = JSON.parse(fs.readFileSync(sessionFilePath, "utf8"));
-      cookieString = sess.cookieString;
+      if (!cookieString && sess.cookieString) cookieString = sess.cookieString;
+      if (!activeAccessToken && sess.accessToken) activeAccessToken = sess.accessToken;
     } catch {}
   }
 
@@ -1258,8 +1265,17 @@ async function runInboxBot(configPath) {
   }
 
   console.log("==========================================================");
-  console.log("💬 BMT 24/7 Live Facebook Messenger AI Inbox Bot (100-Channel Ready)");
+  console.log("💬 BMT 24/7 Live Facebook Messenger AI Inbox Bot (Token + Cookie 24/7 Engine)");
   console.log(`📌 Channel Mode: ${sourceType} — ${targetName} (${targetId || "Multi-Channel"})`);
+  console.log(
+    `🔑 Auth Status: ${
+      activeAccessToken && cookieString
+        ? "HYBRID (Permanent Access Token + Auto-Refresh Cookie)"
+        : activeAccessToken
+        ? "ACCESS TOKEN (Permanent Graph API 24/7)"
+        : "COOKIE SESSION (24/7 Auto-Rotation Keep-Alive)"
+    }`
+  );
   console.log(`🧠 Trained Products Loaded: ${(products || []).length}`);
   console.log(`🤖 Initial Mode: ${initialMode} | 24/7 Continuous Active Monitoring`);
   console.log("==========================================================\n");
@@ -1280,7 +1296,7 @@ async function runInboxBot(configPath) {
     totalAutoRepliesSent,
   });
 
-  const baseCookies = parseCookies(cookieString);
+  let liveBaseCookies = parseCookies(cookieString);
   const chromeExecutable = findChromePath();
 
   const browser = await puppeteer.launch({
@@ -1299,27 +1315,105 @@ async function runInboxBot(configPath) {
   const page = await browser.newPage();
   await page.setViewport({ width: 1280, height: 950 });
 
-  async function applyChannelSessionCookies(channelObj) {
-    const channelCookies =
-      channelObj && channelObj.cookieString
-        ? parseCookies(channelObj.cookieString)
-        : baseCookies;
+  // Sync live rotated cookies from browser to memory and active-session.json so cookies NEVER expire!
+  async function syncLiveBrowserCookiesToDisk() {
+    try {
+      const currentBrowserCookies = await page.cookies("https://www.facebook.com");
+      const hasCUser = currentBrowserCookies.some((c) => c.name === "c_user");
+      const hasXs = currentBrowserCookies.some((c) => c.name === "xs");
+      if (hasCUser && hasXs) {
+        const coreCookies = currentBrowserCookies.filter((c) => c.name !== "i_user");
+        const serialized = coreCookies.map((c) => `${c.name}=${c.value}`).join(";");
+        liveBaseCookies = parseCookies(serialized);
+        let existingSess = {};
+        if (fs.existsSync(sessionFilePath)) {
+          try {
+            existingSess = JSON.parse(fs.readFileSync(sessionFilePath, "utf8"));
+          } catch (_) {}
+        }
+        if (existingSess.accessToken && !activeAccessToken) {
+          activeAccessToken = existingSess.accessToken;
+        }
+        fs.writeFileSync(
+          sessionFilePath,
+          JSON.stringify(
+            {
+              ...existingSess,
+              accountName: targetName || existingSess.accountName || "Main Facebook Profile",
+              cookieString: serialized,
+              accessToken: activeAccessToken || existingSess.accessToken || "",
+              authMode:
+                activeAccessToken || existingSess.accessToken ? "HYBRID" : "COOKIE",
+              keepAlive24x7: true,
+              updatedAt: new Date().toISOString(),
+            },
+            null,
+            2
+          ),
+          "utf8"
+        );
+        return serialized;
+      }
+    } catch (_) {}
+    return null;
+  }
 
+  async function applyChannelSessionCookies(channelObj, isInitialSetup = false) {
     const chanId = channelObj && channelObj.id ? String(channelObj.id).trim() : "";
     const isNumericPage = channelObj && channelObj.sourceType === "Page" && /^\d+$/.test(chanId);
+    const ninetyDaysExpiry = Math.floor(Date.now() / 1000) + 86400 * 90;
+
+    // Check if the browser ALREADY has active c_user + xs cookies
+    let browserAlreadyHasSession = false;
+    let currentCUser = "";
+    try {
+      const existingCookies = await page.cookies("https://www.facebook.com");
+      const cUserObj = existingCookies.find((c) => c.name === "c_user");
+      const xsObj = existingCookies.find((c) => c.name === "xs");
+      if (cUserObj && xsObj) {
+        browserAlreadyHasSession = true;
+        currentCUser = cUserObj.value;
+      }
+    } catch (_) {}
+
+    const customChannelCookies =
+      channelObj && channelObj.cookieString ? parseCookies(channelObj.cookieString) : [];
+    const customCUserObj = customChannelCookies.find((c) => c.name === "c_user");
+    const hasDifferentAccountCookie =
+      customCUserObj && currentCUser && customCUserObj.value !== currentCUser;
 
     // Clear old i_user cookie first so Personal ID or new Page takes effect cleanly
     try {
       await page.deleteCookie({ name: "i_user", domain: ".facebook.com", path: "/" });
     } catch (_) {}
 
-    const filteredCookies = channelCookies.filter((c) => c.name !== "i_user");
+    // CRITICAL 24/7 KEEP-ALIVE FIX: If browser is already logged in on the same account,
+    // ONLY set or delete the i_user cookie! Never overwrite rotated c_user / xs / fr / datr!
+    if (browserAlreadyHasSession && !isInitialSetup && !hasDifferentAccountCookie) {
+      if (isNumericPage) {
+        await page.setCookie({
+          name: "i_user",
+          value: chanId,
+          domain: ".facebook.com",
+          path: "/",
+          expires: ninetyDaysExpiry,
+          httpOnly: false,
+          secure: true,
+          sameSite: "Lax",
+        });
+      }
+      return;
+    }
+
+    const baseToUse = customChannelCookies.length > 0 ? customChannelCookies : liveBaseCookies;
+    const filteredCookies = baseToUse.filter((c) => c.name !== "i_user");
     if (isNumericPage) {
       filteredCookies.push({
         name: "i_user",
         value: chanId,
         domain: ".facebook.com",
         path: "/",
+        expires: ninetyDaysExpiry,
         httpOnly: false,
         secure: true,
         sameSite: "Lax",
@@ -1330,15 +1424,226 @@ async function runInboxBot(configPath) {
     }
   }
 
+  // Official 24/7 Meta Graph API Token Engine (Works 24/7 with Permanent Page Access Token even without cookies!)
+  async function tryGraphApiTokenScanAndReply(channelObj, tokenToUse, runtime, isRunning, currentMode) {
+    const cleanToken = String(tokenToUse || "").trim();
+    if (!cleanToken || cleanToken.length < 15) return null;
+    if (cleanToken.includes("bmt_verified_token_valid") || cleanToken.includes("meta_oauth_page_token")) {
+      return null;
+    }
+    const pageId =
+      channelObj && channelObj.id && /^\d+$/.test(String(channelObj.id).trim())
+        ? String(channelObj.id).trim()
+        : "me";
+    const activeChanName = (channelObj && channelObj.name) || targetName;
+
+    try {
+      const url = `https://graph.facebook.com/v19.0/${pageId}/conversations?fields=id,updated_time,participants,messages.limit(14){id,message,from,created_time}&access_token=${encodeURIComponent(
+        cleanToken
+      )}`;
+      const res = await fetch(url);
+      if (!res.ok) return null;
+      const data = await res.json();
+      if (!data || !Array.isArray(data.data)) return null;
+
+      console.log(
+        `🔑 [24/7 Official Graph API Token] Fetched ${data.data.length} conversation(s) for "${activeChanName}"!`
+      );
+
+      // Process any manual queued replies via Graph API first
+      const queuedReplies = popPendingReplies();
+      for (const qItem of queuedReplies) {
+        if (!qItem || !qItem.replyText) continue;
+        const matchingThread = data.data.find((conv) => {
+          const parts = (conv.participants && conv.participants.data) || [];
+          return parts.some(
+            (p) => (p.name || "").toLowerCase() === String(qItem.customerName || "").toLowerCase()
+          );
+        });
+        if (matchingThread) {
+          const customerPart = ((matchingThread.participants && matchingThread.participants.data) || []).find(
+            (p) => String(p.id) !== pageId && (p.name || "").toLowerCase() !== activeChanName.toLowerCase()
+          );
+          if (customerPart && customerPart.id) {
+            await fetch(
+              `https://graph.facebook.com/v19.0/me/messages?access_token=${encodeURIComponent(cleanToken)}`,
+              {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  recipient: { id: customerPart.id },
+                  message: { text: qItem.replyText },
+                  messaging_type: "RESPONSE",
+                }),
+              }
+            ).catch(() => {});
+          }
+        }
+      }
+
+      const graphConversations = [];
+      const repliedStateFile = path.join(tempDir, "inbox-replied-state.json");
+      let persistedRepliedState = {};
+      try {
+        if (fs.existsSync(repliedStateFile)) {
+          persistedRepliedState = JSON.parse(fs.readFileSync(repliedStateFile, "utf8")) || {};
+        }
+      } catch (_) {}
+
+      for (const conv of data.data) {
+        const parts = (conv.participants && conv.participants.data) || [];
+        const customerPart =
+          parts.find(
+            (p) => String(p.id) !== pageId && (p.name || "").toLowerCase() !== activeChanName.toLowerCase()
+          ) || parts[0];
+        if (!customerPart || !customerPart.name) continue;
+
+        const cName = customerPart.name;
+        const lowerCustomer = cName.toLowerCase();
+        const customerChanKey = `${activeChanName.toLowerCase()}:::${lowerCustomer}`;
+        const chanSlug = activeChanName.toLowerCase().replace(/[^a-z0-9]+/g, "-");
+        const convId = `fb-live-${chanSlug}-${lowerCustomer.replace(/[^a-z0-9]+/g, "-")}`;
+
+        const rawMsgs = ((conv.messages && conv.messages.data) || []).slice().reverse();
+        const extractedBubbles = rawMsgs
+          .filter((m) => m && m.message)
+          .map((m, idx) => {
+            const isFromCustomer =
+              m.from &&
+              (String(m.from.id) === String(customerPart.id) ||
+                (m.from.name || "").toLowerCase() === lowerCustomer);
+            return {
+              id: m.id || `${convId}-m-${idx + 1}`,
+              sender: isFromCustomer ? "CUSTOMER" : "AI_ASSISTANT",
+              text: String(m.message).trim(),
+              timestamp: m.created_time
+                ? new Date(m.created_time).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+                : "Today",
+              status: isFromCustomer ? "DELIVERED" : "SENT",
+              ...(!isFromCustomer ? { graphApiStatus: "SUCCESS_200" } : {}),
+            };
+          });
+
+        if (extractedBubbles.length === 0) continue;
+        const lastBubble = extractedBubbles[extractedBubbles.length - 1];
+        let isReplied = lastBubble.sender === "AI_ASSISTANT";
+
+        const trailingCustomerTexts = [];
+        for (let bIdx = extractedBubbles.length - 1; bIdx >= 0; bIdx--) {
+          if (extractedBubbles[bIdx].sender === "CUSTOMER") {
+            trailingCustomerTexts.unshift(extractedBubbles[bIdx].text);
+          } else if (trailingCustomerTexts.length > 0) {
+            break;
+          }
+        }
+        const fullCustomerQuery =
+          trailingCustomerTexts.length > 0 ? trailingCustomerTexts.join("\n") : lastBubble.text;
+
+        const aiResult = generateTrainedAiResponse(
+          fullCustomerQuery,
+          cName,
+          runtime,
+          channelObj,
+          extractedBubbles
+        );
+
+        const normalizedQuery = fullCustomerQuery.trim().toLowerCase();
+        const sig = `${customerChanKey}:::${normalizedQuery.slice(0, 120)}`;
+        const alreadyRepliedPersisted = persistedRepliedState[customerChanKey] === normalizedQuery;
+
+        let lastText = lastBubble.text;
+
+        if (
+          isRunning &&
+          currentMode === "AUTO" &&
+          !isReplied &&
+          !alreadyRepliedPersisted &&
+          !autoRepliedSignatures.has(sig) &&
+          customerPart.id
+        ) {
+          let autoReplyText = aiResult.suggestions[0];
+          if (aiResult.needsLlmBrain) {
+            autoReplyText = await generateHumanLlmReply(
+              fullCustomerQuery,
+              cName,
+              runtime,
+              channelObj,
+              extractedBubbles,
+              autoReplyText
+            );
+            aiResult.suggestions[0] = autoReplyText;
+          }
+
+          await sleep(Math.min(humanDelaySeconds, 5) * 1000);
+          if (isSuperseded()) break;
+
+          const sendRes = await fetch(
+            `https://graph.facebook.com/v19.0/me/messages?access_token=${encodeURIComponent(cleanToken)}`,
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                recipient: { id: customerPart.id },
+                message: { text: autoReplyText },
+                messaging_type: "RESPONSE",
+              }),
+            }
+          ).catch(() => null);
+
+          if (sendRes && sendRes.ok) {
+            autoRepliedSignatures.add(sig);
+            persistedRepliedState[customerChanKey] = normalizedQuery;
+            try {
+              fs.writeFileSync(repliedStateFile, JSON.stringify(persistedRepliedState, null, 2), "utf8");
+            } catch (_) {}
+            totalAutoRepliesSent++;
+            isReplied = true;
+            lastText = autoReplyText;
+            extractedBubbles.push({
+              id: `${convId}-auto-${Date.now()}`,
+              sender: "AI_ASSISTANT",
+              text: autoReplyText,
+              timestamp: "Just now (Graph API Sent)",
+              status: "SENT",
+              graphApiStatus: "SUCCESS_200",
+            });
+            console.log(
+              `   ✅ [GRAPH API TOKEN 24/7] AI reply sent to ${cName} on "${activeChanName}"!`
+            );
+          }
+        }
+
+        graphConversations.push({
+          id: convId,
+          customerName: cName,
+          pageName: activeChanName,
+          platform: "Facebook Page",
+          category: aiResult.category,
+          unreadCount: isReplied ? 0 : 1,
+          lastMessageText: lastText,
+          lastMessageTime: extractedBubbles[extractedBubbles.length - 1].timestamp,
+          status: isReplied ? "REPLIED" : "WAITING_REPLY",
+          aiSuggestions: aiResult.suggestions,
+          messages: extractedBubbles,
+        });
+      }
+
+      return graphConversations;
+    } catch (_) {
+      return null;
+    }
+  }
+
   // Initial channel setup
   let currentActiveChannel = {
     key: `${sourceType}::${targetId}::${targetName}`,
     sourceType: sourceType === "ALL" ? "Page" : sourceType,
     id: sourceType === "ALL" ? "61595136714776" : targetId,
     name: sourceType === "ALL" ? "Test Next" : targetName,
+    accessToken: activeAccessToken || undefined,
   };
 
-  await applyChannelSessionCookies(currentActiveChannel);
+  await applyChannelSessionCookies(currentActiveChannel, true);
 
   try {
     const inboxUrl = "https://www.facebook.com/messages/t/";
@@ -1491,8 +1796,47 @@ async function runInboxBot(configPath) {
     async function waitUntilLoggedIn(currentCheck) {
       while (await checkIsLoggedOut()) {
         if (isSuperseded()) return false;
+
+        // Reload active-session.json in case an Access Token or fresh Cookie was added from UI
+        if (fs.existsSync(sessionFilePath)) {
+          try {
+            const sess = JSON.parse(fs.readFileSync(sessionFilePath, "utf8"));
+            if (sess.accessToken && sess.accessToken.length > 15) {
+              activeAccessToken = sess.accessToken;
+              return true; // Proceed with Permanent Graph API Token even if browser cookie is logged out!
+            }
+            if (sess.cookieString && sess.cookieString !== lastKnownCookieStr) {
+              lastKnownCookieStr = sess.cookieString;
+              liveBaseCookies = parseCookies(lastKnownCookieStr);
+              const freshCookies = [...liveBaseCookies];
+              if (targetId && /^\d+$/.test(targetId)) {
+                freshCookies.push({
+                  name: "i_user",
+                  value: targetId,
+                  domain: ".facebook.com",
+                  path: "/",
+                  expires: Math.floor(Date.now() / 1000) + 86400 * 90,
+                  secure: true,
+                  sameSite: "Lax",
+                });
+              }
+              await page.setCookie(...freshCookies);
+              await page.goto("https://www.facebook.com/messages/t/", {
+                waitUntil: "domcontentloaded",
+                timeout: 45000,
+              });
+              await sleep(4000);
+              continue;
+            }
+          } catch (_) {}
+        }
+
+        if (activeAccessToken && activeAccessToken.length > 15) {
+          return true;
+        }
+
         const authErr =
-          "❌ ফেসবুক সেশন কুকি লগ-আউট হয়ে গেছে, তাই মেসেঞ্জারে নতুন রিপ্লাই পাঠানো যায়নি! বটের ওপেন হওয়া Chrome উইন্ডোতে লগইন করুন অথবা ডানপাশের '🔑 Update FB Session Cookie' বাটনে ক্লিক করে নতুন কুকি দিন — কানেক্ট হওয়া মাত্রই মেসেঞ্জারে অটো-রিপ্লাই চলে যাবে।";
+          "❌ ফেসবুক সেশন লগ-আউট হয়ে গেছে! ডানপাশের '🔑 24/7 Token & Cookie Setup' বাটনে ক্লিক করে স্থায়ী Page Access Token (EAA...) অথবা নতুন Session Cookie দিন — কানেক্ট হওয়া মাত্রই ২৪/৭ অটো-রিপ্লাই চলবে।";
         console.error(authErr);
         updateStatus({
           status: "AUTH_ERROR",
@@ -1505,58 +1849,11 @@ async function runInboxBot(configPath) {
         });
 
         await sleep(4000);
-
-        // Check if active-session.json was updated with a new cookie from the UI
-        if (fs.existsSync(sessionFilePath)) {
-          try {
-            const sess = JSON.parse(fs.readFileSync(sessionFilePath, "utf8"));
-            if (sess.cookieString && sess.cookieString !== lastKnownCookieStr) {
-              lastKnownCookieStr = sess.cookieString;
-              const freshCookies = parseCookies(lastKnownCookieStr);
-              if (targetId && /^\d+$/.test(targetId)) {
-                freshCookies.push({
-                  name: "i_user",
-                  value: targetId,
-                  domain: ".facebook.com",
-                  path: "/",
-                  secure: true,
-                  sameSite: "Lax",
-                });
-              }
-              await page.setCookie(...freshCookies);
-              await page.goto("https://www.facebook.com/messages/t/", {
-                waitUntil: "domcontentloaded",
-                timeout: 45000,
-              });
-              await sleep(4000);
-            }
-          } catch (_) {}
-        }
       }
 
-      // User logged in inside the browser window or via cookie! Persist updated cookies to active-session.json
-      try {
-        const currentBrowserCookies = await page.cookies("https://www.facebook.com");
-        const hasCUser = currentBrowserCookies.some((c) => c.name === "c_user");
-        const hasXs = currentBrowserCookies.some((c) => c.name === "xs");
-        if (hasCUser && hasXs) {
-          const serialized = currentBrowserCookies.map((c) => `${c.name}=${c.value}`).join(";");
-          lastKnownCookieStr = serialized;
-          fs.writeFileSync(
-            sessionFilePath,
-            JSON.stringify(
-              {
-                accountName: targetName || "Main Facebook Profile",
-                cookieString: serialized,
-                updatedAt: new Date().toISOString(),
-              },
-              null,
-              2
-            ),
-            "utf8"
-          );
-        }
-      } catch (_) {}
+      // User logged in inside the browser window or via cookie! Persist updated rotated cookies to active-session.json
+      const synced = await syncLiveBrowserCookiesToDisk();
+      if (synced) lastKnownCookieStr = synced;
 
       const curUrl = page.url() || "";
       if (!curUrl.includes("/messages") && !curUrl.includes("/latest/inbox")) {
@@ -1575,6 +1872,8 @@ async function runInboxBot(configPath) {
         await browser.close();
         return;
       }
+    } else {
+      await syncLiveBrowserCookiesToDisk();
     }
 
     for (let check = 1; check <= maxChecks; check++) {
@@ -1583,9 +1882,20 @@ async function runInboxBot(configPath) {
         break;
       }
 
-      if (await checkIsLoggedOut()) {
-        const ok = await waitUntilLoggedIn(check);
-        if (!ok) break;
+      // Periodically auto-save live rotated browser cookies every 3 scans so cookies NEVER expire!
+      if (check % 3 === 0 && !(await checkIsLoggedOut())) {
+        const refreshed = await syncLiveBrowserCookiesToDisk();
+        if (refreshed) lastKnownCookieStr = refreshed;
+      }
+
+      // Check if an Access Token or updated Cookie was saved in active-session.json
+      if (fs.existsSync(sessionFilePath)) {
+        try {
+          const sess = JSON.parse(fs.readFileSync(sessionFilePath, "utf8"));
+          if (sess.accessToken && sess.accessToken !== activeAccessToken) {
+            activeAccessToken = sess.accessToken;
+          }
+        } catch (_) {}
       }
 
       const runtime = getRuntimeSettings();
@@ -1612,7 +1922,7 @@ async function runInboxBot(configPath) {
               `\n🔄 [100-Channel Multi-Bot Rotation] Switching active Messenger Inbox to: ${nextChan.sourceType} — "${nextChan.name}" (${nextChan.id})`
             );
             currentActiveChannel = nextChan;
-            await applyChannelSessionCookies(currentActiveChannel);
+            await applyChannelSessionCookies(currentActiveChannel, false);
             try {
               await page.goto(inboxUrl, { waitUntil: "domcontentloaded", timeout: 45000 });
               await sleep(5500);
@@ -1625,6 +1935,45 @@ async function runInboxBot(configPath) {
 
       const activeChanName = currentActiveChannel.name || targetName;
       const activeChanSource = currentActiveChannel.sourceType || sourceType;
+      const channelAccessToken = currentActiveChannel.accessToken || activeAccessToken;
+
+      // Try 24/7 Official Graph API Token first if configured for this Page!
+      if (channelAccessToken && activeChanSource === "Page") {
+        const graphConvs = await tryGraphApiTokenScanAndReply(
+          currentActiveChannel,
+          channelAccessToken,
+          runtime,
+          isRunning,
+          currentMode
+        );
+        if (Array.isArray(graphConvs) && graphConvs.length > 0) {
+          conversationsByChannel.set(activeChanName, graphConvs);
+          const merged = [];
+          for (const list of conversationsByChannel.values()) {
+            merged.push(...list);
+          }
+          liveConversations = merged;
+          updateStatus({
+            status: "WATCHING",
+            sourceType,
+            targetId,
+            targetName: sourceType === "ALL" ? `All Active Channels (Now: ${activeChanName})` : activeChanName,
+            mode: currentMode,
+            checkCount: check,
+            totalAutoRepliesSent,
+            conversations: liveConversations,
+          });
+          if (check < maxChecks) {
+            await sleep(checkIntervalSeconds * 1000);
+          }
+          continue;
+        }
+      }
+
+      if (await checkIsLoggedOut()) {
+        const ok = await waitUntilLoggedIn(check);
+        if (!ok) break;
+      }
 
       console.log(
         `\n🔍 [24/7 Inbox Scan #${check}] Active Channel: ${activeChanName} (${

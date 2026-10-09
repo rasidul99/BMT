@@ -33,6 +33,106 @@ export async function POST(req: NextRequest) {
       })
     }
 
+    const sessionFilePath = path.resolve(
+      process.cwd(),
+      "..",
+      "..",
+      "scripts",
+      "facebook-bot",
+      "active-session.json"
+    )
+
+    // 1b. Verify Facebook Access Token (Graph API EAA... Token) & discover managed Pages
+    if (body.action === "VERIFY_TOKEN") {
+      const token = String(body.accessToken || "").trim()
+      if (!token) {
+        return NextResponse.json({ success: false, error: "Access Token খালি রাখা যাবে না।" }, { status: 400 })
+      }
+      try {
+        const meRes = await fetch(
+          `https://graph.facebook.com/v19.0/me?fields=id,name,accounts{id,name,access_token,category}&access_token=${encodeURIComponent(token)}`
+        )
+        const meData = await meRes.json()
+        if (meData.error) {
+          return NextResponse.json({
+            success: false,
+            error: meData.error.message || "Invalid Facebook Access Token",
+          })
+        }
+        const pages = Array.isArray(meData?.accounts?.data)
+          ? meData.accounts.data.map((p: any) => ({
+              pageId: String(p.id),
+              pageName: String(p.name),
+              accessToken: String(p.access_token || token),
+              category: String(p.category || "Page"),
+            }))
+          : []
+        return NextResponse.json({
+          success: true,
+          identity: { id: String(meData.id), name: String(meData.name) },
+          isPageToken: pages.length === 0,
+          pages,
+        })
+      } catch (err: any) {
+        return NextResponse.json({
+          success: false,
+          error: err.message || "Graph API সংযোগে সমস্যা হয়েছে",
+        })
+      }
+    }
+
+    // 1c. Explicitly update 24/7 Session Credentials (Access Token, Cookie Session, or Hybrid)
+    if (body.action === "UPDATE_SESSION_CREDENTIALS") {
+      let existingSession: any = {}
+      if (fs.existsSync(sessionFilePath)) {
+        try {
+          existingSession = JSON.parse(fs.readFileSync(sessionFilePath, "utf8"))
+        } catch {}
+      }
+      const cleanCookie =
+        typeof body.cookieString === "string" &&
+        body.cookieString.includes("c_user=") &&
+        body.cookieString.includes("xs=") &&
+        !body.cookieString.includes("bmt_session_token_ok") &&
+        !body.cookieString.includes("checkpoint_pending")
+          ? body.cookieString.trim()
+          : existingSession.cookieString || ""
+
+      const cleanToken =
+        typeof body.accessToken === "string" && body.accessToken.trim().length > 15
+          ? body.accessToken.trim()
+          : body.clearToken
+          ? ""
+          : existingSession.accessToken || ""
+
+      const nextAuthMode =
+        body.authMode ||
+        (cleanToken && cleanCookie ? "HYBRID" : cleanToken ? "TOKEN" : "COOKIE")
+
+      const nextSession = {
+        ...existingSession,
+        accountName: body.accountName || existingSession.accountName || "Test Next",
+        targetId: body.targetId || existingSession.targetId || "61595136714776",
+        authMode: nextAuthMode,
+        accessToken: cleanToken,
+        cookieString: cleanCookie,
+        keepAlive24x7: true,
+        updatedAt: new Date().toISOString(),
+      }
+      fs.writeFileSync(sessionFilePath, JSON.stringify(nextSession, null, 2), "utf8")
+      return NextResponse.json({
+        success: true,
+        message: "24/7 Token & Cookie Session saved & synced with Live Bot!",
+        session: {
+          accountName: nextSession.accountName,
+          authMode: nextSession.authMode,
+          hasCookie: Boolean(nextSession.cookieString),
+          hasAccessToken: Boolean(nextSession.accessToken),
+          updatedAt: nextSession.updatedAt,
+        },
+      })
+    }
+
     // 2. Dynamically update runtime mode, trained products, storeProfile, and templates
     if (body.action === "UPDATE_RUNTIME") {
       const runtimeSettingsFile = path.join(tempDir, "inbox-runtime-settings.json")
@@ -71,6 +171,7 @@ export async function POST(req: NextRequest) {
       maxChecks = 86400,
       headless = false,
       reuseIfActive = false,
+      forceUpdateSession = false,
     } = body
 
     // Always sync latest trained products & storeProfile to runtime settings even when reusing active bot!
@@ -122,33 +223,54 @@ export async function POST(req: NextRequest) {
       } catch {}
     }
 
-    if (
+    // Load existing active-session.json first so we NEVER overwrite a live rotated cookie with stale localStorage cookies!
+    let currentSession: any = {}
+    if (fs.existsSync(sessionFilePath)) {
+      try {
+        currentSession = JSON.parse(fs.readFileSync(sessionFilePath, "utf8"))
+      } catch {}
+    }
+
+    const incomingCookieValid =
       typeof body.cookieString === "string" &&
       body.cookieString.includes("c_user=") &&
-      body.cookieString.includes("xs=")
+      body.cookieString.includes("xs=") &&
+      !body.cookieString.includes("bmt_session_token_ok") &&
+      !body.cookieString.includes("checkpoint_pending")
+
+    const incomingTokenValid =
+      typeof body.accessToken === "string" &&
+      body.accessToken.trim().length > 15 &&
+      !body.accessToken.includes("bmt_verified_token_valid") &&
+      !body.accessToken.includes("meta_oauth_page_token")
+
+    // Only overwrite active-session.json if explicitly requested (forceUpdateSession) or if active-session.json has no valid cookie/token yet
+    if (
+      forceUpdateSession ||
+      (!currentSession.cookieString && incomingCookieValid) ||
+      (incomingTokenValid && body.accessToken !== currentSession.accessToken)
     ) {
       try {
-        const sessionFilePath = path.resolve(
-          process.cwd(),
-          "..",
-          "..",
-          "scripts",
-          "facebook-bot",
-          "active-session.json"
-        )
-        fs.writeFileSync(
-          sessionFilePath,
-          JSON.stringify(
-            {
-              accountName: targetName || "Main Facebook Profile",
-              cookieString: body.cookieString,
-              updatedAt: new Date().toISOString(),
-            },
-            null,
-            2
-          ),
-          "utf8"
-        )
+        const updatedCookie = incomingCookieValid
+          ? body.cookieString.trim()
+          : currentSession.cookieString || ""
+        const updatedToken = incomingTokenValid
+          ? body.accessToken.trim()
+          : currentSession.accessToken || ""
+        const resolvedAuthMode =
+          body.authMode ||
+          (updatedToken && updatedCookie ? "HYBRID" : updatedToken ? "TOKEN" : "COOKIE")
+
+        currentSession = {
+          ...currentSession,
+          accountName: targetName || currentSession.accountName || "Main Facebook Profile",
+          authMode: resolvedAuthMode,
+          cookieString: updatedCookie,
+          accessToken: updatedToken,
+          keepAlive24x7: true,
+          updatedAt: new Date().toISOString(),
+        }
+        fs.writeFileSync(sessionFilePath, JSON.stringify(currentSession, null, 2), "utf8")
       } catch {}
     }
 
@@ -160,7 +282,9 @@ export async function POST(req: NextRequest) {
       targetId: String(targetId || "61595136714776").trim(),
       targetName: String(targetName || "Test Next").trim(),
       monitoredChannels: Array.isArray(monitoredChannels) ? monitoredChannels : [],
-      cookieString: typeof body.cookieString === "string" ? body.cookieString.trim() : undefined,
+      cookieString: currentSession.cookieString || (incomingCookieValid ? body.cookieString.trim() : undefined),
+      accessToken: currentSession.accessToken || (incomingTokenValid ? body.accessToken.trim() : undefined),
+      authMode: currentSession.authMode || "HYBRID",
       mode: mode === "MANUAL" ? "MANUAL" : "AUTO",
       humanDelaySeconds: Number(humanDelaySeconds) || 4,
       templates: Array.isArray(templates) ? templates : [],
@@ -227,6 +351,34 @@ export async function GET(req: NextRequest) {
   let jobId = searchParams.get("jobId")
 
   const tempDir = path.resolve(process.cwd(), "..", "..", "scripts", "facebook-bot", "temp")
+  const sessionFilePath = path.resolve(
+    process.cwd(),
+    "..",
+    "..",
+    "scripts",
+    "facebook-bot",
+    "active-session.json"
+  )
+
+  let sessionHealth = {
+    authMode: "HYBRID",
+    hasCookie: false,
+    hasAccessToken: false,
+    keepAlive24x7: true,
+    lastRefreshedAt: "",
+  }
+  if (fs.existsSync(sessionFilePath)) {
+    try {
+      const s = JSON.parse(fs.readFileSync(sessionFilePath, "utf8"))
+      sessionHealth = {
+        authMode: s.authMode || (s.accessToken && s.cookieString ? "HYBRID" : s.accessToken ? "TOKEN" : "COOKIE"),
+        hasCookie: Boolean(s.cookieString && s.cookieString.includes("c_user=")),
+        hasAccessToken: Boolean(s.accessToken && s.accessToken.length > 15),
+        keepAlive24x7: true,
+        lastRefreshedAt: s.updatedAt || "",
+      }
+    } catch {}
+  }
 
   if (!jobId || jobId === "latest") {
     const activeLockFile = path.join(tempDir, "inbox-active-lock.json")
@@ -239,7 +391,12 @@ export async function GET(req: NextRequest) {
   }
 
   if (!jobId) {
-    return NextResponse.json({ success: false, status: "IDLE", error: "No active jobId" })
+    return NextResponse.json({
+      success: false,
+      status: "IDLE",
+      error: "No active jobId",
+      sessionHealth,
+    })
   }
 
   const statusFile = path.join(tempDir, `${jobId}-status.json`)
@@ -280,6 +437,7 @@ export async function GET(req: NextRequest) {
     checkCount: statusData.checkCount || 0,
     totalAutoRepliesSent: statusData.totalAutoRepliesSent || 0,
     conversations: statusData.conversations || [],
+    sessionHealth,
     logs: logs.split("\n").slice(-30).join("\n"),
   })
 }

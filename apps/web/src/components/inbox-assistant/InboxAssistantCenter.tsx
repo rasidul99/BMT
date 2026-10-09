@@ -49,6 +49,8 @@ export interface InboxChannelItem {
   id: string
   name: string
   label: string
+  authMode?: "TOKEN" | "COOKIE" | "HYBRID"
+  accessToken?: string
   cookieString?: string
   enabled?: boolean
 }
@@ -100,13 +102,33 @@ export function InboxAssistantCenter({ currentMode }: InboxAssistantCenterProps)
   const channelDropdownRef = useRef<HTMLDivElement>(null)
   const channelSearchInputRef = useRef<HTMLInputElement>(null)
 
-  // Custom added Pages & Personal IDs (up to 100+)
+  // Custom added Pages & Personal IDs (up to 100+) + 24/7 Token & Cookie Auth State
   const [customChannels, setCustomChannels] = useState<InboxChannelItem[]>([])
   const [isAddChannelModalOpen, setIsAddChannelModalOpen] = useState(false)
   const [newChannelType, setNewChannelType] = useState<"Page" | "Personal ID">("Page")
+  const [newChannelAuthMode, setNewChannelAuthMode] = useState<"HYBRID" | "TOKEN" | "COOKIE">("HYBRID")
   const [newChannelName, setNewChannelName] = useState("")
   const [newChannelId, setNewChannelId] = useState("")
+  const [newChannelAccessToken, setNewChannelAccessToken] = useState("")
   const [newChannelCookie, setNewChannelCookie] = useState("")
+  const [isVerifyingToken, setIsVerifyingToken] = useState(false)
+  const [tokenVerifyFeedback, setTokenVerifyFeedback] = useState<string | null>(null)
+  const [discoveredTokenPages, setDiscoveredTokenPages] = useState<
+    Array<{ pageId: string; pageName: string; accessToken: string }>
+  >([])
+  const [sessionHealth, setSessionHealth] = useState<{
+    authMode: string
+    hasCookie: boolean
+    hasAccessToken: boolean
+    keepAlive24x7: boolean
+    lastRefreshedAt: string
+  }>({
+    authMode: "HYBRID",
+    hasCookie: true,
+    hasAccessToken: false,
+    keepAlive24x7: true,
+    lastRefreshedAt: "",
+  })
 
   // Live Messenger Bot Watcher State
   const [activeJobId, setActiveJobId] = useState<string | null>(null)
@@ -317,6 +339,8 @@ export function InboxAssistantCenter({ currentMode }: InboxAssistantCenterProps)
           id: entry.pageId,
           name: entry.pageName,
           label: `Page: ${entry.pageName} (${entry.pageId})`,
+          accessToken: entry.accessToken || undefined,
+          authMode: entry.accessToken ? "HYBRID" : "COOKIE",
           enabled: true,
         })
       }
@@ -324,6 +348,18 @@ export function InboxAssistantCenter({ currentMode }: InboxAssistantCenterProps)
 
     fleetAccounts.forEach((acc) => {
       // Include each connected Personal ID from the 100-Account Fleet
+      const isRealCookie =
+        acc.tokenOrCookie &&
+        acc.tokenOrCookie.includes("c_user=") &&
+        acc.tokenOrCookie.includes("xs=") &&
+        !acc.tokenOrCookie.includes("bmt_session_token_ok") &&
+        !acc.tokenOrCookie.includes("checkpoint_pending")
+      const isRealToken =
+        acc.tokenOrCookie &&
+        acc.tokenOrCookie.startsWith("EAA") &&
+        !acc.tokenOrCookie.includes("bmt_verified_token_valid") &&
+        !acc.tokenOrCookie.includes("meta_oauth_page_token")
+
       if (acc.id && acc.name && !list.some((item) => item.id === acc.id || item.name === acc.name)) {
         list.push({
           key: `Personal ID::${acc.id}::${acc.name}`,
@@ -331,24 +367,10 @@ export function InboxAssistantCenter({ currentMode }: InboxAssistantCenterProps)
           id: acc.id,
           name: acc.name,
           label: `Personal ID: ${acc.name} (${acc.id})`,
-          cookieString: acc.cookieString,
+          cookieString: isRealCookie ? acc.tokenOrCookie : undefined,
+          accessToken: isRealToken ? acc.tokenOrCookie : undefined,
+          authMode: isRealToken ? "TOKEN" : "COOKIE",
           enabled: true,
-        })
-      }
-      // Include all connected Pages under each fleet account
-      if (acc.connectedPages) {
-        acc.connectedPages.forEach((pg) => {
-          if (!list.some((item) => item.id === pg.pageId)) {
-            list.push({
-              key: `Page::${pg.pageId}::${pg.pageName}`,
-              sourceType: "Page",
-              id: pg.pageId,
-              name: pg.pageName,
-              label: `Page: ${pg.pageName} (${pg.pageId})`,
-              cookieString: acc.cookieString,
-              enabled: true,
-            })
-          }
         })
       }
     })
@@ -404,7 +426,53 @@ export function InboxAssistantCenter({ currentMode }: InboxAssistantCenterProps)
     [channelOptions]
   )
 
-  const handleAddNewChannel = (e: React.FormEvent) => {
+  const handleVerifyAccessToken = async () => {
+    const cleanToken = newChannelAccessToken.trim()
+    if (!cleanToken) {
+      setTokenVerifyFeedback("⚠️ অনুগ্রহ করে আগে আপনার Facebook Page বা User Access Token (EAA...) পেস্ট করুন।")
+      return
+    }
+    setIsVerifyingToken(true)
+    setTokenVerifyFeedback(null)
+    setDiscoveredTokenPages([])
+    try {
+      const res = await fetch("/api/facebook-bot/inbox-assistant", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "VERIFY_TOKEN",
+          accessToken: cleanToken,
+        }),
+      })
+      const data = await res.json()
+      if (data?.success) {
+        if (Array.isArray(data.pages) && data.pages.length > 0) {
+          setDiscoveredTokenPages(data.pages)
+          const firstPg = data.pages[0]
+          if (!newChannelName.trim()) setNewChannelName(firstPg.pageName)
+          if (!newChannelId.trim()) setNewChannelId(firstPg.pageId)
+          if (firstPg.accessToken) setNewChannelAccessToken(firstPg.accessToken)
+          setTokenVerifyFeedback(
+            `✅ টোকেন ভেরিফাইড! "${data.identity?.name}"-এর অধীনে ${data.pages.length}টি পেজ পাওয়া গেছে (নিচে থেকে সিলেক্ট করুন)।`
+          )
+        } else if (data.identity?.id) {
+          if (!newChannelName.trim()) setNewChannelName(data.identity.name)
+          if (!newChannelId.trim()) setNewChannelId(data.identity.id)
+          setTokenVerifyFeedback(
+            `✅ স্থায়ী Page Access Token ভেরিফাইড: "${data.identity.name}" (ID: ${data.identity.id}) — ২৪/৭ কানেকশনের জন্য প্রস্তুত!`
+          )
+        }
+      } else {
+        setTokenVerifyFeedback(`❌ টোকেন ভেরিফিকেশন ব্যর্থ: ${data?.error || "Invalid Token"}`)
+      }
+    } catch (err: any) {
+      setTokenVerifyFeedback(`❌ সংযোগ ত্রুটি: ${err.message}`)
+    } finally {
+      setIsVerifyingToken(false)
+    }
+  }
+
+  const handleAddNewChannel = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!newChannelName.trim()) return
 
@@ -412,13 +480,18 @@ export function InboxAssistantCenter({ currentMode }: InboxAssistantCenterProps)
     const cleanId =
       newChannelId.trim() ||
       (newChannelType === "Page" ? `page-${Date.now()}` : `id-${Date.now()}`)
+    const cleanToken = newChannelAccessToken.trim()
+    const cleanCookie = newChannelCookie.trim()
+
     const newItem: InboxChannelItem = {
       key: `${newChannelType}::${cleanId}::${cleanName}`,
       sourceType: newChannelType,
       id: cleanId,
       name: cleanName,
       label: `${newChannelType}: ${cleanName} (${cleanId})`,
-      cookieString: newChannelCookie.trim() || undefined,
+      authMode: newChannelAuthMode,
+      accessToken: cleanToken || undefined,
+      cookieString: cleanCookie || undefined,
       enabled: true,
     }
 
@@ -433,10 +506,28 @@ export function InboxAssistantCenter({ currentMode }: InboxAssistantCenterProps)
         upsertPage({
           pageId: cleanId,
           pageName: cleanName,
-          accessToken: "",
-          tokenExpiry: Date.now() + 86400000 * 60,
+          accessToken: cleanToken,
+          tokenExpiry: Date.now() + 86400000 * 365,
           category: "E-Commerce",
           isActive: true,
+        })
+      } catch {}
+    }
+
+    // Explicitly save 24/7 Token & Cookie credentials to active-session.json
+    if (cleanToken || cleanCookie) {
+      try {
+        await fetch("/api/facebook-bot/inbox-assistant", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            action: "UPDATE_SESSION_CREDENTIALS",
+            accountName: cleanName,
+            targetId: cleanId,
+            authMode: newChannelAuthMode,
+            accessToken: cleanToken || undefined,
+            cookieString: cleanCookie || undefined,
+          }),
         })
       } catch {}
     }
@@ -457,12 +548,19 @@ export function InboxAssistantCenter({ currentMode }: InboxAssistantCenterProps)
 
     setNewChannelName("")
     setNewChannelId("")
+    setNewChannelAccessToken("")
     setNewChannelCookie("")
+    setTokenVerifyFeedback(null)
+    setDiscoveredTokenPages([])
     setIsAddChannelModalOpen(false)
 
-    if (newItem.cookieString) {
+    if (newItem.cookieString || newItem.accessToken) {
       setSelectedChannelKey(newItem.key)
-      handleStartLiveInboxBot({ reuseIfActive: false, customChannel: newItem })
+      handleStartLiveInboxBot({
+        reuseIfActive: false,
+        customChannel: newItem,
+        forceUpdateSession: true,
+      })
     } else {
       showToast(
         `নতুন ${newChannelType} "${cleanName}" যুক্ত হয়েছে এবং ২৪/৭ মেসেঞ্জার AI বটের তালিকায় সিঙ্ক হয়েছে!`
@@ -475,6 +573,7 @@ export function InboxAssistantCenter({ currentMode }: InboxAssistantCenterProps)
     reuseIfActive?: boolean
     silent?: boolean
     customChannel?: InboxChannelItem
+    forceUpdateSession?: boolean
   }) => {
     const channel = options?.customChannel || activeChannel
     setIsStartingBot(true)
@@ -485,17 +584,10 @@ export function InboxAssistantCenter({ currentMode }: InboxAssistantCenterProps)
       showToast(`Launching 24/7 Live Facebook Messenger Bot for "${channel.name}"...`)
     }
 
-    let resolvedCookie = channel.cookieString || ""
-    if (!resolvedCookie) {
-      try {
-        const accWithCookie = fleetAccounts.find(
-          (a) => a.cookieString && a.cookieString.includes("c_user=") && a.cookieString.includes("xs=")
-        )
-        if (accWithCookie?.cookieString) {
-          resolvedCookie = accWithCookie.cookieString
-        }
-      } catch {}
-    }
+    // Only pass explicit cookie/token when forceUpdateSession is true or channel has its own explicit credentials,
+    // so we NEVER overwrite the server's live auto-rotated active-session.json with stale localStorage data!
+    const explicitCookie = options?.forceUpdateSession ? channel.cookieString : undefined
+    const explicitToken = channel.accessToken || undefined
 
     try {
       const res = await fetch("/api/facebook-bot/inbox-assistant", {
@@ -506,7 +598,10 @@ export function InboxAssistantCenter({ currentMode }: InboxAssistantCenterProps)
           targetId: channel.id,
           targetName: channel.name,
           monitoredChannels: channelOptions,
-          cookieString: resolvedCookie || undefined,
+          cookieString: explicitCookie,
+          accessToken: explicitToken,
+          authMode: channel.authMode || "HYBRID",
+          forceUpdateSession: Boolean(options?.forceUpdateSession),
           mode: settings.mode,
           humanDelaySeconds: settings.humanDelaySeconds,
           templates,
@@ -555,6 +650,9 @@ export function InboxAssistantCenter({ currentMode }: InboxAssistantCenterProps)
           `/api/facebook-bot/inbox-assistant?jobId=${encodeURIComponent(targetJob)}`
         )
         const data = await res.json()
+        if (data?.sessionHealth) {
+          setSessionHealth(data.sessionHealth)
+        }
         if (data?.success && data.jobId) {
           if (!activeJobId) setActiveJobId(data.jobId)
           const nextStatus = data.status || "WATCHING"
@@ -972,6 +1070,22 @@ export function InboxAssistantCenter({ currentMode }: InboxAssistantCenterProps)
 
           <button
             type="button"
+            data-testid="open-token-cookie-setup-btn"
+            onClick={() => {
+              setNewChannelType(activeChannel.sourceType === "Personal ID" ? "Personal ID" : "Page")
+              setNewChannelName(activeChannel.sourceType === "ALL" ? "Test Next" : activeChannel.name)
+              setNewChannelId(activeChannel.sourceType === "ALL" ? "61595136714776" : activeChannel.id)
+              setNewChannelAccessToken(activeChannel.accessToken || "")
+              setNewChannelCookie(activeChannel.cookieString || "")
+              setIsAddChannelModalOpen(true)
+            }}
+            className="flex items-center space-x-1.5 px-3 py-2 rounded-xl text-xs font-bold border border-amber-500/40 bg-amber-500/10 hover:bg-amber-500/20 text-amber-700 dark:text-amber-300 transition shadow-xs cursor-pointer whitespace-nowrap"
+          >
+            <span>🔑 24/7 Token &amp; Cookie</span>
+          </button>
+
+          <button
+            type="button"
             data-testid="start-live-inbox-bot-btn"
             disabled={isStartingBot}
             onClick={() => handleStartLiveInboxBot({ reuseIfActive: false })}
@@ -1005,7 +1119,7 @@ export function InboxAssistantCenter({ currentMode }: InboxAssistantCenterProps)
           }`}
         >
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <div className="flex items-center gap-2 font-bold">
+            <div className="flex items-center flex-wrap gap-2 font-bold">
               {watcherStatus === "AUTH_ERROR" || watcherStatus === "ERROR" ? (
                 <AlertTriangle className="w-4 h-4 text-rose-500 shrink-0" />
               ) : (
@@ -1016,22 +1130,34 @@ export function InboxAssistantCenter({ currentMode }: InboxAssistantCenterProps)
                   ? watcherError || "Live Messenger Bot encountered an error"
                   : `💬 24/7 Live Facebook Messenger Bot Active on "${activeChannel.name}" — Scan #${watcherCheckCount} | Trained on ${products.length} Product(s)`}
               </span>
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-blue-500/15 text-blue-700 dark:text-blue-300 border border-blue-500/30 text-[10px] font-extrabold">
+                🛡️ 24/7 Auto-Keep-Alive:{" "}
+                {sessionHealth.hasAccessToken && sessionHealth.hasCookie
+                  ? "Token + Cookie Hybrid"
+                  : sessionHealth.hasAccessToken
+                  ? "Permanent Access Token"
+                  : "90-Day Cookie Auto-Rotation"}
+              </span>
             </div>
             <div className="flex items-center gap-2">
-              {(watcherStatus === "AUTH_ERROR" || watcherStatus === "ERROR") && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setNewChannelType(activeChannel.sourceType === "Personal ID" ? "Personal ID" : "Page")
-                    setNewChannelName(activeChannel.sourceType === "ALL" ? "Test Next" : activeChannel.name)
-                    setNewChannelId(activeChannel.sourceType === "ALL" ? "61595136714776" : activeChannel.id)
-                    setIsAddChannelModalOpen(true)
-                  }}
-                  className="px-2.5 py-1 rounded-lg bg-rose-600 hover:bg-rose-500 text-white font-bold transition flex items-center gap-1 cursor-pointer shadow-xs"
-                >
-                  <span>🔑 Update FB Session Cookie</span>
-                </button>
-              )}
+              <button
+                type="button"
+                onClick={() => {
+                  setNewChannelType(activeChannel.sourceType === "Personal ID" ? "Personal ID" : "Page")
+                  setNewChannelName(activeChannel.sourceType === "ALL" ? "Test Next" : activeChannel.name)
+                  setNewChannelId(activeChannel.sourceType === "ALL" ? "61595136714776" : activeChannel.id)
+                  setNewChannelAccessToken(activeChannel.accessToken || "")
+                  setNewChannelCookie(activeChannel.cookieString || "")
+                  setIsAddChannelModalOpen(true)
+                }}
+                className={`px-2.5 py-1 rounded-lg font-bold transition flex items-center gap-1 cursor-pointer shadow-xs ${
+                  watcherStatus === "AUTH_ERROR" || watcherStatus === "ERROR"
+                    ? "bg-rose-600 hover:bg-rose-500 text-white"
+                    : "border border-emerald-500/40 bg-background/80 hover:bg-background text-foreground"
+                }`}
+              >
+                <span>🔑 24/7 Token &amp; Cookie Setup</span>
+              </button>
               <button
                 type="button"
                 onClick={() => setShowTerminalLogs((v) => !v)}
@@ -2264,17 +2390,22 @@ export function InboxAssistantCenter({ currentMode }: InboxAssistantCenterProps)
       )}
 
       {/* ======================================================== */}
-      {/* MODAL: ADD NEW FACEBOOK PAGE OR PERSONAL ID (UP TO 100+) */}
+      {/* MODAL: ADD / CONFIGURE PAGE OR ID (24/7 TOKEN + COOKIE)  */}
       {/* ======================================================== */}
       {isAddChannelModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/65 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-card border border-border rounded-2xl w-full max-w-md shadow-2xl p-6 space-y-4 animate-in fade-in zoom-in-95">
+        <div className="fixed inset-0 z-50 bg-black/65 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-card border border-border rounded-2xl w-full max-w-lg shadow-2xl p-6 space-y-4 animate-in fade-in zoom-in-95 my-8">
             <div className="flex items-center justify-between border-b border-border pb-3">
               <div className="flex items-center space-x-2">
                 <Layers className="w-5 h-5 text-blue-600 dark:text-blue-400" />
-                <h3 className="font-bold text-base text-foreground">
-                  Add Facebook Page or Personal ID
-                </h3>
+                <div>
+                  <h3 className="font-bold text-base text-foreground">
+                    24/7 Access Token &amp; Cookie Session Setup
+                  </h3>
+                  <p className="text-[11px] text-muted-foreground">
+                    স্থায়ী Page Access Token (EAA...) অথবা 24/7 Auto-Keep-Alive Cookie দিয়ে কানেক্ট করুন
+                  </p>
+                </div>
               </div>
               <button
                 type="button"
@@ -2286,6 +2417,7 @@ export function InboxAssistantCenter({ currentMode }: InboxAssistantCenterProps)
             </div>
 
             <form onSubmit={handleAddNewChannel} className="space-y-3.5 text-xs">
+              {/* Channel Type */}
               <div className="space-y-1">
                 <label className="font-bold text-foreground">চ্যানেলের ধরন (Channel Type)</label>
                 <div className="grid grid-cols-2 gap-2">
@@ -2314,47 +2446,170 @@ export function InboxAssistantCenter({ currentMode }: InboxAssistantCenterProps)
                 </div>
               </div>
 
-              <div className="space-y-1">
+              {/* 24/7 Authentication Mode Selector */}
+              <div className="space-y-1.5">
                 <label className="font-bold text-foreground">
-                  {newChannelType === "Page" ? "পেজের নাম (Page Name) *" : "আইডির নাম (Profile Name) *"}
+                  ২৪/৭ অথেনটিকেশন পদ্ধতি (24/7 Auth Method)
                 </label>
-                <input
-                  type="text"
-                  required
-                  placeholder={newChannelType === "Page" ? "যেমন: Fashion Hub BD" : "যেমন: Rasidul Islam"}
-                  value={newChannelName}
-                  onChange={(e) => setNewChannelName(e.target.value)}
-                  className="w-full px-3 py-2 border border-border rounded-lg bg-background text-xs outline-none focus:border-blue-500"
-                />
+                <div className="grid grid-cols-3 gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => setNewChannelAuthMode("HYBRID")}
+                    className={`py-2 px-2 rounded-xl border font-bold text-[11px] transition cursor-pointer text-center ${
+                      newChannelAuthMode === "HYBRID"
+                        ? "bg-emerald-600 text-white border-emerald-600 shadow-xs"
+                        : "bg-background border-border text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    ⚡ Token + Cookie (Recommended)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setNewChannelAuthMode("TOKEN")}
+                    className={`py-2 px-2 rounded-xl border font-bold text-[11px] transition cursor-pointer text-center ${
+                      newChannelAuthMode === "TOKEN"
+                        ? "bg-amber-600 text-white border-amber-600 shadow-xs"
+                        : "bg-background border-border text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    🔑 Permanent Token (EAA...)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setNewChannelAuthMode("COOKIE")}
+                    className={`py-2 px-2 rounded-xl border font-bold text-[11px] transition cursor-pointer text-center ${
+                      newChannelAuthMode === "COOKIE"
+                        ? "bg-blue-600 text-white border-blue-600 shadow-xs"
+                        : "bg-background border-border text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    🍪 Cookie (Auto-Refresh)
+                  </button>
+                </div>
               </div>
 
-              <div className="space-y-1">
-                <label className="font-bold text-foreground">
-                  {newChannelType === "Page"
-                    ? "Numeric Page ID (যেমন: 61595136714776) *"
-                    : "Profile / Account ID (যেমন: 100081643483232) *"}
-                </label>
-                <input
-                  type="text"
-                  required
-                  placeholder={newChannelType === "Page" ? "61595136714776" : "100081643483232"}
-                  value={newChannelId}
-                  onChange={(e) => setNewChannelId(e.target.value)}
-                  className="w-full px-3 py-2 border border-border rounded-lg bg-background text-xs font-mono outline-none focus:border-blue-500"
-                />
-              </div>
+              {/* Permanent Facebook Access Token Input (Shown in HYBRID or TOKEN mode) */}
+              {(newChannelAuthMode === "HYBRID" || newChannelAuthMode === "TOKEN") && (
+                <div className="space-y-1.5 p-3 rounded-xl border border-amber-500/30 bg-amber-500/5">
+                  <div className="flex items-center justify-between gap-2">
+                    <label className="font-bold text-foreground flex items-center gap-1.5">
+                      <span>🔑 Facebook Page / Graph API Access Token (স্থায়ী ২৪/৭ টোকেন)</span>
+                    </label>
+                    <button
+                      type="button"
+                      disabled={isVerifyingToken}
+                      onClick={handleVerifyAccessToken}
+                      className="px-2.5 py-1 rounded-lg bg-amber-600 hover:bg-amber-500 text-white font-bold text-[10px] transition cursor-pointer shrink-0"
+                    >
+                      {isVerifyingToken ? "Verifying..." : "🔍 Verify Token & Auto-Fill"}
+                    </button>
+                  </div>
+                  <input
+                    type="text"
+                    data-testid="channel-access-token-input"
+                    placeholder="EAAGm0PX4ZCps... (Long-Lived Page Access Token বা System User Token দিন)"
+                    value={newChannelAccessToken}
+                    onChange={(e) => setNewChannelAccessToken(e.target.value)}
+                    className="w-full px-3 py-2 border border-border rounded-lg bg-background text-xs font-mono outline-none focus:border-amber-500"
+                  />
+                  <p className="text-[10px] text-muted-foreground">
+                    💡 Long-Lived Page Access Token কখনো ডেড বা এক্সপায়ার হয় না — ব্রাউজার ছাড়াই সরাসরি মেটা Graph API দিয়ে ২৪/৭ রিপ্লাই চলে।
+                  </p>
 
-              <div className="space-y-1">
-                <label className="font-bold text-foreground">
-                  আলাদা সেশন কুকি (ঐচ্ছিক — না দিলে মেইন অ্যাকাউন্টের কুকি ব্যবহার হবে)
-                </label>
-                <input
-                  type="text"
-                  placeholder="c_user=...; xs=... (অন্য আইডির ক্ষেত্রে প্রয়োজন হলে দিন)"
-                  value={newChannelCookie}
-                  onChange={(e) => setNewChannelCookie(e.target.value)}
-                  className="w-full px-3 py-2 border border-border rounded-lg bg-background text-xs font-mono outline-none focus:border-blue-500"
-                />
+                  {tokenVerifyFeedback && (
+                    <div
+                      className={`p-2 rounded-lg text-[11px] font-semibold ${
+                        tokenVerifyFeedback.startsWith("✅")
+                          ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30"
+                          : "bg-rose-500/15 text-rose-600 dark:text-rose-400 border border-rose-500/30"
+                      }`}
+                    >
+                      {tokenVerifyFeedback}
+                    </div>
+                  )}
+
+                  {discoveredTokenPages.length > 0 && (
+                    <div className="space-y-1 pt-1">
+                      <span className="text-[10px] font-bold text-foreground">
+                        টোকেন থেকে পাওয়া পেজ সিলেক্ট করুন:
+                      </span>
+                      <div className="flex flex-wrap gap-1.5">
+                        {discoveredTokenPages.map((pg) => (
+                          <button
+                            key={pg.pageId}
+                            type="button"
+                            onClick={() => {
+                              setNewChannelType("Page")
+                              setNewChannelName(pg.pageName)
+                              setNewChannelId(pg.pageId)
+                              setNewChannelAccessToken(pg.accessToken)
+                            }}
+                            className="px-2.5 py-1 rounded-lg border border-amber-500/40 bg-background hover:bg-amber-500/15 text-[11px] font-bold text-foreground transition cursor-pointer"
+                          >
+                            {pg.pageName} ({pg.pageId})
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Cookie Session Input with 24/7 Auto-Rotation Keep-Alive (Shown in HYBRID or COOKIE mode) */}
+              {(newChannelAuthMode === "HYBRID" || newChannelAuthMode === "COOKIE") && (
+                <div className="space-y-1.5 p-3 rounded-xl border border-blue-500/30 bg-blue-500/5">
+                  <div className="flex items-center justify-between gap-2">
+                    <label className="font-bold text-foreground">
+                      🍪 Facebook Session Cookie (24/7 Auto-Refresh &amp; Keep-Alive)
+                    </label>
+                    <span className="px-2 py-0.5 rounded bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 text-[9px] font-extrabold">
+                      🔄 90-Day Auto-Rotation ON
+                    </span>
+                  </div>
+                  <input
+                    type="text"
+                    data-testid="channel-cookie-input"
+                    placeholder="c_user=...; xs=...; fr=...; datr=... (খালি রাখলে বর্তমান সচল কুকি অটো-ব্যবহার হবে)"
+                    value={newChannelCookie}
+                    onChange={(e) => setNewChannelCookie(e.target.value)}
+                    className="w-full px-3 py-2 border border-border rounded-lg bg-background text-xs font-mono outline-none focus:border-blue-500"
+                  />
+                  <p className="text-[10px] text-muted-foreground">
+                    🛡️ আমাদের নতুন <strong>24/7 Cookie Auto-Rotation Engine</strong> প্রতি ৩ স্ক্যানে ব্রাউজারের নতুন রোটেশন হওয়া কুকি অটো-সেভ করে এবং ৯০ দিনের মেয়াদ বজায় রাখে, যাতে কুকি আর ডেড না হয়।
+                  </p>
+                </div>
+              )}
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="font-bold text-foreground">
+                    {newChannelType === "Page" ? "পেজের নাম (Page Name) *" : "আইডির নাম (Profile Name) *"}
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder={newChannelType === "Page" ? "যেমন: Test Next" : "যেমন: Rasidul Islam"}
+                    value={newChannelName}
+                    onChange={(e) => setNewChannelName(e.target.value)}
+                    className="w-full px-3 py-2 border border-border rounded-lg bg-background text-xs outline-none focus:border-blue-500"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="font-bold text-foreground">
+                    {newChannelType === "Page"
+                      ? "Numeric Page ID *"
+                      : "Profile / Account ID *"}
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder={newChannelType === "Page" ? "61595136714776" : "100081643483232"}
+                    value={newChannelId}
+                    onChange={(e) => setNewChannelId(e.target.value)}
+                    className="w-full px-3 py-2 border border-border rounded-lg bg-background text-xs font-mono outline-none focus:border-blue-500"
+                  />
+                </div>
               </div>
 
               <div className="pt-2 border-t border-border flex items-center justify-end space-x-2">
@@ -2369,7 +2624,7 @@ export function InboxAssistantCenter({ currentMode }: InboxAssistantCenterProps)
                   type="submit"
                   className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs shadow-xs transition cursor-pointer"
                 >
-                  Add &amp; Sync with 24/7 AI Bot
+                  Save Token / Cookie &amp; Sync 24/7 Bot
                 </button>
               </div>
             </form>
