@@ -72,7 +72,7 @@ export interface InboxAutomationSettings {
   monitoredPages: string[]
 }
 
-const STORAGE_KEY_CONVERSATIONS = "bmt_inbox_conversations_v4"
+const STORAGE_KEY_CONVERSATIONS = "bmt_inbox_conversations_v5"
 const STORAGE_KEY_SETTINGS = "bmt_inbox_settings_v2"
 const STORAGE_KEY_TEMPLATES = "bmt_inbox_templates_v2"
 const STORAGE_KEY_PRODUCTS = "bmt_inbox_trained_products_v2"
@@ -174,10 +174,11 @@ const INITIAL_CONVERSATIONS: InboxConversation[] = [
     pageName: "Test Next",
     platform: "Facebook Page",
     category: "Sales Conversion",
-    unreadCount: 1,
-    lastMessageText: "Premium Smart Watch Ultra X9 — eta ki ache?",
-    lastMessageTime: "10:17",
-    status: "WAITING_REPLY",
+    unreadCount: 0,
+    lastMessageText:
+      'আসসালামু আলাইকুম Rasidul Islam Sajib! জি, আমাদের "Premium Smart Watch Ultra X9" বর্তমানে স্টকে এভেইলেবল আছে (স্পেশাল অফার প্রাইজ মাত্র ২,৪৯০ টাকা, রেগুলার প্রাইজ ৩,৯৯০ টাকা)। সারাদেশে ফ্রি ক্যাশ অন হোম ডেলিভারি। অর্ডার কনফার্ম করতে আপনার নাম, পূর্ণ ঠিকানা ও মোবাইল নম্বর দিন।',
+    lastMessageTime: "11:22",
+    status: "REPLIED",
     aiSuggestions: [
       'আসসালামু আলাইকুম Rasidul Islam Sajib! জি, আমাদের "Premium Smart Watch Ultra X9" বর্তমানে স্টকে এভেইলেবল আছে (স্পেশাল অফার প্রাইজ মাত্র ২,৪৯০ টাকা, রেগুলার প্রাইজ ৩,৯৯০ টাকা)। সারাদেশে ফ্রি ক্যাশ অন হোম ডেলিভারি। অর্ডার কনফার্ম করতে আপনার নাম, পূর্ণ ঠিকানা ও মোবাইল নম্বর দিন।',
     ],
@@ -185,15 +186,15 @@ const INITIAL_CONVERSATIONS: InboxConversation[] = [
       {
         id: "m-live-0-reply",
         sender: "AI_ASSISTANT",
-        text: "আসসালামু আলাইকুম! আমাদের প্রিমিয়াম ওয়াচটির রেগুলার মূল্য ৩,৯৯০ টাকা, তবে ঈদ ধামাকা অফারে পাচ্ছেন মাত্র ২,৪৯০ টাকায় (সারাদেশে ফ্রি ক্যাশ অন ডেলিভারি)! অর্ডার করতে এখনই আপনার নাম, পূর্ণ ঠিকানা ও মোবাইল নম্বর দিন।",
-        timestamp: "Yesterday",
+        text: "আসসালামু আলাইকুম! আমাদের প্রিমিয়াম ওয়াচটির রেগুলার মূল্য ৩,৯৯০ টাকা, তবে ঈদ ধামাকা অফারে পাচ্ছেন মাত্র ২,৪৯০ টাকায় (সারাদেশে ফ্রি ক্যাশ অন ডেলিভারি)! অর্ডার করতে এখনই আপনার নাম, পূর্ণ ঠিকানা ও মোবাইল নম্বর দিন।",
+        timestamp: "Today",
         status: "SENT",
         graphApiStatus: "SUCCESS_200",
       },
       {
         id: "m-live-1",
         sender: "CUSTOMER",
-        text: "ভাইয়া দাম কত?",
+        text: "ভাইয়া দাম কত?",
         timestamp: "00:15",
         status: "DELIVERED",
       },
@@ -211,6 +212,21 @@ const INITIAL_CONVERSATIONS: InboxConversation[] = [
         text: "Premium Smart Watch Ultra X9\neta ki ache?",
         timestamp: "10:17",
         status: "DELIVERED",
+      },
+      {
+        id: "m-live-4",
+        sender: "CUSTOMER",
+        text: "Premium Smart Watch Ultra X9\neta ki ache?",
+        timestamp: "11:22",
+        status: "DELIVERED",
+      },
+      {
+        id: "m-live-5",
+        sender: "AI_ASSISTANT",
+        text: 'আসসালামু আলাইকুম Rasidul Islam Sajib! জি, আমাদের "Premium Smart Watch Ultra X9" বর্তমানে স্টকে এভেইলেবল আছে (স্পেশাল অফার প্রাইজ মাত্র ২,৪৯০ টাকা, রেগুলার প্রাইজ ৩,৯৯০ টাকা)। সারাদেশে ফ্রি ক্যাশ অন হোম ডেলিভারি। অর্ডার কনফার্ম করতে আপনার নাম, পূর্ণ ঠিকানা ও মোবাইল নম্বর দিন।',
+        timestamp: "11:22",
+        status: "SENT",
+        graphApiStatus: "SUCCESS_200",
       },
     ],
   },
@@ -676,8 +692,9 @@ export function useInboxAssistant() {
           )
 
           let finalMessages = cleanIncomingMsgs
-          if (cleanIncomingMsgs.length < cleanExistingMsgs.length) {
-            // Preserve earlier thread history and append any newly detected messages
+          // Only fallback to merging with existing if incoming is a 1-line sidebar preview AND existing has both CUSTOMER and AI_ASSISTANT bubbles
+          const existingHasCustomer = cleanExistingMsgs.some((m) => m.sender === "CUSTOMER")
+          if (cleanIncomingMsgs.length <= 1 && cleanExistingMsgs.length > 1 && existingHasCustomer) {
             const seenNorm = new Set(
               cleanExistingMsgs.map((m) => `${m.sender}:${m.text.replace(/\s+/g, " ").trim()}`)
             )

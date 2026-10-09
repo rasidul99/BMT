@@ -419,13 +419,13 @@ async function sendTextInActiveThread(page, replyText) {
       document.querySelectorAll('div[role="textbox"], textarea[placeholder*="Reply" i], div[contenteditable="true"]')
     ).filter((el) => {
       const r = el.getBoundingClientRect();
-      return r.width > 80 && r.height > 12 && r.y > 300;
+      return r.width > 100 && r.height > 12 && r.y > 450 && r.x > 320 && r.x < 960;
     });
     if (tbs.length === 0) return null;
     const target = tbs[tbs.length - 1];
     target.scrollIntoView({ block: "center", behavior: "instant" });
     const r = target.getBoundingClientRect();
-    return { x: r.x + r.width / 2, y: r.y + r.height / 2 };
+    return { x: Math.round(r.x + r.width / 2), y: Math.round(r.y + r.height / 2) };
   });
 
   if (!tbPos) {
@@ -440,7 +440,7 @@ async function sendTextInActiveThread(page, replyText) {
       document.querySelectorAll('div[role="textbox"], textarea[placeholder*="Reply" i], div[contenteditable="true"]')
     ).filter((el) => {
       const r = el.getBoundingClientRect();
-      return r.width > 80 && r.height > 12 && r.y > 300;
+      return r.width > 100 && r.height > 12 && r.y > 450 && r.x > 320 && r.x < 960;
     });
     const el = tbs[tbs.length - 1] || document.activeElement;
     if (el) {
@@ -451,25 +451,40 @@ async function sendTextInActiveThread(page, replyText) {
     }
   }, replyText);
 
-  await sleep(600);
-  await page.keyboard.press("Enter");
-  await sleep(1500);
+  await sleep(700);
 
-  await safeEvaluate(page, () => {
-    const sendBtns = Array.from(
+  // In Meta Business Suite Inbox, clicking the Send button (aria-label="Send" / text="Send") dispatches the message
+  const sendBtnCoord = await safeEvaluate(page, () => {
+    const btns = Array.from(
       document.querySelectorAll(
-        'div[role="button"][aria-label="Send" i], div[role="button"][aria-label*="Press enter to send" i], button[aria-label="Send" i]'
+        'div[role="button"][aria-label="Send" i], div[role="button"][aria-label*="Press enter to send" i], button[aria-label="Send" i], div[role="button"]'
       )
     ).filter((b) => {
       const r = b.getBoundingClientRect();
-      return r.width > 0 && r.height > 0 && r.y > 400;
+      if (r.width <= 0 || r.height <= 0 || r.y < 500) return false;
+      const aria = (b.getAttribute("aria-label") || "").trim().toLowerCase();
+      const txt = (b.innerText || "").trim().toLowerCase();
+      return (
+        aria === "send" ||
+        aria.includes("press enter to send") ||
+        txt === "send"
+      );
     });
-    if (sendBtns.length > 0) {
-      sendBtns[sendBtns.length - 1].click();
-    }
+    if (btns.length === 0) return null;
+    const target = btns[btns.length - 1];
+    const r = target.getBoundingClientRect();
+    target.click();
+    return { x: Math.round(r.x + r.width / 2), y: Math.round(r.y + r.height / 2) };
   });
 
-  await sleep(1500);
+  if (sendBtnCoord) {
+    await sleep(300);
+    await page.mouse.click(sendBtnCoord.x, sendBtnCoord.y);
+  } else {
+    await page.keyboard.press("Enter");
+  }
+
+  await sleep(2000);
   return true;
 }
 
@@ -712,68 +727,80 @@ async function runInboxBot(configPath) {
 
     async function extractActiveThreadChatBubbles(customerName, convId, fallbackTime) {
       try {
+        await safeEvaluate(page, () => {
+          const scrollables = Array.from(document.querySelectorAll("div")).filter((d) => {
+            const st = window.getComputedStyle(d);
+            const r = d.getBoundingClientRect();
+            return (
+              (st.overflowY === "auto" || st.overflowY === "scroll") &&
+              d.scrollHeight > d.clientHeight + 20 &&
+              r.x > 340 &&
+              r.x < 720 &&
+              r.width > 300
+            );
+          });
+          scrollables.forEach((d) => {
+            d.scrollTop = d.scrollHeight;
+          });
+        });
+
+        await sleep(650);
+
         const rawBubbles = await safeEvaluate(
           page,
           (cName) => {
-            const ignorePhrases = [
-              "is responding to a comment",
-              "view comment",
-              "write a message",
-              "type a message",
-              "press enter to send",
-              "sent ",
-              "delivered",
-              "active now",
-              "end-to-end encrypted",
-            ];
-
-            const candidates = Array.from(document.querySelectorAll('div[dir="auto"], span[dir="auto"], div[role="row"]'));
+            const allEls = Array.from(document.querySelectorAll("div, span"));
+            const timestamps = [];
             const collected = [];
 
-            for (const el of candidates) {
+            for (const el of allEls) {
               const r = el.getBoundingClientRect();
-              // Active conversation message pane is in the center/right area (x: 360..930, y: 115..765)
-              if (r.x < 360 || r.x > 920 || r.y < 115 || r.y > 765) continue;
-              if (r.width < 18 || r.width > 560 || r.height < 16 || r.height > 320) continue;
-
-              // Skip container elements that wrap multiple distinct message rows
-              const childDirs = el.querySelectorAll('div[dir="auto"]');
-              if (childDirs.length > 2) continue;
-
+              if (r.x < 350 || r.right > 1045 || r.y < -600 || r.y > 750) continue;
               const text = (el.innerText || "").trim();
-              if (!text || text.length < 1 || text.length > 900) continue;
+              if (!text || text.length > 950) continue;
+
+              if (
+                /^(?:(?:today|yesterday)\s*)?\d{1,2}:\d{2}(?:\s*[ap]m)?$/i.test(text) &&
+                r.height <= 30
+              ) {
+                timestamps.push({ y: Math.round(r.y), text: text.replace(/\s+/g, " ") });
+                continue;
+              }
+
+              const bg = window.getComputedStyle(el).backgroundColor;
+              const isBluePageBubble =
+                bg === "rgb(10, 124, 255)" ||
+                bg === "rgb(0, 132, 255)" ||
+                bg === "rgb(24, 119, 242)";
+              const isGrayCustomerBubble =
+                bg === "rgb(239, 239, 239)" ||
+                bg === "rgb(240, 242, 245)" ||
+                bg === "rgb(228, 230, 235)";
+
+              if (!isBluePageBubble && !isGrayCustomerBubble) continue;
+              if (r.width < 22 || r.height < 18 || r.height > 360) continue;
 
               const lowerT = text.toLowerCase();
               if (lowerT === (cName || "").toLowerCase() || lowerT === "aa") continue;
-              if (/^\d{1,2}:\d{2}(\s*[ap]m)?$/i.test(text)) continue;
-              if (/^(today|yesterday|\d+m|\d+h|\d+d)\b/i.test(text) && text.length < 18) continue;
-              if (ignorePhrases.some((ph) => lowerT.includes(ph))) continue;
-
-              // Determine if bubble is sent by Page/AI (right side or our AI greeting) vs Customer (left side)
-              const isPageReply =
-                r.x >= 535 ||
-                text.startsWith("আসসালামু আলাইকুম") ||
-                text.startsWith("অসংখ্য ধন্যবাদ") ||
-                text.startsWith("ধন্যবাদ আপনার বার্তার জন্য");
 
               collected.push({
-                text,
-                sender: isPageReply ? "AI_ASSISTANT" : "CUSTOMER",
+                sender: isBluePageBubble ? "AI_ASSISTANT" : "CUSTOMER",
+                text: text.replace(/\n{2,}/g, "\n").trim(),
                 x: Math.round(r.x),
                 y: Math.round(r.y),
               });
             }
 
-            // Sort top-to-bottom by vertical position
             collected.sort((a, b) => a.y - b.y);
+            timestamps.sort((a, b) => a.y - b.y);
 
-            // Deduplicate overlapping/nested DOM nodes with identical or substring text at similar y
             const deduped = [];
             for (const item of collected) {
               const prev = deduped[deduped.length - 1];
               if (
                 prev &&
-                Math.abs(prev.y - item.y) < 24 &&
+                prev.sender === item.sender &&
+                Math.abs(prev.y - item.y) < 20 &&
                 (prev.text === item.text || prev.text.includes(item.text) || item.text.includes(prev.text))
               ) {
                 if (item.text.length > prev.text.length) {
@@ -784,19 +811,24 @@ async function runInboxBot(configPath) {
               deduped.push(item);
             }
 
-            return deduped.slice(-12);
+            let currentTs = "Today";
+            return deduped.slice(-14).map((b) => {
+              for (const ts of timestamps) {
+                if (ts.y <= b.y + 8) currentTs = ts.text;
+              }
+              return { ...b, timestamp: currentTs };
+            });
           },
           customerName
         );
 
         if (!Array.isArray(rawBubbles) || rawBubbles.length === 0) return null;
 
-        // Merge consecutive CUSTOMER bubbles that were sent together at the bottom (e.g. product name + "eta ki ache?")
         return rawBubbles.map((b, idx) => ({
           id: `${convId}-m-${idx + 1}`,
           sender: b.sender,
           text: b.text,
-          timestamp: idx === rawBubbles.length - 1 ? fallbackTime || "Just now" : fallbackTime || "Today",
+          timestamp: b.timestamp || fallbackTime || "Today",
           status: b.sender === "CUSTOMER" ? "DELIVERED" : "SENT",
           ...(b.sender === "AI_ASSISTANT" ? { graphApiStatus: "SUCCESS_200" } : {}),
         }));
