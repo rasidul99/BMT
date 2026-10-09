@@ -295,6 +295,71 @@ function getHumanAddress(customerName: string) {
   }
 }
 
+function toBanglaDigits(num: number): string {
+  const map = ["০", "১", "২", "৩", "৪", "৫", "৬", "৭", "৮", "৯"]
+  return String(num).replace(/\d/g, (d) => map[Number(d)] || d)
+}
+
+function buildStoreProductListStatement(products: TrainedProduct[], honorific: string): string {
+  const inStockList = products.filter((p) => p.stockStatus !== "OUT_OF_STOCK")
+  const list = inStockList.length > 0 ? inStockList : products
+
+  if (list.length === 1) {
+    const p = list[0]
+    return `আমাদের কাছে একটি প্রোডাক্ট আছে — "${p.name}" (অফার প্রাইজ: ${p.offerPrice}${
+      p.regularPrice ? `, রেগুলার প্রাইজ: ${p.regularPrice}` : ""
+    })। আপনি কি এটি নিতে চান ${honorific}?`
+  }
+
+  const numberedItems = list
+    .map((p, idx) => `${toBanglaDigits(idx + 1)}. ${p.name} (অফার প্রাইজ: ${p.offerPrice})`)
+    .join(" ")
+  return `আমাদের কাছে ${toBanglaDigits(list.length)}টি প্রোডাক্ট আছে — ${numberedItems}। আপনি কোনটা নিতে চান ${honorific}?`
+}
+
+function extractUnmatchedProductQuery(rawMsg: string): string | null {
+  const asksAvailability =
+    /\b(ache|ase|acche|asce|pawa|paoya|available|thakbe|thake|bikri|sell|আছে|পাওয়া|পাওয়া|থাকবে|থাকে|বিক্রি)\b/i.test(
+      rawMsg
+    )
+  if (!asksAvailability) return null
+
+  const fillerWords = new Set([
+    "apnader", "apnar", "tomader", "toder", "amader", "kache", "kacche", "kase", "kashe",
+    "ki", "ke", "kono", "kon", "r", "ar", "aro", "o", "ba", "ebong",
+    "ache", "ase", "acche", "asce", "pawa", "paoya", "jabe", "jay", "jai", "thakbe", "thake",
+    "naki", "na", "nai", "nei", "ni", "hobe", "hoy", "koren", "korben", "bikri", "sell",
+    "vai", "vaia", "vaiya", "bhaiya", "bhai", "apu", "apuni", "sir", "bro", "brother", "boss",
+    "hi", "hello", "hlw", "hey", "salam", "assalamu", "alaikum", "slm",
+    "eta", "eita", "ei", "ota", "oita", "oi", "ta", "ti", "gulo", "gula", "tar", "tir",
+    "product", "products", "item", "jinish", "mal", "stock", "available", "ready",
+    "original", "real", "valo", "kom", "dam", "price", "koto", "taka", "tk", "offer", "discount",
+    "delivery", "charge", "courier", "cash", "on", "advance", "warranty", "guarantee",
+    "color", "colour", "size", "variant", "box", "boxe", "sathe", "strap", "belt", "waterproof", "battery",
+    "ekhon", "ajke", "kalke", "order", "dile", "korle", "kobe", "kokhon", "pabo", "diben",
+    "chutto", "choto", "boro", "baccha", "bacchara", "kids", "baby", "meye", "meyera", "chele", "chelera",
+    "use", "korte", "porte", "parbe", "parbo", "fit", "hat", "hate", "gift", "chobi", "pic", "photo", "video",
+    "showroom", "dokan", "office", "location", "address", "kothay",
+    "আপনাদের", "আপনার", "তোমাদের", "কাছে", "কি", "কী", "কোনো", "কোন", "আর", "আরো",
+    "আছে", "পাওয়া", "পাওয়া", "যাবে", "যায়", "যায়", "থাকবে", "থাকে", "নাকি", "না", "নেই", "নাই",
+    "ভাইয়া", "ভাইয়া", "ভাই", "আপু", "স্যার", "হ্যালো", "হাই", "সালাম", "আসসালামু", "আলাইকুম",
+    "এটা", "এইটা", "এই", "ওটা", "ওইটা", "টা", "টি", "গুলো", "প্রোডাক্ট", "পণ্য", "আইটেম", "স্টক", "স্টকে", "এভেইলেবল", "রেডি",
+    "দাম", "মূল্য", "কত", "টাকা", "প্রাইজ", "অফার", "ডিসকাউন্ট", "ডেলিভারি", "চার্জ", "ওয়ারেন্টি", "ওয়ারেন্টি", "গ্যারান্টি",
+    "কালার", "রঙ", "সাইজ", "বক্স", "বক্সে", "সাথে", "বেল্ট", "স্ট্র্যাপ", "বিক্রি", "করেন", "ছবি", "ভিডিও", "শোরুম", "দোকান", "কোথায়", "কোথায়",
+  ])
+
+  const tokens = (rawMsg || "")
+    .replace(/[?!.,।'"()[\]{}:;]+/g, " ")
+    .split(/\s+/)
+    .map((t) => t.trim())
+    .filter((t) => t.length >= 2 && !fillerWords.has(t.toLowerCase()))
+
+  if (tokens.length === 0 || tokens.length > 4) return null
+  const candidate = tokens.join(" ")
+  if (candidate.length < 2 || candidate.length > 35) return null
+  return candidate
+}
+
 export function generatePreviewTrainedAnswer(
   rawMsg: string,
   customerName: string,
@@ -353,7 +418,8 @@ export function generatePreviewTrainedAnswer(
     return null
   }
 
-  let matchedProduct = findProductInText(cleanRaw)
+  const matchedInCurrentMsg = findProductInText(cleanRaw)
+  let matchedProduct = matchedInCurrentMsg
   if (!matchedProduct && historyList.length > 0) {
     for (let i = historyList.length - 1; i >= 0; i--) {
       const found = findProductInText(historyList[i].text || "")
@@ -366,6 +432,25 @@ export function generatePreviewTrainedAnswer(
 
   const primaryProduct =
     matchedProduct || products.find((p) => p.isDefaultProduct) || products[0] || DEFAULT_TRAINED_PRODUCTS[0]
+
+  const numberSelectionMatch = cleanRaw.match(
+    /^(?:([1-9])|([১-৯])|(প্রথমটা|প্রথম|first)|(দ্বিতীয়টা|দ্বিতীয়টা|second)|(তৃতীয়টা|তৃতীয়টা|third))(?:\s*(?:number|নম্বর|নাম্বার)?(?:\s*ta|\s*টা)?)?\s*[.?!]*$/i
+  )
+  if (numberSelectionMatch) {
+    let idx = 0
+    if (numberSelectionMatch[1]) idx = parseInt(numberSelectionMatch[1], 10) - 1
+    else if (numberSelectionMatch[2]) idx = "১২৩৪৫৬৭৮৯".indexOf(numberSelectionMatch[2])
+    else if (numberSelectionMatch[3]) idx = 0
+    else if (numberSelectionMatch[4]) idx = 1
+    else if (numberSelectionMatch[5]) idx = 2
+
+    const chosenProd = products[idx]
+    if (chosenProd) {
+      return `দারুণ পছন্দ ${honorific}! আমাদের "${chosenProd.name}"-এর স্পেশাল অফার প্রাইজ মাত্র ${chosenProd.offerPrice}${
+        chosenProd.regularPrice ? ` (রেগুলার প্রাইজ ${chosenProd.regularPrice})` : ""
+      }। বিশেষত্ব: ${chosenProd.whyGoodFeatures}। অর্ডারটি কনফার্ম করতে আপনার নাম, পূর্ণ ঠিকানা ও মোবাইল নম্বরটি দিন প্লিজ। 😊`
+    }
+  }
 
   const hasSalam = /\b(salam|assalamu|slm|সালাম|আসসালামু)\b/i.test(lower)
   const isPureGreeting =
@@ -387,33 +472,53 @@ export function generatePreviewTrainedAnswer(
     return `অসংখ্য ধন্যবাদ ${honorific}! আপনার সুবিধামতো যেকোনো সময় নাম, ঠিকানা ও মোবাইল নম্বর দিলেই আমরা অর্ডারটি প্রসেস করে দেবো। যেকোনো প্রয়োজনে নক দেবেন। 😊`
   }
 
+  const mentionsBoxOrColorWords =
+    /\b(box|বক্স|বক্সে|sathe|সাথে|color|colour|কালার|রঙ|strap|belt|বেল্ট|স্ট্র্যাপ|size|সাইজ)\b/i.test(lower)
+
   const asksAllProductsCatalog =
-    !findProductInText(cleanRaw) &&
-    products.length > 1 &&
+    !matchedInCurrentMsg &&
     (lower.includes("কি কি প্রোডাক্ট") ||
       lower.includes("কী কী প্রোডাক্ট") ||
       lower.includes("কি কি পণ্য") ||
       lower.includes("কি কি পাওয়া যায়") ||
+      lower.includes("কি কি পাওয়া যায়") ||
       lower.includes("সব প্রোডাক্ট") ||
       lower.includes("ক্যাটালগ") ||
+      lower.includes("আর কি কি") ||
+      lower.includes("আর কী কী") ||
+      lower.includes("আর কি আছে") ||
+      lower.includes("আপনাদের কাছে কি") ||
+      lower.includes("আপনাদের কাছে কী") ||
+      lower.includes("কয়টা প্রোডাক্ট") ||
       lower.includes("ki ki product") ||
+      lower.includes("koyta product") ||
+      lower.includes("r ki ki") ||
+      lower.includes("ar ki ki") ||
+      lower.includes("r ki ache") ||
       lower.includes("ar ki ache") ||
+      lower.includes("r ki ase") ||
+      lower.includes("ar ki ase") ||
+      lower.includes("ki ki pawa jay") ||
       lower.includes("all product") ||
-      lower.includes("catalog"))
+      lower.includes("catalog") ||
+      (!mentionsBoxOrColorWords &&
+        (lower.includes("ki ki ache") ||
+          lower.includes("ki ki ase") ||
+          lower.includes("কি কি আছে") ||
+          lower.includes("কী কী আছে"))))
 
   if (asksAllProductsCatalog) {
-    const productLines = products
-      .map((p, idx) => {
-        const stBadge =
-          p.stockStatus === "OUT_OF_STOCK"
-            ? "(স্টক আউট)"
-            : p.stockStatus === "LIMITED_STOCK"
-            ? "(সীমিত স্টক)"
-            : "(রেডি স্টক)"
-        return `${idx + 1}. ${p.name} — অফার প্রাইজ: ${p.offerPrice} ${stBadge}`
-      })
-      .join(" | ")
-    return `${naturalOpener} আমাদের কাছে বর্তমানে এই প্রোডাক্টগুলো পাচ্ছেন: ${productLines}। আপনি কোন প্রোডাক্টটি সম্পর্কে জানতে চাচ্ছেন ${honorific}?`
+    return `জি ${honorific}, ${buildStoreProductListStatement(products, honorific)}`
+  }
+
+  if (!matchedInCurrentMsg) {
+    const unmatchedItem = extractUnmatchedProductQuery(cleanRaw)
+    if (unmatchedItem) {
+      return `না ${honorific}, আমাদের কাছে ${unmatchedItem} নেই। ${buildStoreProductListStatement(
+        products,
+        honorific
+      )}`
+    }
   }
 
   if (primaryProduct.stockStatus === "OUT_OF_STOCK") {
@@ -536,25 +641,23 @@ export function generatePreviewTrainedAnswer(
     /\b(ache|ase)\b/i.test(lower)
 
   const asksVariants =
-    lower.includes("কি কি আছে") ||
-    lower.includes("কী কী আছে") ||
-    lower.includes("কালার") ||
-    lower.includes("রঙ") ||
-    lower.includes("সাইজ") ||
-    lower.includes("বক্সে") ||
-    lower.includes("সাথে কি") ||
-    lower.includes("ভ্যারিয়েন্ট") ||
-    lower.includes("বেল্ট") ||
-    lower.includes("স্ট্র্যাপ") ||
-    lower.includes("color") ||
-    lower.includes("colour") ||
-    lower.includes("size") ||
-    lower.includes("variant") ||
-    lower.includes("strap") ||
-    lower.includes("belt") ||
-    lower.includes("box") ||
-    lower.includes("sathe ki") ||
-    lower.includes("ki ki ache")
+    !asksAllProductsCatalog &&
+    (lower.includes("কালার") ||
+      lower.includes("রঙ") ||
+      lower.includes("সাইজ") ||
+      lower.includes("বক্সে") ||
+      lower.includes("সাথে কি") ||
+      lower.includes("ভ্যারিয়েন্ট") ||
+      lower.includes("বেল্ট") ||
+      lower.includes("স্ট্র্যাপ") ||
+      lower.includes("color") ||
+      lower.includes("colour") ||
+      lower.includes("size") ||
+      lower.includes("variant") ||
+      lower.includes("strap") ||
+      lower.includes("belt") ||
+      lower.includes("box") ||
+      lower.includes("sathe ki"))
 
   const asksWaterproof =
     lower.includes("waterproof") ||
