@@ -693,6 +693,10 @@ export function generatePreviewTrainedAnswer(
     asksCallingOrConnect ||
     lower.includes("কেন ভালো") ||
     lower.includes("কেন নিব") ||
+    lower.includes("কেন নিবো") ||
+    lower.includes("কেন নেব") ||
+    lower.includes("কেন কিনবো") ||
+    lower.includes("কেন কিনব") ||
     lower.includes("কোয়ালিটি") ||
     lower.includes("কোয়ালিটি") ||
     lower.includes("কেমন") ||
@@ -712,6 +716,19 @@ export function generatePreviewTrainedAnswer(
     lower.includes("tikbe") ||
     lower.includes("বিস্তারিত") ||
     lower.includes("keno valo") ||
+    lower.includes("keno nibo") ||
+    lower.includes("keno nebo") ||
+    lower.includes("kn nibo") ||
+    lower.includes("kno nibo") ||
+    lower.includes("keno kinbo") ||
+    lower.includes("ki subidha") ||
+    lower.includes("ki shubidha") ||
+    lower.includes("ki labh") ||
+    lower.includes("ki kaj") ||
+    lower.includes("kaj ki") ||
+    lower.includes("special ki") ||
+    lower.includes("why buy") ||
+    lower.includes("why should") ||
     lower.includes("kemon")
 
   const asksWarranty =
@@ -812,6 +829,71 @@ export function generatePreviewTrainedAnswer(
 
   if (asksIfAiOrBot) {
     return `না ${honorific}, আমি পেজের কাস্টমার সাপোর্ট মডারেটর বলছি! 😊 আপনার মেসেজের দ্রুত রিপ্লাই দেওয়ার চেষ্টা করছি। কোনো বিষয়ে জানার থাকলে নির্দ্বিধায় বলতে পারেন ${honorific}।`
+  }
+
+  const asksHowCanYouHelp =
+    lower.includes("kivabe help") ||
+    lower.includes("ki help") ||
+    lower.includes("help korte par") ||
+    lower.includes("sahajjo korte") ||
+    lower.includes("shahajjo korte") ||
+    lower.includes("kivabe sahajjo") ||
+    lower.includes("ki korte paro") ||
+    lower.includes("ki korte paren") ||
+    lower.includes("tumi ki koro") ||
+    lower.includes("apni ki koren") ||
+    lower.includes("how can you help") ||
+    lower.includes("what can you do") ||
+    lower.includes("কিভাবে হেল্প") ||
+    lower.includes("কীভাবে হেল্প") ||
+    lower.includes("কিভাবে সাহায্য") ||
+    lower.includes("কীভাবে সাহায্য") ||
+    lower.includes("কি সাহায্য") ||
+    lower.includes("হেল্প করতে পার")
+
+  if (asksHowCanYouHelp) {
+    return `জি ${honorific}, আমি আপনাকে আমাদের প্রোডাক্টগুলোর ফিচার, অফার প্রাইজ, স্টক ও ওয়ারেন্টি সম্পর্কে বিস্তারিত জানিয়ে এবং ক্যাশ অন হোম ডেলিভারিতে অর্ডার কনফার্ম করে সাহায্য করতে পারি! 😊 বর্তমানে ${buildStoreProductListStatement(catalog)}। আপনি কোনটা সম্পর্কে জানতে চান ${honorific}?`
+  }
+
+  const asksTrustOrReturn =
+    lower.includes("biswas korbo") ||
+    lower.includes("bishash korbo") ||
+    lower.includes("fake") ||
+    lower.includes("dhoka") ||
+    lower.includes("prokrito") ||
+    lower.includes("return") ||
+    lower.includes("ferot") ||
+    lower.includes("change kora") ||
+    lower.includes("valo na lagle") ||
+    lower.includes("pochondo na hole") ||
+    lower.includes("বিশ্বাস করবো") ||
+    lower.includes("বিশ্বাস করব") ||
+    lower.includes("ফেইক") ||
+    lower.includes("ধোঁকা") ||
+    lower.includes("রিটার্ন") ||
+    lower.includes("ফেরত") ||
+    lower.includes("পছন্দ না হলে") ||
+    lower.includes("ভালো না লাগলে")
+
+  if (asksTrustOrReturn) {
+    return `একদম নিশ্চিন্ত থাকুন ${honorific}! আমাদের কাছ থেকে প্রোডাক্ট নিলে ১ টাকাও অগ্রিম দিতে হয় না। ডেলিভারি ম্যান আপনার সামনে থাকবে, আপনি বক্স খুলে প্রোডাক্ট নিজের হাতে চালিয়ে চেক করে দেখবেন — সবকিছু ১০০% ঠিক থাকলে এবং পছন্দ হলেই কেবল টাকা পরিশোধ করবেন, পছন্দ না হলে সাথে সাথে রিটার্ন করে দিতে পারবেন! 😊`
+  }
+
+  const asksRecommendation =
+    lower.includes("konta valo") ||
+    lower.includes("kon ta valo") ||
+    lower.includes("konta best") ||
+    lower.includes("kon product valo") ||
+    lower.includes("konta nibo") ||
+    lower.includes("suggest") ||
+    lower.includes("recommend") ||
+    lower.includes("কোনটা ভালো") ||
+    lower.includes("কোনটা নিলে ভালো") ||
+    lower.includes("কোনটা বেস্ট") ||
+    lower.includes("সাজেস্ট")
+
+  if (asksRecommendation) {
+    return `${honorific}, আপনি যদি প্রিমিয়াম স্মার্টওয়াচ চান যেখানে সরাসরি ব্লুটুথ কলিং ও ওয়াটারপ্রুফ সুবিধা আছে, তাহলে "${primaryProduct.name}" (${primaryProduct.offerPrice}) সেরা চয়েস হবে! আর গান শোনা ও স্পষ্ট কলের জন্য ইয়ারবাডস চাইলে আমাদের ANC Wireless Earbuds Pro দেখতে পারেন। আপনার কোন ধরনের প্রোডাক্ট বেশি প্রয়োজন ${honorific}? 😊`
   }
 
   const asksWellBeing =
@@ -931,9 +1013,31 @@ export function generatePreviewTrainedAnswer(
         `যেকোনো Android বা iPhone-এর সাথে ব্লুটুথ দিয়ে কানেক্ট করে ঘড়ি থেকেই সরাসরি কল রিসিভ ও কথা বলা যাবে, এবং সব নোটিফিকেশনও দেখা যাবে! 🔥`
       )
     } else if (primaryProduct.whyGoodFeatures) {
-      replySegments.push(
-        `নিশ্চিন্তে নিতে পারেন! ${primaryProduct.whyGoodFeatures}। তাছাড়া ডেলিভারি ম্যানের সামনে চেক করে নেওয়ার সুবিধা তো থাকছেই।`
-      )
+      const asksWhyBuySpecifically =
+        lower.includes("keno nibo") ||
+        lower.includes("keno nebo") ||
+        lower.includes("kn nibo") ||
+        lower.includes("kno nibo") ||
+        lower.includes("keno kinbo") ||
+        lower.includes("ki subidha") ||
+        lower.includes("ki shubidha") ||
+        lower.includes("ki labh") ||
+        lower.includes("why buy") ||
+        lower.includes("why should") ||
+        lower.includes("কেন নিব") ||
+        lower.includes("কেন নিবো") ||
+        lower.includes("কেন কিনবো")
+      if (asksWhyBuySpecifically) {
+        replySegments.push(
+          `"${primaryProduct.name}" প্রোডাক্টটি কেন নিবেন বলি — ${primaryProduct.whyGoodFeatures}${
+            primaryProduct.warrantyInfo ? ` এবং সাথে পাচ্ছেন ${primaryProduct.warrantyInfo}` : ""
+          }। আর সবচেয়ে বড় সুবিধা হলো ১ টাকাও অগ্রিম দিতে হবে না, ডেলিভারি ম্যানের সামনে প্রোডাক্ট হাতে পেয়ে চেক করে তারপর নিতে পারবেন! 😊`
+        )
+      } else {
+        replySegments.push(
+          `নিশ্চিন্তে নিতে পারেন! ${primaryProduct.whyGoodFeatures}। তাছাড়া ডেলিভারি ম্যানের সামনে চেক করে নেওয়ার সুবিধা তো থাকছেই।`
+        )
+      }
     }
   }
 

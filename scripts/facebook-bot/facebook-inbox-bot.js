@@ -599,6 +599,12 @@ function generateTrainedAiResponse(text, customerName, runtime = {}, channelCont
     asksCallingOrConnect ||
     lower.includes("কেন ভালো") ||
     lower.includes("কেন নিব") ||
+    lower.includes("কেন নিবো") ||
+    lower.includes("কেন কিনব") ||
+    lower.includes("কেন কিনবো") ||
+    lower.includes("কি সুবিধা") ||
+    lower.includes("কী সুবিধা") ||
+    lower.includes("কি লাভ") ||
     lower.includes("কোয়ালিটি") ||
     lower.includes("কোয়ালিটি") ||
     lower.includes("কেমন") ||
@@ -618,6 +624,17 @@ function generateTrainedAiResponse(text, customerName, runtime = {}, channelCont
     lower.includes("tikbe") ||
     lower.includes("বিস্তারিত") ||
     lower.includes("keno valo") ||
+    lower.includes("keno nibo") ||
+    lower.includes("keno nebo") ||
+    lower.includes("kn nibo") ||
+    lower.includes("kno nibo") ||
+    lower.includes("keno kinbo") ||
+    lower.includes("ki subidha") ||
+    lower.includes("ki suvidha") ||
+    lower.includes("ki labh") ||
+    lower.includes("ki kaj") ||
+    lower.includes("why buy") ||
+    lower.includes("why should") ||
     lower.includes("kemon");
 
   const asksWarranty =
@@ -697,22 +714,74 @@ function generateTrainedAiResponse(text, customerName, runtime = {}, channelCont
     lower.includes("টাকা নেই") ||
     lower.includes("বাজেট নেই");
 
+  // Human Conversational Intents: Asking How You Can Help / What Can You Do ("tumi amake kivabe help korte parbe?", "ki help korbe", "ki korte paro")
+  const asksHowCanYouHelp =
+    lower.includes("kivabe help") ||
+    lower.includes("ki help") ||
+    lower.includes("help korte") ||
+    lower.includes("sahajjo korte") ||
+    lower.includes("sahayjo korte") ||
+    lower.includes("kivabe sahajjo") ||
+    lower.includes("ki korte paro") ||
+    lower.includes("ki korte paren") ||
+    lower.includes("ki kaj koro") ||
+    lower.includes("কিভাবে হেল্প") ||
+    lower.includes("কীভাবে হেল্প") ||
+    lower.includes("কিভাবে সাহায্য") ||
+    lower.includes("কীভাবে সাহায্য") ||
+    lower.includes("কি সাহায্য") ||
+    lower.includes("হেল্প করতে") ||
+    lower.includes("সাহায্য করতে") ||
+    /\b(how can you help|what can you do|help me)\b/i.test(lower);
+
   // Human Conversational Intents: Asking if AI / Bot / Robot / Who is speaking ("tumi ki AI", "bot naki", "apni ke")
   const asksIfAiOrBot =
-    /\b(ai|bot|robot|chatgpt|gpt|machine|auto\s*reply)\b/i.test(lower) ||
-    lower.includes("tumi ke") ||
-    lower.includes("apni ke") ||
-    lower.includes("manush naki") ||
-    lower.includes("apnar nam") ||
-    lower.includes("tomar nam") ||
-    lower.includes("tumar nam") ||
-    lower.includes("ke bolchen") ||
-    lower.includes("তুমি কি এআই") ||
-    lower.includes("রোবট") ||
-    lower.includes("বট নাকি") ||
-    lower.includes("মানুষ নাকি") ||
-    lower.includes("আপনি কে") ||
-    lower.includes("আপনার নাম");
+    !asksHowCanYouHelp &&
+    (/\b(ai|bot|robot|chatgpt|gpt|machine|auto\s*reply)\b/i.test(lower) ||
+      lower.includes("tumi ke") ||
+      lower.includes("apni ke") ||
+      lower.includes("manush naki") ||
+      lower.includes("apnar nam") ||
+      lower.includes("tomar nam") ||
+      lower.includes("tumar nam") ||
+      lower.includes("ke bolchen") ||
+      lower.includes("তুমি কি এআই") ||
+      lower.includes("রোবট") ||
+      lower.includes("বট নাকি") ||
+      lower.includes("মানুষ নাকি") ||
+      lower.includes("আপনি কে") ||
+      lower.includes("আপনার নাম"));
+
+  // Human Conversational Intents: Trust / Return / Exchange / Fake or Real ("biswas korbo kivabe", "valo na lagle", "return kora jabe")
+  const asksTrustOrReturn =
+    lower.includes("biswas") ||
+    lower.includes("bishwas") ||
+    lower.includes("dhoka") ||
+    lower.includes("fake") ||
+    lower.includes("scam") ||
+    lower.includes("return") ||
+    lower.includes("ferot") ||
+    lower.includes("exchange") ||
+    lower.includes("valo na lagle") ||
+    lower.includes("pochondo na hole") ||
+    lower.includes("বিশ্বাস") ||
+    lower.includes("প্রতারণা") ||
+    lower.includes("রিটার্ন") ||
+    lower.includes("ফেরত") ||
+    lower.includes("পছন্দ না হলে") ||
+    lower.includes("ভালো না লাগলে");
+
+  // Human Conversational Intents: Recommendation / Comparison ("konta valo", "kon product ta best", "suggest koro")
+  const asksRecommendation =
+    lower.includes("konta valo") ||
+    lower.includes("konta bhalo") ||
+    lower.includes("konta nibo") ||
+    lower.includes("konta best") ||
+    lower.includes("suggest") ||
+    lower.includes("কোনটা ভালো") ||
+    lower.includes("কোনটা নিব") ||
+    lower.includes("কোনটা বেস্ট") ||
+    lower.includes("সাজেস্ট");
 
   // Human Conversational Intents: Small talk / Well-being ("kemon achen", "ki khobor")
   const asksWellBeing =
@@ -748,7 +817,20 @@ function generateTrainedAiResponse(text, customerName, runtime = {}, channelCont
     };
   }
 
-  // 4c. Handle "tumi ki AI" / "bot naki" / "apni ke"
+  // 4c. Handle "tumi amake kivabe help korte parbe?" ("How can you help me?")
+  if (asksHowCanYouHelp) {
+    const reply = `জি ${honorific}, আমি আপনাকে আমাদের প্রোডাক্টগুলোর ফিচার, অফার প্রাইজ, স্টক ও ওয়ারেন্টি সম্পর্কে বিস্তারিত জানিয়ে এবং ক্যাশ অন হোম ডেলিভারিতে অর্ডার কনফার্ম করে সাহায্য করতে পারি! 😊 বর্তমানে ${buildStoreProductListStatement(
+      products,
+      honorific
+    )}`;
+    return {
+      category: "Lead Conversion",
+      suggestions: [reply],
+      needsLlmBrain: false,
+    };
+  }
+
+  // 4d. Handle "tumi ki AI" / "bot naki" / "apni ke"
   if (asksIfAiOrBot) {
     const reply = `না ${honorific}, আমি পেজের কাস্টমার সাপোর্ট মডারেটর বলছি! 😊 আপনার মেসেজের দ্রুত রিপ্লাই দেওয়ার চেষ্টা করছি। কোনো বিষয়ে জানার থাকলে নির্দ্বিধায় বলতে পারেন ${honorific}।`;
     return {
@@ -758,7 +840,30 @@ function generateTrainedAiResponse(text, customerName, runtime = {}, channelCont
     };
   }
 
-  // 4d. Handle Small Talk ("kemon achen", "ki khobor")
+  // 4e. Handle Trust / Return / Exchange ("biswas korbo kivabe", "valo na lagle return kora jabe?")
+  if (asksTrustOrReturn) {
+    const reply = `একদম নিশ্চিন্তে থাকতে পারেন ${honorific}! আমাদের কাছে ১ টাকাও অগ্রিম দিতে হয় না — ডেলিভারি ম্যান আপনার বাসায় গেলে বক্স খুলে প্রোডাক্ট নিজের হাতে চালিয়ে ও চেক করে পছন্দ হলেই কেবল পেমেন্ট করবেন। পছন্দ না হলে সাথে সাথে রিটার্ন করতে পারবেন, তাছাড়া ${primaryProduct.warrantyInfo} তো থাকছেই! 😊`;
+    return {
+      category: "Lead Conversion",
+      suggestions: [reply],
+      needsLlmBrain: false,
+    };
+  }
+
+  // 4f. Handle Product Recommendation / Comparison ("konta valo hobe?", "suggest koro")
+  if (asksRecommendation) {
+    const reply =
+      products.length > 1
+        ? `জি ${honorific}, আপনি যদি প্রিমিয়াম স্মার্টওয়াচ চান তাহলে "${products[0].name}" (${products[0].offerPrice}) বেস্ট হবে কারণ এতে ব্লুটুথ কলিং ও ১০০% ওয়াটারপ্রুফ সুবিধা আছে। আর গান শোনা ও ক্লিয়ার কথা বলার জন্য "${products[1].name}" (${products[1].offerPrice}) নিতে পারেন! আপনার কোনটা বেশি পছন্দ ${honorific}? 😊`
+        : `জি ${honorific}, আমাদের "${primaryProduct.name}" (${primaryProduct.offerPrice}) প্রোডাক্টটিই সবচেয়ে জনপ্রিয় এবং বেস্ট কোয়ালিটির! আপনি নিশ্চিন্তে এটি নিতে পারেন। 😊`;
+    return {
+      category: "Sales Conversion",
+      suggestions: [reply],
+      needsLlmBrain: false,
+    };
+  }
+
+  // 4g. Handle Small Talk ("kemon achen", "ki khobor")
   if (asksWellBeing) {
     const reply = `আলহামদুলিল্লাহ ${honorific}, ভালো আছি! আপনি কেমন আছেন? আমাদের কোনো প্রোডাক্ট সম্পর্কে কিছু জানার থাকলে বলুন ${honorific}। 😊`;
     return {
@@ -907,7 +1012,7 @@ function generateTrainedAiResponse(text, customerName, runtime = {}, channelCont
     }
   }
 
-  // Intent: Specific Features (Waterproof / Battery / Calling / General Quality)
+  // Intent: Specific Features / Why Buy ("product ta ami keno nibo?", Waterproof / Battery / Calling / General Quality)
   if (asksWhyGood) {
     if (asksWaterproof && !asksBattery && !asksCallingOrConnect) {
       replySegments.push(
@@ -923,14 +1028,16 @@ function generateTrainedAiResponse(text, customerName, runtime = {}, channelCont
       );
     } else if (primaryProduct.whyGoodFeatures) {
       replySegments.push(
-        `নিশ্চিন্তে নিতে পারেন! ${primaryProduct.whyGoodFeatures}। তাছাড়া ডেলিভারি ম্যানের সামনে চেক করে নেওয়ার সুবিধা তো থাকছেই।`
+        `"${primaryProduct.name}" প্রোডাক্টটি কেন নিবেন বলি — ${primaryProduct.whyGoodFeatures}। এর পাশাপাশি পাচ্ছেন ${
+          primaryProduct.warrantyInfo || "অফিসিয়াল ওয়ারেন্টি"
+        }, আর ১ টাকাও অগ্রিম ছাড়া ডেলিভারি ম্যানের সামনে প্রোডাক্ট হাতে পেয়ে চেক করে নেওয়ার সুবিধা তো থাকছেই! 😊`
       );
     }
     category = "Lead Conversion";
   }
 
   // Intent: Warranty / Guarantee
-  if (asksWarranty && primaryProduct.warrantyInfo) {
+  if (asksWarranty && primaryProduct.warrantyInfo && !asksWhyGood) {
     replySegments.push(
       `এই প্রোডাক্টের সাথে পাচ্ছেন ${primaryProduct.warrantyInfo}। তাই যেকোনো সমস্যা হলে সরাসরি আমাদের থেকে রিপ্লেসমেন্ট সুবিধা পাবেন।`
     );
@@ -966,7 +1073,7 @@ function generateTrainedAiResponse(text, customerName, runtime = {}, channelCont
     );
   }
 
-  // 9. Open-ended message fallback (NEVER dump product feature/warranty template paragraphs!)
+  // 9. Open-ended message fallback (triggers 3-Stage Live LLM Brain!)
   let needsLlmBrain = false;
   if (replySegments.length === 0) {
     needsLlmBrain = true;
@@ -978,7 +1085,7 @@ function generateTrainedAiResponse(text, customerName, runtime = {}, channelCont
       replySegments.push(`কেমন আছেন? জি বলুন, আপনাকে কীভাবে সহযোগিতা করতে পারি? 😊`);
     } else {
       replySegments.push(
-        `বলুন, প্রোডাক্ট বা ডেলিভারি সম্পর্কে আর কোনো কিছু জানার থাকলে নির্দ্বিধায় বলতে পারেন! 😊`
+        `আমাদের কাছে "${primaryProduct.name}" (${primaryProduct.offerPrice})-সহ আকর্ষণীয় প্রোডাক্ট রেডি স্টকে আছে। প্রোডাক্টের ফিচার, দাম বা ক্যাশ অন ডেলিভারি সম্পর্কে যা জানতে চান বলুন ${honorific}! 😊`
       );
     }
   } else {
@@ -1008,38 +1115,113 @@ function generateTrainedAiResponse(text, customerName, runtime = {}, channelCont
 }
 
 /**
- * Live Generative LLM Conversational Brain for open-ended human messages in Messenger
- * Calls OpenAI-compatible endpoint with recent chat history + store knowledgebase so open-ended messages
- * get a genuinely human 1-2 sentence Bangladeshi Bangla reply.
+ * 3-Stage Multi-Endpoint Live Generative LLM Brain for open-ended human messages in Messenger.
+ * Waits up to 20s per stage so thoughtful Bangla responses are NEVER cut off prematurely,
+ * and falls back across 3 endpoints with retry so rate limits (402/429) never cause dumb template replies!
  */
-async function generateHumanLlmReply(rawMsg, customerName, runtime = {}, channelContext = {}, conversationHistory = [], fallbackReply = "") {
+async function generateHumanLlmReply(
+  rawMsg,
+  customerName,
+  runtime = {},
+  channelContext = {},
+  conversationHistory = [],
+  fallbackReply = ""
+) {
+  const { honorific } = getHumanAddress(customerName);
+  const allProducts =
+    Array.isArray(runtime.products) && runtime.products.length > 0 ? runtime.products : DEFAULT_PRODUCTS;
+  const storeProfile = { ...DEFAULT_STORE_PROFILE, ...(runtime.storeProfile || {}) };
+  const productSummary = allProducts
+    .map(
+      (p, i) =>
+        `${i + 1}. ${p.name} (অফার প্রাইজ: ${p.offerPrice}, রেগুলার: ${p.regularPrice || "N/A"}, স্টক: ${
+          p.stockStatus
+        }, কেন ভালো/ফিচার: ${p.whyGoodFeatures}, ওয়ারেন্টি: ${p.warrantyInfo})`
+    )
+    .join(" | ");
+
+  const recentHistory = (Array.isArray(conversationHistory) ? conversationHistory : [])
+    .slice(-5)
+    .map((m) => `${m.sender === "CUSTOMER" ? "Customer" : "Page Moderator"}: ${m.text}`)
+    .join("\n");
+
+  const systemPrompt = [
+    `You are an intelligent, friendly human customer support moderator of the Bangladeshi Facebook Page "${
+      channelContext.name || storeProfile.storeName
+    }".`,
+    `Whatever the customer asks in Bangla, Banglish (Romanized Bangla), or English, answer their exact question directly, smartly, and naturally in conversational Bangladeshi Bangla in 2-3 sentences maximum.`,
+    `Address the customer as "${honorific}".`,
+    `NEVER repeat "আসসালামু আলাইকুম" in an ongoing chat.`,
+    `Store Catalog: ${productSummary}.`,
+    `Store Delivery Policy: ${storeProfile.deliveryPolicy} (${storeProfile.deliveryTime}).`,
+    `Output ONLY the final Bangla reply text without markdown headings, bullet lists, or quotes.`,
+  ].join(" ");
+
+  const userPrompt = recentHistory
+    ? `Recent Chat History:\n${recentHistory}\n\nCustomer's Latest Message: ${rawMsg}`
+    : `Customer's Message: ${rawMsg}`;
+
+  function cleanLlmOutput(txt) {
+    if (!txt || typeof txt !== "string") return "";
+    const trimmed = txt.trim().replace(/^["']|["']$/g, "");
+    if (!trimmed || trimmed.startsWith("{") || trimmed.length < 4 || trimmed.length > 750) return "";
+    return trimmed;
+  }
+
+  // Stage 1: Pollinations Direct GET Prompt Endpoint (Fastest & most reliable, 18s timeout)
+  for (let attempt = 1; attempt <= 2; attempt++) {
+    try {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 18000);
+      const combinedPrompt = `${systemPrompt}\n\n${userPrompt}\n\nBangla Reply:`;
+      const seed = Math.floor(Math.random() * 999999);
+      const res = await fetch(
+        `https://text.pollinations.ai/${encodeURIComponent(combinedPrompt)}?seed=${seed}`,
+        { signal: controller.signal }
+      );
+      clearTimeout(timer);
+      if (res.ok) {
+        const text = cleanLlmOutput(await res.text());
+        if (text) {
+          console.log(`   🧠 [LLM Brain Stage 1] Generated smart Bangla reply (${text.length} chars)`);
+          return text;
+        }
+      } else if (res.status === 402 || res.status === 429) {
+        await sleep(2500);
+      }
+    } catch (_) {}
+  }
+
+  // Stage 2: Pollinations Root POST Endpoint (18s timeout)
   try {
-    const { honorific } = getHumanAddress(customerName);
-    const allProducts =
-      Array.isArray(runtime.products) && runtime.products.length > 0 ? runtime.products : DEFAULT_PRODUCTS;
-    const storeProfile = { ...DEFAULT_STORE_PROFILE, ...(runtime.storeProfile || {}) };
-    const productSummary = allProducts
-      .map((p, i) => `${i + 1}. ${p.name} (অফার প্রাইজ: ${p.offerPrice}, স্টক: ${p.stockStatus})`)
-      .join("; ");
-
-    const recentHistory = (Array.isArray(conversationHistory) ? conversationHistory : [])
-      .slice(-5)
-      .map((m) => `${m.sender === "CUSTOMER" ? "Customer" : "Page Moderator"}: ${m.text}`)
-      .join("\n");
-
-    const systemPrompt = [
-      `You are a real human customer support moderator of the Bangladeshi Facebook Page "${channelContext.name || storeProfile.storeName}".`,
-      `Always reply in natural, warm, colloquial Bangladeshi Bangla in 1 to 2 short sentences maximum.`,
-      `Address the customer as "${honorific}".`,
-      `NEVER repeat "আসসালামু আলাইকুম" if the chat is already ongoing. NEVER dump long product specifications or warranty paragraphs unless the customer specifically asks for them.`,
-      `If the customer says they won't buy now or don't want it (e.g. "ekhon nibo na", "lagbe na"), politely say "আচ্ছা ${honorific}, কোনো সমস্যা নেই! 😊 আপনার যখন সুবিধা হয় বা প্রয়োজন পড়ে তখন নক দিয়েন। ভালো থাকবেন!"`,
-      `If the customer asks if you are AI/bot/robot (e.g. "tumi ki AI"), naturally say "না ${honorific}, আমি পেজের কাস্টমার সাপোর্ট মডারেটর বলছি 😊 আপনার মেসেজের দ্রুত রিপ্লাই দেওয়ার চেষ্টা করছি।"`,
-      `Store Products: ${productSummary}. Delivery: ${storeProfile.deliveryTime}, ${storeProfile.deliveryPolicy}.`,
-      `Output ONLY the final Bangla reply text without quotes or explanations.`,
-    ].join(" ");
-
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 6500);
+    const timer = setTimeout(() => controller.abort(), 18000);
+    const res = await fetch("https://text.pollinations.ai/", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      signal: controller.signal,
+      body: JSON.stringify({
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userPrompt },
+        ],
+        seed: Math.floor(Math.random() * 999999),
+      }),
+    });
+    clearTimeout(timer);
+    if (res.ok) {
+      const text = cleanLlmOutput(await res.text());
+      if (text) {
+        console.log(`   🧠 [LLM Brain Stage 2] Generated smart Bangla reply (${text.length} chars)`);
+        return text;
+      }
+    }
+  } catch (_) {}
+
+  // Stage 3: Pollinations OpenAI-compatible Endpoint (18s timeout)
+  try {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 18000);
     const response = await fetch("https://text.pollinations.ai/openai", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -1048,25 +1230,21 @@ async function generateHumanLlmReply(rawMsg, customerName, runtime = {}, channel
         model: "openai-fast",
         messages: [
           { role: "system", content: systemPrompt },
-          {
-            role: "user",
-            content: recentHistory
-              ? `Recent Chat History:\n${recentHistory}\n\nCustomer's Latest Message: ${rawMsg}`
-              : `Customer's Message: ${rawMsg}`,
-          },
+          { role: "user", content: userPrompt },
         ],
       }),
     });
     clearTimeout(timer);
-
     if (response.ok) {
       const data = await response.json();
-      const llmText = (data?.choices?.[0]?.message?.content || "").trim().replace(/^["']|["']$/g, "");
-      if (llmText && llmText.length >= 4 && llmText.length <= 450) {
-        return llmText;
+      const text = cleanLlmOutput(data?.choices?.[0]?.message?.content || "");
+      if (text) {
+        console.log(`   🧠 [LLM Brain Stage 3] Generated smart Bangla reply (${text.length} chars)`);
+        return text;
       }
     }
   } catch (_) {}
+
   return fallbackReply;
 }
 
