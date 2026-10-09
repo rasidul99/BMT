@@ -316,9 +316,10 @@ export function generatePreviewTrainedAnswer(
     }
   }
   const priorMessages = historyList.slice(0, lastCustomerStartIdx)
+  const allAiMessages = historyList.filter((m) => m.sender === "AI_ASSISTANT" || m.sender === "PAGE")
   const priorAiMessages = priorMessages.filter((m) => m.sender === "AI_ASSISTANT" || m.sender === "PAGE")
-  const hasAlreadyGreeted = priorAiMessages.length > 0
-  const turnIndex = priorAiMessages.length
+  const hasAlreadyGreeted = allAiMessages.length > 0
+  const turnIndex = Math.max(priorAiMessages.length, allAiMessages.length)
   const lastAiText = priorAiMessages.length > 0 ? priorAiMessages[priorAiMessages.length - 1].text || "" : ""
   const recentlyAskedOrderInfo =
     lastAiText.includes("নাম, পূর্ণ ঠিকানা") ||

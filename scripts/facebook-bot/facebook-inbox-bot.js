@@ -223,9 +223,10 @@ function generateTrainedAiResponse(text, customerName, runtime = {}, channelCont
     }
   }
   const priorMessages = historyList.slice(0, lastCustomerStartIdx);
+  const allAiMessages = historyList.filter((m) => m.sender === "AI_ASSISTANT" || m.sender === "PAGE");
   const priorAiMessages = priorMessages.filter((m) => m.sender === "AI_ASSISTANT" || m.sender === "PAGE");
-  const hasAlreadyGreeted = priorAiMessages.length > 0;
-  const turnIndex = priorAiMessages.length;
+  const hasAlreadyGreeted = allAiMessages.length > 0;
+  const turnIndex = Math.max(priorAiMessages.length, allAiMessages.length);
   const lastAiText = priorAiMessages.length > 0 ? priorAiMessages[priorAiMessages.length - 1].text || "" : "";
   const recentlyAskedOrderInfo =
     lastAiText.includes("নাম, পূর্ণ ঠিকানা") ||
@@ -1166,7 +1167,7 @@ async function runInboxBot(configPath) {
               if (r.width < 22 || r.height < 18 || r.height > 360) continue;
 
               const lowerT = text.toLowerCase();
-              if (lowerT === (cName || "").toLowerCase() || lowerT === "aa") continue;
+              if (lowerT === (cName || "").toLowerCase() || lowerT === "aa" || text.includes("?? ?????")) continue;
 
               collected.push({
                 sender: isBluePageBubble ? "AI_ASSISTANT" : "CUSTOMER",
