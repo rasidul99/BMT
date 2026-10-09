@@ -47,6 +47,8 @@ interface Props {
 export function FriendAutomationCenter({ currentMode }: Props) {
   const {
     isLoaded,
+    isSyncing,
+    sessionInfo,
     leads,
     incoming,
     settings,
@@ -56,6 +58,8 @@ export function FriendAutomationCenter({ currentMode }: Props) {
     selectedAccountIds,
     setSelectedAccountIds,
     saveSettings,
+    syncLiveFriends,
+    updateCookieAndConnect,
     toggleQueueLead,
     queueAllFiltered,
     addNewCustomLead,
@@ -70,6 +74,8 @@ export function FriendAutomationCenter({ currentMode }: Props) {
   } = useFriendAutomation()
 
   const [activeTab, setActiveTab] = useState<"leads" | "outgoing" | "incoming" | "sent" | "settings" | "logs">("leads")
+  const [quickCookieInput, setQuickCookieInput] = useState("")
+  const [isSavingCookie, setIsSavingCookie] = useState(false)
 
   // Lead filters
   const [leadCountry, setLeadCountry] = useState("All")
@@ -252,6 +258,18 @@ export function FriendAutomationCenter({ currentMode }: Props) {
           ) : (
             <div className="flex items-center gap-2">
               <button
+                onClick={async () => {
+                  triggerNotification("🔄 রিয়েল ফেসবুক অ্যাকাউন্ট থেকে লাইভ ফ্রেন্ড রিকোয়েস্ট ও সাজেশন সিঙ্ক হচ্ছে...")
+                  const res = await syncLiveFriends()
+                  if (res?.message) triggerNotification(res.message)
+                }}
+                disabled={isSyncing}
+                className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white rounded-lg text-xs font-bold transition flex items-center gap-1.5 shadow-xs"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? "animate-spin" : ""}`} />
+                <span>{isSyncing ? "Syncing Live FB..." : "Sync Live FB Friends"}</span>
+              </button>
+              <button
                 onClick={exportSentRequestsToCSV}
                 className="px-3.5 py-2 bg-muted hover:bg-muted/80 text-foreground border border-border rounded-lg text-xs font-semibold transition flex items-center gap-1.5 shadow-xs"
                 title="Download Sent Friend Requests as CSV"
@@ -263,16 +281,77 @@ export function FriendAutomationCenter({ currentMode }: Props) {
                 onClick={() => {
                   setActiveTab("outgoing")
                   startRunner()
-                  triggerNotification("Launched Friend Automation Engine with human simulation!")
+                  triggerNotification("🚀 রিয়েল ফেসবুক ব্রাউজার বট চালু হয়েছে — প্রোফাইল ভিজিট ও ফ্রেন্ড রিকোয়েস্ট পাঠানো হচ্ছে!")
                 }}
                 className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold transition flex items-center gap-2 shadow-xs shadow-blue-500/20"
               >
                 <Play className="w-3.5 h-3.5" />
-                Launch Automation ({metrics.queuedLeads} Queued)
+                Launch Live Bot ({metrics.queuedLeads} Queued)
               </button>
             </div>
           )}
         </div>
+      </div>
+
+      {/* Real Facebook Personal ID Connection & Quick Cookie Reconnect Bar */}
+      <div className="border border-blue-500/30 bg-blue-500/5 rounded-2xl p-4 flex flex-col gap-3 text-xs">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-blue-600/15 border border-blue-500/30 flex items-center justify-center text-blue-600 dark:text-blue-400 shrink-0">
+              <ShieldCheck className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="font-extrabold text-foreground text-sm flex items-center flex-wrap gap-2">
+                <span>Connected Real Facebook Personal ID: Rasidul Islam Sajib ({sessionInfo.cUserId})</span>
+                {sessionInfo.botStatus === "AUTH_ERROR" ? (
+                  <span className="px-2 py-0.5 text-[10px] rounded bg-amber-500/20 text-amber-600 dark:text-amber-400 font-black">
+                    ⚠️ Needs Facebook Cookie / Browser Login
+                  </span>
+                ) : (
+                  <span className="px-2 py-0.5 text-[10px] rounded bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 font-black">
+                    ✅ Live Puppeteer Friend Engine Ready
+                  </span>
+                )}
+              </div>
+              <p className="text-[11px] text-muted-foreground mt-0.5">
+                <strong>Sync Live FB Friends</strong>-এ ক্লিক করলে আপনার আসল ফেসবুক আইডির <code>/friends/requests</code> ও সাজেশন স্ক্যান হবে এবং <strong>Launch Live Bot</strong>-এ ক্লিক করলে রিয়েল ব্রাউজারে প্রোফাইল ভিজিট, স্ক্রল, লাইক ও <strong>Add Friend</strong> ক্লিক হবে।
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {sessionInfo.botStatus === "AUTH_ERROR" && (
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 pt-2 border-t border-amber-500/30">
+            <input
+              type="text"
+              value={quickCookieInput}
+              onChange={(e) => setQuickCookieInput(e.target.value)}
+              placeholder="নতুন Facebook Cookie পেস্ট করুন (c_user=...; xs=...)"
+              className="flex-1 px-3 py-2 rounded-xl border border-amber-500/40 bg-background text-xs font-mono text-foreground"
+            />
+            <button
+              type="button"
+              disabled={isSavingCookie || !quickCookieInput.trim()}
+              onClick={async () => {
+                setIsSavingCookie(true)
+                try {
+                  const res = await updateCookieAndConnect(quickCookieInput.trim())
+                  if (res?.success) {
+                    setQuickCookieInput("")
+                    triggerNotification(res.message || "✅ Facebook Cookie saved & connected!")
+                  } else {
+                    triggerNotification(res?.error || "⚠️ Cookie save failed")
+                  }
+                } finally {
+                  setIsSavingCookie(false)
+                }
+              }}
+              className="px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 disabled:opacity-50 text-white font-black text-xs transition shrink-0"
+            >
+              {isSavingCookie ? "Saving..." : "🔑 Save Cookie & Reconnect"}
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Metrics Row */}
@@ -872,9 +951,9 @@ export function FriendAutomationCenter({ currentMode }: Props) {
               </div>
 
               <button
-                onClick={() => {
-                  const count = batchAcceptQualified()
-                  triggerNotification(`Auto-accepted ${count} qualified incoming friend requests!`)
+                onClick={async () => {
+                  const count = await batchAcceptQualified()
+                  triggerNotification(`✅ রিয়েল ফেসবুকে ${count}টি Qualified Incoming Friend Request কনফার্ম করা হচ্ছে!`)
                 }}
                 className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition flex items-center gap-1.5 shadow-xs"
               >
