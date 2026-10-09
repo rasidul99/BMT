@@ -18,6 +18,8 @@ export interface LiveSessionStatus {
   cUserId: string
   updatedAt: string | null
   is24x7BotActive: boolean
+  botStatus?: string
+  authError?: string | null
 }
 
 export interface MessengerGroup {
@@ -284,6 +286,25 @@ export function useMessengerGroupAssistant() {
     [groups]
   )
 
+  // Save fresh Cookie / Access Token and retry queued messages
+  const updateCookieAndRetry = useCallback(
+    async (cookieString: string, accessToken?: string) => {
+      const res = await fetch("/api/facebook-bot/messenger-group", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "UPDATE_COOKIE_AND_RETRY",
+          cookieString,
+          accessToken,
+        }),
+      })
+      const data = await res.json()
+      await fetchLiveState()
+      return data
+    },
+    [fetchLiveState]
+  )
+
   // Metrics
   const metrics = useMemo(() => {
     const totalGroups = groups.length
@@ -313,5 +334,6 @@ export function useMessengerGroupAssistant() {
     deleteGroup,
     addFollowersToGroup,
     launchCampaign,
+    updateCookieAndRetry,
   }
 }

@@ -44,6 +44,7 @@ export function MessengerGroupAssistantCenter({ currentMode }: MessengerGroupAss
     deleteGroup,
     addFollowersToGroup,
     launchCampaign,
+    updateCookieAndRetry,
   } = useMessengerGroupAssistant()
 
   const [activeTab, setActiveTab] = useState<"CAMPAIGN" | "GROUPS" | "LEDGER">("CAMPAIGN")
@@ -57,6 +58,8 @@ export function MessengerGroupAssistantCenter({ currentMode }: MessengerGroupAss
   const [delayMinutes, setDelayMinutes] = useState<number>(1)
   const [aiVariantEnabled, setAiVariantEnabled] = useState<boolean>(false)
   const [toastMessage, setToastMessage] = useState<string | null>(null)
+  const [quickCookieInput, setQuickCookieInput] = useState("")
+  const [isSavingCookie, setIsSavingCookie] = useState(false)
 
   // Add / Connect Group Modal State
   const [isAddGroupModalOpen, setIsAddGroupModalOpen] = useState(false)
@@ -355,9 +358,13 @@ export function MessengerGroupAssistantCenter({ currentMode }: MessengerGroupAss
           <div>
             <div className="font-extrabold text-foreground text-sm flex items-center gap-2">
               <span>Real Facebook Account & Live Messenger Sync</span>
-              {sessionInfo.is24x7BotActive && (
+              {sessionInfo.is24x7BotActive ? (
                 <span className="px-2 py-0.5 text-[10px] rounded bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 font-black">
                   24/7 Messenger Engine Active
+                </span>
+              ) : (
+                <span className="px-2 py-0.5 text-[10px] rounded bg-amber-500/20 text-amber-600 dark:text-amber-400 font-black">
+                  ⚠️ Waiting for Facebook Login / Cookie
                 </span>
               )}
             </div>
@@ -391,6 +398,55 @@ export function MessengerGroupAssistantCenter({ currentMode }: MessengerGroupAss
           </button>
         </div>
       </div>
+
+      {/* Live Session Reconnect Alert Bar when Facebook Cookie Logged Out */}
+      {!sessionInfo.is24x7BotActive && (
+        <div className="border-2 border-amber-500/40 bg-amber-500/10 rounded-2xl p-4 flex flex-col gap-3 text-xs">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-2">
+            <div>
+              <div className="font-black text-amber-600 dark:text-amber-400 text-sm">
+                ⚠️ ফেসবুক ব্রাউজার সেশন লগ-আউট হয়ে আছে — তাই মেসেজটি পেন্ডিং কিউতে অপেক্ষা করছে!
+              </div>
+              <p className="text-[11px] text-muted-foreground mt-0.5">
+                আপনার ডেস্কটপে ওপেন থাকা <strong>Bot Chrome Window</strong>-তে ফেসবুকে লগইন করুন, অথবা নিচে নতুন <strong>Facebook Cookie (`c_user=...; xs=...`)</strong> পেস্ট করে বাটনে ক্লিক করুন — সাথে সাথেই আপনার মেসেজটি রিয়েল মেসেঞ্জারে সেন্ড হয়ে যাবে!
+              </p>
+            </div>
+          </div>
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+            <input
+              type="text"
+              value={quickCookieInput}
+              onChange={(e) => setQuickCookieInput(e.target.value)}
+              placeholder="Paste fresh Facebook Cookie (c_user=...; xs=...) or Page Access Token (EAA...)"
+              className="flex-1 px-3 py-2 rounded-xl border border-amber-500/30 bg-background text-xs font-mono text-foreground"
+            />
+            <button
+              type="button"
+              disabled={isSavingCookie || !quickCookieInput.trim()}
+              onClick={async () => {
+                setIsSavingCookie(true)
+                try {
+                  const trimmed = quickCookieInput.trim()
+                  const isToken = trimmed.startsWith("EAA") && !trimmed.includes("c_user=")
+                  const res = await updateCookieAndRetry(
+                    isToken ? "" : trimmed,
+                    isToken ? trimmed : undefined
+                  )
+                  if (res?.success) {
+                    setQuickCookieInput("")
+                    showToast(res.message || "✅ Cookie saved! Delivering queued Messenger messages...")
+                  }
+                } finally {
+                  setIsSavingCookie(false)
+                }
+              }}
+              className="px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 disabled:opacity-50 text-white font-black text-xs transition shrink-0 shadow-sm"
+            >
+              {isSavingCookie ? "Connecting..." : "🔑 Connect & Send Queued Message Now"}
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Executive Metric Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -438,10 +494,14 @@ export function MessengerGroupAssistantCenter({ currentMode }: MessengerGroupAss
           </div>
           <div className="mt-2 flex items-baseline justify-between">
             <span className="text-2xl font-black text-amber-600 dark:text-amber-400">
-              {metrics.activeCampaignsCount > 0 ? "Sending Live" : "Ready"}
+              {!sessionInfo.is24x7BotActive
+                ? "Needs Login"
+                : metrics.activeCampaignsCount > 0
+                ? "Sending Live"
+                : "Ready"}
             </span>
             <span className="text-[10px] font-bold text-muted-foreground">
-              {sessionInfo.is24x7BotActive ? "24/7 Bot Connected" : "Standalone Bot Ready"}
+              {sessionInfo.is24x7BotActive ? "24/7 Bot Connected" : "⚠️ Waiting for FB Login / Cookie"}
             </span>
           </div>
         </div>

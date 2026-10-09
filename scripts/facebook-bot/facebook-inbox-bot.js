@@ -1493,10 +1493,15 @@ async function runInboxBot(configPath) {
   const page = await browser.newPage();
   await page.setViewport({ width: 1280, height: 950 });
 
-  // Sync live rotated cookies from browser to memory and active-session.json so cookies NEVER expire!
-  async function syncLiveBrowserCookiesToDisk() {
+  // Sync live rotated cookies from browser to memory and active-session.json only when on main profile (not business.facebook.com page sub-session)
+  async function syncLiveBrowserCookiesToDisk(forceInteractiveSync = false) {
     try {
+      const curUrl = page.url() || "";
       const currentBrowserCookies = await page.cookies("https://www.facebook.com");
+      const hasIUser = currentBrowserCookies.some((c) => c.name === "i_user");
+      if (!forceInteractiveSync && (hasIUser || curUrl.includes("business.facebook.com"))) {
+        return null;
+      }
       const hasCUser = currentBrowserCookies.some((c) => c.name === "c_user");
       const hasXs = currentBrowserCookies.some((c) => c.name === "xs");
       if (hasCUser && hasXs) {
@@ -1998,24 +2003,12 @@ async function runInboxBot(configPath) {
             if (sess.cookieString && sess.cookieString !== lastKnownCookieStr) {
               lastKnownCookieStr = sess.cookieString;
               liveBaseCookies = parseCookies(lastKnownCookieStr);
-              const freshCookies = [...liveBaseCookies];
-              if (targetId && /^\d+$/.test(targetId)) {
-                freshCookies.push({
-                  name: "i_user",
-                  value: targetId,
-                  domain: ".facebook.com",
-                  path: "/",
-                  expires: Math.floor(Date.now() / 1000) + 86400 * 90,
-                  secure: true,
-                  sameSite: "Lax",
-                });
-              }
-              await page.setCookie(...freshCookies);
+              await applyChannelSessionCookies(currentActiveChannel, true);
               await page.goto("https://www.facebook.com/messages/t/", {
                 waitUntil: "domcontentloaded",
                 timeout: 45000,
-              });
-              await sleep(4000);
+              }).catch(() => {});
+              await sleep(6500);
               continue;
             }
           } catch (_) {}
@@ -2042,7 +2035,7 @@ async function runInboxBot(configPath) {
       }
 
       // User logged in inside the browser window or via cookie! Persist updated rotated cookies to active-session.json
-      const synced = await syncLiveBrowserCookiesToDisk();
+      const synced = await syncLiveBrowserCookiesToDisk(true);
       if (synced) lastKnownCookieStr = synced;
 
       const curUrl = page.url() || "";
@@ -2050,8 +2043,8 @@ async function runInboxBot(configPath) {
         await page.goto("https://www.facebook.com/messages/t/", {
           waitUntil: "domcontentloaded",
           timeout: 45000,
-        });
-        await sleep(4000);
+        }).catch(() => {});
+        await sleep(5500);
       }
       return true;
     }
@@ -2063,7 +2056,7 @@ async function runInboxBot(configPath) {
         return;
       }
     } else {
-      await syncLiveBrowserCookiesToDisk();
+      await syncLiveBrowserCookiesToDisk(false);
     }
 
     for (let check = 1; check <= maxChecks; check++) {
@@ -2072,9 +2065,9 @@ async function runInboxBot(configPath) {
         break;
       }
 
-      // Periodically auto-save live rotated browser cookies every 3 scans so cookies NEVER expire!
+      // Periodically auto-save live rotated browser cookies every 3 scans when on main profile
       if (check % 3 === 0 && !(await checkIsLoggedOut())) {
-        const refreshed = await syncLiveBrowserCookiesToDisk();
+        const refreshed = await syncLiveBrowserCookiesToDisk(false);
         if (refreshed) lastKnownCookieStr = refreshed;
       }
 
@@ -2174,6 +2167,9 @@ async function runInboxBot(configPath) {
       // 1. Process any manual / approved replies or Messenger Group Campaign messages queued from the UI
       const queuedReplies = popPendingReplies();
       const groupCampaignStateFile = path.join(tempDir, "messenger-group-campaign-state.json");
+      const liveGroupsFile = path.join(tempDir, "messenger-groups-live.json");
+      let switchedChannelForQueue = false;
+
       for (const qItem of queuedReplies) {
         if (!qItem || !qItem.replyText) continue;
         const targetLabel = qItem.customerName || qItem.groupName || qItem.threadId || "Target";
@@ -2182,15 +2178,36 @@ async function runInboxBot(configPath) {
           `📤 [LIVE MESSENGER DISPATCH] Sending to "${targetLabel}": "${qItem.replyText.slice(0, 60)}..."`
         );
         try {
+          // Check if the queued target belongs to a different channel (e.g., Personal ID group while watching Page)
+          const itemSource = qItem.sourceType || activeChanSource;
+          const itemAccountId = String(qItem.accountId || currentActiveChannel.id || "").trim();
+          if (
+            (itemSource === "Personal ID" && activeChanSource === "Page") ||
+            (itemSource === "Page" && itemAccountId && itemAccountId !== String(currentActiveChannel.id))
+          ) {
+            console.log(`   🔄 Switching channel to ${itemSource} (${itemAccountId}) for "${targetLabel}"...`);
+            await applyChannelSessionCookies(
+              { sourceType: itemSource, id: itemAccountId, name: qItem.accountName || targetLabel },
+              false
+            );
+            await page.goto("https://www.facebook.com/messages/t/", {
+              waitUntil: "domcontentloaded",
+              timeout: 45000,
+            }).catch(() => {});
+            await sleep(6000);
+            switchedChannelForQueue = true;
+          }
+
           const threadCoord = await safeEvaluate(
             page,
             (cName, tId) => {
+              const targetNorm = String(cName || "").toLowerCase().trim();
               const allEls = Array.from(document.querySelectorAll("div, a, li"));
               for (const el of allEls) {
                 const r = el.getBoundingClientRect();
-                if (r.x < 40 || r.x > 360 || r.width < 200 || r.width > 460 || r.height < 52 || r.height > 115)
+                if (r.x < 30 || r.x > 380 || r.width < 180 || r.width > 480 || r.height < 48 || r.height > 120)
                   continue;
-                if (tId && !String(tId).startsWith("m_thread_")) {
+                if (tId && !String(tId).startsWith("m_thread_") && !String(tId).startsWith("live_thread_")) {
                   const linkEl =
                     el.tagName === "A"
                       ? el
@@ -2204,8 +2221,15 @@ async function runInboxBot(configPath) {
                   .split("\n")
                   .map((l) => l.trim())
                   .filter(Boolean);
-                if (lines[0] && cName && lines[0].toLowerCase() === String(cName).toLowerCase()) {
-                  return { x: r.x + r.width / 2, y: r.y + r.height / 2 };
+                if (lines[0] && targetNorm) {
+                  const lineNorm = lines[0].toLowerCase().replace(/\.+$/, "").trim();
+                  if (
+                    lineNorm === targetNorm ||
+                    (lineNorm.length >= 6 && targetNorm.startsWith(lineNorm)) ||
+                    (targetNorm.length >= 6 && lineNorm.startsWith(targetNorm))
+                  ) {
+                    return { x: r.x + r.width / 2, y: r.y + r.height / 2 };
+                  }
                 }
               }
               return null;
@@ -2216,10 +2240,11 @@ async function runInboxBot(configPath) {
 
           if (threadCoord) {
             await page.mouse.click(threadCoord.x, threadCoord.y);
-            await sleep(2000);
+            await sleep(2200);
           } else if (
             qItem.threadId &&
             !String(qItem.threadId).startsWith("m_thread_") &&
+            !String(qItem.threadId).startsWith("live_thread_") &&
             /^[0-9a-zA-Z._-]+$/.test(String(qItem.threadId))
           ) {
             const directUrl = `https://www.facebook.com/messages/t/${String(qItem.threadId).trim()}/`;
@@ -2232,6 +2257,19 @@ async function runInboxBot(configPath) {
           lastBotRepliesByCustomer.set(String(targetLabel).toLowerCase(), qItem.replyText.slice(0, 40));
           const latencyMs = Math.max(250, Date.now() - startTimeMs);
           console.log(`   ✅ [SUCCESS] Message delivered to "${targetLabel}" on Live Messenger (${latencyMs}ms)!`);
+
+          // Update messenger-groups-live.json preview
+          if (fs.existsSync(liveGroupsFile)) {
+            try {
+              const grps = JSON.parse(fs.readFileSync(liveGroupsFile, "utf8")) || [];
+              const updatedGrps = grps.map((g) =>
+                String(g.name || "").toLowerCase() === String(targetLabel).toLowerCase()
+                  ? { ...g, lastMessageSent: "Just now", lastMessagePreview: qItem.replyText }
+                  : g
+              );
+              fs.writeFileSync(liveGroupsFile, JSON.stringify(updatedGrps, null, 2), "utf8");
+            } catch (_) {}
+          }
 
           // If this was part of a Messenger Group Campaign, update messenger-group-campaign-state.json in real time!
           if (qItem.campaignId && qItem.logId && fs.existsSync(groupCampaignStateFile)) {
@@ -2283,6 +2321,15 @@ async function runInboxBot(configPath) {
             } catch (_) {}
           }
         }
+      }
+
+      if (switchedChannelForQueue) {
+        await applyChannelSessionCookies(currentActiveChannel, false);
+        await page.goto("https://www.facebook.com/messages/t/", {
+          waitUntil: "domcontentloaded",
+          timeout: 45000,
+        }).catch(() => {});
+        await sleep(5500);
       }
 
       // 2. Scan visible threads in Business Suite Inbox or standard Facebook Messenger

@@ -128,80 +128,27 @@ export async function GET() {
       } catch {}
     }
 
-    // Auto-progress any active "Sending" campaign so it NEVER gets stuck at 0% if the browser bot is busy/switching!
-    let campaignChanged = false
-    let groupsChanged = false
-    const nowMs = Date.now()
-    const nowTimeLabel = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+    const { isRunning, isWatching, statusData } = getActiveBotStatus(paths)
+    const botStatus = statusData?.status || (isRunning ? "LAUNCHING" : "STOPPED")
+    const authError = botStatus === "AUTH_ERROR" ? statusData?.error || "Facebook session logged out" : null
 
-    campaigns = campaigns.map((camp) => {
-      if (camp.status !== "Sending") return camp
-      const startedAtMs = Number(camp.startedAtMs) || nowMs - 4000
-      const elapsedMs = Math.max(0, nowMs - startedAtMs)
-      const stepMs = 2400
-
-      const nextLogs = (camp.logs || []).map((log: any, idx: number) => {
-        if (log.status === "DELIVERED_200") return log
-        if (elapsedMs >= (idx + 1) * stepMs) {
-          campaignChanged = true
-          // Also update lastMessagePreview on the matching group
-          liveGroups = liveGroups.map((g) => {
-            if (g.id === log.groupId || g.name === log.groupName) {
-              groupsChanged = true
-              return {
-                ...g,
-                lastMessageSent: "Just now",
-                lastMessagePreview: log.sentMessageText,
-              }
-            }
-            return g
-          })
-          return {
-            ...log,
-            status: "DELIVERED_200",
-            sentAt: nowTimeLabel,
-            latencyMs: 360 + idx * 85,
-          }
+    // If the bot is currently in AUTH_ERROR, annotate any PENDING campaign logs honestly so the user sees it is waiting for login
+    if (botStatus === "AUTH_ERROR") {
+      campaigns = campaigns.map((camp) => {
+        if (camp.status !== "Sending") return camp
+        return {
+          ...camp,
+          logs: (camp.logs || []).map((log: any) =>
+            log.status === "PENDING"
+              ? {
+                  ...log,
+                  sentAt: "⏳ ওপেন থাকা Chrome উইন্ডোতে লগইন করুন বা নতুন Cookie দিন (লগইন মাত্রই সেন্ড হবে)",
+                }
+              : log
+          ),
         }
-        return log
       })
-
-      const sentCount = nextLogs.filter((l: any) => l.status === "DELIVERED_200").length
-      const totalTarget = Math.max(1, Number(camp.totalTarget) || nextLogs.length)
-      const progressPercent = Math.round((sentCount / totalTarget) * 100)
-      const nextStatus = sentCount >= totalTarget ? "Completed" : "Sending"
-
-      if (sentCount !== camp.sentCount || nextStatus !== camp.status) {
-        campaignChanged = true
-      }
-
-      return {
-        ...camp,
-        startedAtMs,
-        sentCount,
-        progressPercent,
-        status: nextStatus,
-        logs: nextLogs,
-      }
-    })
-
-    if (campaignChanged) {
-      try {
-        fs.writeFileSync(
-          paths.campaignStateFile,
-          JSON.stringify({ campaigns, updatedAt: new Date().toISOString() }, null, 2),
-          "utf8"
-        )
-      } catch {}
     }
-
-    if (groupsChanged) {
-      try {
-        fs.writeFileSync(paths.liveGroupsFile, JSON.stringify(liveGroups, null, 2), "utf8")
-      } catch {}
-    }
-
-    const { isWatching } = getActiveBotStatus(paths)
 
     return NextResponse.json({
       success: true,
@@ -212,6 +159,8 @@ export async function GET() {
         cUserId,
         updatedAt: session.updatedAt || null,
         is24x7BotActive: isWatching,
+        botStatus,
+        authError,
       },
       connectedAccounts,
       liveGroups,
@@ -376,6 +325,39 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: true, liveGroups: existing })
     }
 
+    // 4b. Update 24/7 Session Cookie or Access Token directly from Messenger Group Assistant & auto-deliver queued messages
+    if (action === "UPDATE_COOKIE_AND_RETRY") {
+      let existingSession: any = {}
+      if (fs.existsSync(paths.sessionFile)) {
+        try {
+          existingSession = JSON.parse(fs.readFileSync(paths.sessionFile, "utf8"))
+        } catch {}
+      }
+      const rawCookie = String(body.cookieString || "").trim()
+      const rawToken = String(body.accessToken || "").trim()
+      const cleanCookie =
+        rawCookie.includes("c_user=") && rawCookie.includes("xs=")
+          ? rawCookie
+          : existingSession.cookieString || ""
+      const cleanToken = rawToken.length > 15 ? rawToken : existingSession.accessToken || ""
+
+      const nextSession = {
+        ...existingSession,
+        accountName: body.accountName || existingSession.accountName || "Test Next",
+        targetId: body.targetId || existingSession.targetId || "61595136714776",
+        cookieString: cleanCookie,
+        accessToken: cleanToken,
+        authMode: cleanToken && cleanCookie ? "HYBRID" : cleanToken ? "TOKEN" : "COOKIE",
+        keepAlive24x7: true,
+        updatedAt: new Date().toISOString(),
+      }
+      fs.writeFileSync(paths.sessionFile, JSON.stringify(nextSession, null, 2), "utf8")
+      return NextResponse.json({
+        success: true,
+        message: "✅ নতুন Cookie / Token সেভ হয়েছে! ২৪/৭ বট এখনই কানেক্ট হয়ে পেন্ডিং মেসেজ সেন্ড করছে।",
+      })
+    }
+
     // 5. Dispatch Real Bulk Campaign to Selected Live Messenger Groups / Threads
     if (action === "DISPATCH_CAMPAIGN") {
       const {
@@ -393,6 +375,9 @@ export async function POST(req: NextRequest) {
           { status: 400 }
         )
       }
+
+      const { isRunning, isWatching, statusData } = getActiveBotStatus(paths)
+      const isAuthError = statusData?.status === "AUTH_ERROR"
 
       const nowMs = Date.now()
       const campaignId = `camp-live-${nowMs}`
@@ -412,11 +397,14 @@ export async function POST(req: NextRequest) {
           groupId: grp.id,
           groupName: grp.name,
           threadId: grp.threadId || "",
+          sourceType: grp.sourceType || (String(grp.assignedAccountName || "").includes("Personal ID") ? "Personal ID" : "Page"),
           accountId: grp.assignedAccountId || "61595136714776",
           accountName: grp.assignedAccountName || "Test Next (Page)",
           sentMessageText: textToSend,
           isAiVariant: Boolean(aiVariantEnabled),
-          sentAt: "Sending to Live Messenger...",
+          sentAt: isAuthError
+            ? "⏳ ওপেন থাকা Chrome উইন্ডোতে লগইন করুন বা নতুন Cookie দিন (লগইন মাত্রই সেন্ড হবে)"
+            : "Sending to Live Messenger...",
           status: "PENDING",
           latencyMs: 0,
         }
@@ -454,40 +442,82 @@ export async function POST(req: NextRequest) {
         "utf8"
       )
 
-      // Queue to 24/7 Live Messenger Bot if it is actively watching
-      const { isWatching } = getActiveBotStatus(paths)
-      if (isWatching) {
-        let pendingList: any[] = []
-        if (fs.existsSync(paths.pendingRepliesFile)) {
-          try {
-            pendingList = JSON.parse(fs.readFileSync(paths.pendingRepliesFile, "utf8"))
-            if (!Array.isArray(pendingList)) pendingList = []
-          } catch {
-            pendingList = []
-          }
+      // ALWAYS queue to inbox-pending-replies.json so the 24/7 Live Messenger Bot delivers it on real Messenger!
+      let pendingList: any[] = []
+      if (fs.existsSync(paths.pendingRepliesFile)) {
+        try {
+          pendingList = JSON.parse(fs.readFileSync(paths.pendingRepliesFile, "utf8"))
+          if (!Array.isArray(pendingList)) pendingList = []
+        } catch {
+          pendingList = []
         }
+      }
 
-        for (const logItem of logs) {
-          pendingList.push({
-            id: logItem.id,
-            campaignId,
-            logId: logItem.id,
-            customerName: logItem.groupName,
-            groupName: logItem.groupName,
-            threadId: logItem.threadId,
-            replyText: logItem.sentMessageText,
-            status: "PENDING",
-            createdAt: new Date().toISOString(),
-          })
-        }
-        fs.writeFileSync(paths.pendingRepliesFile, JSON.stringify(pendingList, null, 2), "utf8")
+      for (const logItem of logs) {
+        pendingList.push({
+          id: logItem.id,
+          campaignId,
+          logId: logItem.id,
+          customerName: logItem.groupName,
+          groupName: logItem.groupName,
+          threadId: logItem.threadId,
+          sourceType: logItem.sourceType,
+          accountId: logItem.accountId,
+          accountName: logItem.accountName,
+          replyText: logItem.sentMessageText,
+          status: "PENDING",
+          createdAt: new Date().toISOString(),
+        })
+      }
+      fs.writeFileSync(paths.pendingRepliesFile, JSON.stringify(pendingList, null, 2), "utf8")
+
+      // If no 24/7 bot is running at all, spawn facebook-messenger-group-bot.js as fallback
+      if (!isRunning) {
+        const dispatchJobId = `msg-grp-dispatch-${nowMs}`
+        const configPath = path.join(paths.tempDir, `${dispatchJobId}-config.json`)
+        const firstLog = logs[0]
+        fs.writeFileSync(
+          configPath,
+          JSON.stringify(
+            {
+              action: "DISPATCH_CAMPAIGN",
+              campaignId,
+              sourceType: firstLog.sourceType || "Page",
+              targetId: firstLog.accountId || "61595136714776",
+              targetName: String(firstLog.accountName || "Test Next").replace(/\s*\(.*\)$/, ""),
+              targets: logs.map((l: any) => ({
+                logId: l.id,
+                groupId: l.groupId,
+                groupName: l.groupName,
+                threadId: l.threadId,
+                messageText: l.sentMessageText,
+              })),
+              delaySeconds: Math.max(2, Number(delayMinutes) * 2),
+              headless: false,
+            },
+            null,
+            2
+          ),
+          "utf8"
+        )
+        const scriptPath = path.join(paths.botDir, "facebook-messenger-group-bot.js")
+        const child = spawn("node", [scriptPath, configPath], {
+          cwd: paths.botDir,
+          detached: true,
+          stdio: "ignore",
+        })
+        child.unref()
       }
 
       return NextResponse.json({
         success: true,
         campaign: newCampaign,
         campaigns: nextCampaigns,
-        deliveryMode: isWatching ? "ACTIVE_24X7_BOT_QUEUE" : "AUTO_DISPATCH_ENGINE",
+        deliveryMode: isWatching
+          ? "ACTIVE_24X7_BOT_QUEUE"
+          : isAuthError
+          ? "QUEUED_WAITING_FOR_FACEBOOK_LOGIN"
+          : "STANDALONE_BROWSER_BOT",
       })
     }
 
