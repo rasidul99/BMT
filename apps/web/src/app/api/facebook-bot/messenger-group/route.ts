@@ -43,41 +43,12 @@ function loadLiveGroups(paths: ReturnType<typeof getBotPaths>) {
     }
   }
 
-  // Merge any live conversations from the active 24/7 Messenger Bot
-  const { statusData, lock } = getActiveBotStatus(paths)
-  if (statusData && Array.isArray(statusData.conversations)) {
-    for (const conv of statusData.conversations) {
-      if (!conv || !conv.customerName) continue
-      const exists = groups.some(
-        (g) => String(g.name || "").toLowerCase() === String(conv.customerName).toLowerCase()
-      )
-      if (!exists) {
-        groups.unshift({
-          id: `live-msg-${String(conv.customerName).toLowerCase().replace(/[^a-z0-9]+/g, "-")}`,
-          name: conv.customerName,
-          threadId:
-            conv.threadId ||
-            `live_thread_${String(conv.customerName).toLowerCase().replace(/[^a-z0-9]+/g, "_")}`,
-          assignedAccountId: String(lock?.targetId || "61595136714776"),
-          assignedAccountName: `${conv.pageName || lock?.targetName || "Test Next"} (Page)`,
-          memberCount: 2,
-          maxCapacity: 250,
-          category: "General VIP",
-          lastMessageSent: conv.lastMessageTime || "Active now",
-          lastMessagePreview: conv.lastMessageText || "",
-          status: "Active",
-          isLiveMessengerThread: true,
-          sourceType: "Page",
-        })
-      }
-    }
-  }
-
-  // Deduplicate by normalized name so no thread/group appears twice
+  // Strictly return ONLY real Messenger Groups / Communities (exclude 1-on-1 Personal ID chats where memberCount <= 2)
   const seen = new Set<string>()
   const uniqueGroups: any[] = []
   for (const g of groups) {
     if (!g || !g.name) continue
+    if (Number(g.memberCount || 0) <= 2) continue
     const key = String(g.name).trim().toLowerCase()
     if (seen.has(key)) continue
     seen.add(key)

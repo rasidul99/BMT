@@ -175,7 +175,7 @@ async function extractVisibleSidebarThreads(page) {
         if (seenNames.has(name.toLowerCase())) continue;
         seenNames.add(name.toLowerCase());
 
-        const previewLine = lines[1] || "Active Messenger Thread";
+        const previewLine = lines[1] || "Active Messenger Group";
         const timeLine = lines.slice(2).join(" ") || "Active";
         const linkEl =
           el.tagName === "A"
@@ -185,11 +185,20 @@ async function extractVisibleSidebarThreads(page) {
         const tidMatch = hrefStr.match(/\/messages\/t\/([^/?#]+)/);
         const extractedThreadId = tidMatch ? tidMatch[1] : "";
 
+        // Detect multi-avatar group icon (Facebook Messenger renders 2+ avatar images inside the left icon container for groups)
+        const rowContainer = linkEl || el;
+        const avatarImgs = Array.from(rowContainer.querySelectorAll("img, image")).filter((im) => {
+          const ir = im.getBoundingClientRect();
+          return ir.width >= 14 && ir.width <= 64 && ir.x < r.x + 90;
+        });
+        const hasMultiAvatar = avatarImgs.length >= 2;
+
         list.push({
           name,
           threadId: extractedThreadId,
           previewLine,
           timeLine,
+          hasMultiAvatar,
           x: Math.round(r.x + r.width / 2),
           y: Math.round(r.y + r.height / 2),
         });
@@ -316,11 +325,36 @@ async function runMessengerGroupBot(configPath) {
       await sleep(4500);
     }
 
-    // 1. Multi-Pass Deep Scan of Messenger Sidebar (All Chats + Groups Tab + Deep Scroll)
+    // 1. Multi-Pass Deep Scan of Messenger Sidebar — STRICTLY GROUPS & COMMUNITIES ONLY (No 1-on-1 Personal IDs!)
     const collectedByName = new Map();
+    const isLikelyGroupThread = (it, isFromGroupsTab) => {
+      if (isFromGroupsTab) return true;
+      if (it.hasMultiAvatar) return true;
+      if (
+        /,|\b(group|hub|club|vip|team|community|batch|chat|foundation|society|forum|association|official|bazar|market|পরিষদ|গল্প|গ্রুপ|টিম|ফাউন্ডেশন|কমিউনিটি|সংঘ|সমিতি|ব্যাচ|উদ্যোক্তা|পরিবার)\b/i.test(
+          it.name
+        )
+      ) {
+        return true;
+      }
+      // Group previews often show "<Member Name>: <Message>" or "<Member Name> sent an attachment"
+      const prevTxt = String(it.previewLine || "").trim();
+      if (/^[^:]{2,28}:\s+\S/.test(prevTxt) && !/^you:/i.test(prevTxt)) {
+        return true;
+      }
+      if (
+        /\b(sent an attachment|sent a photo|sent a voice message|added|named the group|created the group)\b/i.test(prevTxt) &&
+        !/^(you|the video call|missed)\b/i.test(prevTxt)
+      ) {
+        return true;
+      }
+      return false;
+    };
+
     const mergePass = (items, isFromGroupsTab = false) => {
       for (const it of items) {
         if (!it || !it.name) continue;
+        if (!isLikelyGroupThread(it, isFromGroupsTab)) continue;
         const k = it.name.toLowerCase();
         const prev = collectedByName.get(k);
         if (!prev || (!prev.threadId && it.threadId) || isFromGroupsTab) {
@@ -334,16 +368,9 @@ async function runMessengerGroupBot(configPath) {
       }
     };
 
-    // Pass 1: Scroll down the main Messenger chat list 8 times to load all recent threads & groups
-    for (let s = 0; s < 8; s++) {
-      const batch = await extractVisibleSidebarThreads(page);
-      mergePass(batch, false);
-      await scrollMessengerSidebar(page, 620);
-      await sleep(900);
-    }
-
-    // Pass 2 & Pass 3: Click "Groups" ("গ্রুপ") and "Communities" filter pills at the top of Messenger sidebar!
-    for (const targetTab of ["groups", "গ্রুপ", "communities"]) {
+    // Pass 1 & Pass 2: Click "Groups" ("গ্রুপ") and "Communities" ("কমিউনিটি") filter pills at the top of Messenger sidebar FIRST!
+    let foundDedicatedGroupsTab = false;
+    for (const targetTab of ["groups", "গ্রুপ", "communities", "কমিউনিটি"]) {
       const clickedTab = await safeEvaluate(page, (tabLabel) => {
         const els = Array.from(document.querySelectorAll('div[role="tab"], div[role="button"], span, a'));
         for (const el of els) {
@@ -359,13 +386,24 @@ async function runMessengerGroupBot(configPath) {
       }, targetTab);
 
       if (clickedTab) {
+        foundDedicatedGroupsTab = true;
         await sleep(2200);
-        for (let s = 0; s < 8; s++) {
+        for (let s = 0; s < 10; s++) {
           const batch = await extractVisibleSidebarThreads(page);
           mergePass(batch, true);
           await scrollMessengerSidebar(page, 620);
           await sleep(900);
         }
+      }
+    }
+
+    // Pass 3: Also scan "All" tab for any multi-avatar / group-named threads if needed
+    if (!foundDedicatedGroupsTab) {
+      for (let s = 0; s < 8; s++) {
+        const batch = await extractVisibleSidebarThreads(page);
+        mergePass(batch, false);
+        await scrollMessengerSidebar(page, 620);
+        await sleep(900);
       }
     }
 
@@ -380,7 +418,10 @@ async function runMessengerGroupBot(configPath) {
       }
       const byKey = new Map();
       for (const g of existingLiveGroups) {
-        if (g && g.name) byKey.set(g.name.toLowerCase(), g);
+        // Keep only real groups (memberCount > 2) from existing file
+        if (g && g.name && Number(g.memberCount || 0) > 2) {
+          byKey.set(g.name.toLowerCase(), g);
+        }
       }
       const acctLabel =
         sourceType === "Personal ID"
@@ -390,12 +431,6 @@ async function runMessengerGroupBot(configPath) {
       for (const th of scannedThreads) {
         const key = th.name.toLowerCase();
         const prev = byKey.get(key);
-        const looksLikeGroup =
-          Boolean(th.isFromGroupsTab) ||
-          /,|\b(group|hub|club|vip|team|community|batch|chat|foundation|পরিষদ|গল্প|গ্রুপ|টিম|ফাউন্ডেশন|কমিউনিটি)\b/i.test(
-            th.name
-          ) ||
-          /:/.test(th.previewLine);
         byKey.set(key, {
           id: prev?.id || `live-msg-${th.threadId || th.name.toLowerCase().replace(/[^a-z0-9\u0980-\u09FF]+/g, "-")}`,
           name: th.name,
@@ -405,9 +440,9 @@ async function runMessengerGroupBot(configPath) {
             `live_thread_${th.name.toLowerCase().replace(/[^a-z0-9]+/g, "_")}`,
           assignedAccountId: String(targetId),
           assignedAccountName: acctLabel,
-          memberCount: prev?.memberCount || (looksLikeGroup ? 65 : 2),
+          memberCount: prev?.memberCount && prev.memberCount > 2 ? prev.memberCount : 65,
           maxCapacity: 250,
-          category: prev?.category || (looksLikeGroup ? "General VIP" : "E-Commerce Buyers"),
+          category: prev?.category || "General VIP",
           lastMessageSent: th.timeLine || "Active now",
           lastMessagePreview: th.previewLine,
           status: "Active",
@@ -417,7 +452,7 @@ async function runMessengerGroupBot(configPath) {
         });
       }
       fs.writeFileSync(liveGroupsFile, JSON.stringify(Array.from(byKey.values()), null, 2), "utf8");
-      console.log(`✅ Deep-synced ${scannedThreads.length} live Messenger group(s)/thread(s) to messenger-groups-live.json`);
+      console.log(`✅ Deep-synced ${scannedThreads.length} live Messenger GROUP(s) (excluded 1-on-1 Personal IDs) to messenger-groups-live.json`);
     }
 
     // 2. If action === "DISPATCH_CAMPAIGN", send messages to each target group/thread
