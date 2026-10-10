@@ -24,7 +24,12 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
       if (modeSegment && (modeSegment === "SAFE" || modeSegment === "ADVANCED") && !activeMode) {
         setMode(modeSegment)
       }
-    } else if (!pathname.startsWith("/auth") && pathname !== "/workspaces") {
+    } else if (
+      !pathname.startsWith("/auth") &&
+      pathname !== "/workspaces" &&
+      !pathname.startsWith("/p/") &&
+      !pathname.startsWith("/c/")
+    ) {
       if (!activeWorkspace || !activeMode) {
         router.push("/workspaces")
       }

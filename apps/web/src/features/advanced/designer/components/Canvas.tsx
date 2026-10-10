@@ -15,6 +15,7 @@ import {
   Panel,
 } from "@xyflow/react"
 import "@xyflow/react/dist/style.css"
+import { Activity } from "lucide-react"
 
 import { useAdvancedSelectionStore } from "../../stores/selection.store"
 import { useAdvancedExecutionStore } from "../../stores/execution.store"
@@ -22,12 +23,46 @@ import { WorkflowValidator } from "../../../automation/application/services/vali
 import { useAdvancedHistoryStore } from "../../stores/history.store"
 
 const initialNodes: Node[] = [
-  { id: "node-1", type: "input", data: { label: "CPC Spike Trigger" }, position: { x: 100, y: 150 }, style: { background: "#1e293b", color: "#fff", border: "1px solid #f97316" } },
-  { id: "node-2", type: "default", data: { label: "Cut Budget Action" }, position: { x: 350, y: 150 }, style: { background: "#1e293b", color: "#fff", border: "1px solid #3b82f6" } },
+  {
+    id: "node-1",
+    type: "input",
+    data: { label: "CPC Spike Trigger" },
+    position: { x: 100, y: 150 },
+    style: {
+      background: "#0f172a",
+      color: "#f8fafc",
+      border: "1.5px solid #2563eb",
+      borderRadius: "8px",
+      fontSize: "12px",
+      fontWeight: "600",
+      boxShadow: "0 1px 3px 0 rgba(0, 0, 0, 0.2)",
+    },
+  },
+  {
+    id: "node-2",
+    type: "default",
+    data: { label: "Cut Budget Action" },
+    position: { x: 350, y: 150 },
+    style: {
+      background: "#0f172a",
+      color: "#f8fafc",
+      border: "1.5px solid #3b82f6",
+      borderRadius: "8px",
+      fontSize: "12px",
+      fontWeight: "600",
+      boxShadow: "0 1px 3px 0 rgba(0, 0, 0, 0.2)",
+    },
+  },
 ]
 
 const initialEdges: Edge[] = [
-  { id: "edge-1", source: "node-1", target: "node-2", animated: true },
+  {
+    id: "edge-1",
+    source: "node-1",
+    target: "node-2",
+    animated: true,
+    style: { stroke: "#3b82f6", strokeWidth: 2 },
+  },
 ]
 
 export default function Canvas() {
@@ -63,7 +98,7 @@ export default function Canvas() {
   const onConnect = useCallback(
     (params: Connection) => {
       pushState({ nodes, edges })
-      setEdges((eds) => addEdge(params, eds))
+      setEdges((eds) => addEdge({ ...params, animated: true, style: { stroke: "#3b82f6", strokeWidth: 2 } }, eds))
       addLog(`[Canvas] Connection established between ${params.source} and ${params.target}`)
     },
     [nodes, edges, setEdges, addLog, pushState]
@@ -104,9 +139,13 @@ export default function Canvas() {
         position,
         data: { label },
         style: {
-          background: "#1e293b",
-          color: "#fff",
-          border: type === "TRIGGER" ? "1px solid #f97316" : "1px solid #3b82f6",
+          background: "#0f172a",
+          color: "#f8fafc",
+          border: type === "TRIGGER" ? "1.5px solid #2563eb" : "1.5px solid #3b82f6",
+          borderRadius: "8px",
+          fontSize: "12px",
+          fontWeight: "600",
+          boxShadow: "0 1px 3px 0 rgba(0, 0, 0, 0.2)",
         },
       }
 
@@ -130,8 +169,11 @@ export default function Canvas() {
         <MiniMap style={{ background: "#0f172a" }} />
         <Controls />
         <Background bgColor="#020617" />
-        <Panel position="top-right" className="bg-card/90 backdrop-blur p-2 border rounded-lg text-xs space-x-1">
-          <span className="text-orange-500 font-semibold">ADVANCED Editor Panel</span>
+        <Panel position="top-right" className="bg-card/90 backdrop-blur p-2 border border-border rounded-lg text-xs space-x-1 shadow-xs">
+          <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded border bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300 border-blue-200 dark:border-blue-800 flex items-center space-x-1">
+            <Activity className="w-3 h-3 text-blue-600 dark:text-blue-400" />
+            <span>ADVANCED Editor Panel</span>
+          </span>
         </Panel>
       </ReactFlow>
     </div>

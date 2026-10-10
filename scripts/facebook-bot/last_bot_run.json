@@ -1,0 +1,18 @@
+{
+  "jobId": "job-1791299691307",
+  "success": true,
+  "results": [
+    {
+      "groupId": "61595136714776",
+      "groupName": "Test Next",
+      "status": "Success",
+      "commentStatus": "Comment submitted & verified",
+      "timestamp": "2026-10-06T15:16:59.221Z"
+    }
+  ],
+  "summary": {
+    "total": 1,
+    "success": 1,
+    "failed": 0
+  }
+}

@@ -48,6 +48,10 @@ Thumbs.db
 .nyc_output/
 coverage/
 .jest/
+
+# Temporary Downloaded Media Cache
+apps/web/public/downloads/*
+!apps/web/public/downloads/.gitkeep
 .pnpm-debug.log*
 .npm/
 
@@ -56,3 +60,14 @@ test-results/
 playwright-report/
 blob-report/
 playwright/.cache/
+
+# Facebook Bot Temporary Logs & Artifacts
+scripts/facebook-bot/job-*.json
+scripts/facebook-bot/job-*.log
+scripts/facebook-bot/*.png
+scripts/facebook-bot/temp/
+*.png
+
+# Local User Uploads Cache (keep folder structure)
+apps/web/public/uploads/*
+!apps/web/public/uploads/.gitkeep
