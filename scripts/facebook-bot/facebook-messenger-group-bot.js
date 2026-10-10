@@ -43,6 +43,7 @@ function parseCookies(cookieStr) {
       const name = pair.slice(0, idx).trim();
       const value = pair.slice(idx + 1).trim();
       if (!name || !value) return null;
+      if (name === "i_user" || name === "alsfid" || value.includes('"')) return null;
       return {
         name,
         value,
@@ -131,6 +132,92 @@ async function sendTextInActiveThread(page, replyText) {
   return true;
 }
 
+async function extractVisibleSidebarThreads(page) {
+  return (
+    (await safeEvaluate(page, () => {
+      const allEls = Array.from(document.querySelectorAll('a[href*="/messages/t/"], div[role="row"], div[role="listitem"], div, a, li'));
+      const seenNames = new Set();
+      const list = [];
+      const ignoreTitles = new Set([
+        "inbox",
+        "all messages",
+        "messenger",
+        "instagram",
+        "whatsapp",
+        "facebook comments",
+        "instagram comments",
+        "unread",
+        "priority",
+        "chats",
+        "marketplace",
+        "requests",
+        "archive",
+        "communities",
+        "all",
+        "groups",
+        "search messenger",
+      ]);
+
+      for (const el of allEls) {
+        const r = el.getBoundingClientRect();
+        if (r.x < 10 || r.x > 390 || r.width < 170 || r.width > 480 || r.height < 44 || r.height > 125)
+          continue;
+
+        const lines = (el.innerText || "")
+          .split("\n")
+          .map((l) => l.trim())
+          .filter((l) => l && l !== "​" && l !== "·");
+
+        if (lines.length < 1 || lines.length > 6) continue;
+        const name = lines[0];
+        if (!name || name.length < 2 || name.length > 75) continue;
+        if (ignoreTitles.has(name.toLowerCase())) continue;
+        if (seenNames.has(name.toLowerCase())) continue;
+        seenNames.add(name.toLowerCase());
+
+        const previewLine = lines[1] || "Active Messenger Thread";
+        const timeLine = lines.slice(2).join(" ") || "Active";
+        const linkEl =
+          el.tagName === "A"
+            ? el
+            : el.closest('a[href*="/messages/t/"]') || el.querySelector('a[href*="/messages/t/"]');
+        const hrefStr = linkEl ? linkEl.getAttribute("href") || "" : "";
+        const tidMatch = hrefStr.match(/\/messages\/t\/([^/?#]+)/);
+        const extractedThreadId = tidMatch ? tidMatch[1] : "";
+
+        list.push({
+          name,
+          threadId: extractedThreadId,
+          previewLine,
+          timeLine,
+          x: Math.round(r.x + r.width / 2),
+          y: Math.round(r.y + r.height / 2),
+        });
+      }
+      return list;
+    })) || []
+  );
+}
+
+async function scrollMessengerSidebar(page, deltaY = 650) {
+  await safeEvaluate(page, (dy) => {
+    const scrollables = Array.from(document.querySelectorAll("div")).filter((d) => {
+      const st = window.getComputedStyle(d);
+      const r = d.getBoundingClientRect();
+      return (
+        (st.overflowY === "auto" || st.overflowY === "scroll") &&
+        d.scrollHeight > d.clientHeight + 20 &&
+        r.x >= 0 &&
+        r.x < 360 &&
+        r.width > 180
+      );
+    });
+    for (const s of scrollables) {
+      s.scrollTop += dy;
+    }
+  }, deltaY);
+}
+
 async function runMessengerGroupBot(configPath) {
   let config = {};
   if (configPath && fs.existsSync(configPath)) {
@@ -198,7 +285,17 @@ async function runMessengerGroupBot(configPath) {
     }
 
     if (baseCookies.length > 0) {
-      await page.setCookie(...baseCookies);
+      for (const c of baseCookies) {
+        try {
+          await page.setCookie(c);
+        } catch (_) {}
+      }
+    }
+
+    if (!isPageChannel) {
+      try {
+        await page.deleteCookie({ name: "i_user", domain: ".facebook.com", path: "/" });
+      } catch (_) {}
     }
 
     console.log(`🌐 [Messenger Group Bot] Action=${action} | Identity=${targetName} (${sourceType}: ${targetId})`);
@@ -208,67 +305,71 @@ async function runMessengerGroupBot(configPath) {
     }).catch(() => {});
     await sleep(6500);
 
-    // 1. Scan visible Messenger Group chats & active threads
-    const scannedThreads =
-      (await safeEvaluate(page, () => {
-        const allEls = Array.from(document.querySelectorAll("div, a, li"));
-        const seenNames = new Set();
-        const list = [];
-        const ignoreTitles = new Set([
-          "inbox",
-          "all messages",
-          "messenger",
-          "instagram",
-          "whatsapp",
-          "facebook comments",
-          "instagram comments",
-          "unread",
-          "priority",
-          "chats",
-          "marketplace",
-          "requests",
-          "archive",
-          "communities",
-        ]);
+    // Wait up to 45s if the user needs to log in inside the opened Chrome window
+    for (let w = 0; w < 10; w++) {
+      const u = page.url() || "";
+      const isLoggedOut =
+        u.includes("index.php?next=") ||
+        u.includes("/login") ||
+        (await safeEvaluate(page, () => Boolean(document.querySelector('input[type="password"], input[name="pass"]'))));
+      if (!isLoggedOut) break;
+      await sleep(4500);
+    }
 
-        for (const el of allEls) {
-          const r = el.getBoundingClientRect();
-          if (r.x < 40 || r.x > 360 || r.width < 200 || r.width > 460 || r.height < 52 || r.height > 115)
-            continue;
-
-          const lines = (el.innerText || "")
-            .split("\n")
-            .map((l) => l.trim())
-            .filter((l) => l && l !== "​" && l !== "·");
-
-          if (lines.length < 1 || lines.length > 5) continue;
-          const name = lines[0];
-          if (!name || name.length < 2 || name.length > 60) continue;
-          if (ignoreTitles.has(name.toLowerCase())) continue;
-          if (seenNames.has(name.toLowerCase())) continue;
-          seenNames.add(name.toLowerCase());
-
-          const previewLine = lines[1] || "Active Messenger Thread";
-          const timeLine = lines.slice(2).join(" ") || "Just now";
-          const linkEl =
-            el.tagName === "A"
-              ? el
-              : el.closest('a[href*="/messages/t/"]') || el.querySelector('a[href*="/messages/t/"]');
-          const hrefStr = linkEl ? linkEl.getAttribute("href") || "" : "";
-          const tidMatch = hrefStr.match(/\/messages\/t\/([^/?#]+)/);
-          const extractedThreadId = tidMatch ? tidMatch[1] : "";
-
-          list.push({
-            name,
-            threadId: extractedThreadId,
-            previewLine,
-            timeLine,
-            x: Math.round(r.x + r.width / 2),
-            y: Math.round(r.y + r.height / 2),
+    // 1. Multi-Pass Deep Scan of Messenger Sidebar (All Chats + Groups Tab + Deep Scroll)
+    const collectedByName = new Map();
+    const mergePass = (items, isFromGroupsTab = false) => {
+      for (const it of items) {
+        if (!it || !it.name) continue;
+        const k = it.name.toLowerCase();
+        const prev = collectedByName.get(k);
+        if (!prev || (!prev.threadId && it.threadId) || isFromGroupsTab) {
+          collectedByName.set(k, {
+            ...prev,
+            ...it,
+            threadId: it.threadId || prev?.threadId || "",
+            isFromGroupsTab: Boolean(isFromGroupsTab || prev?.isFromGroupsTab),
           });
         }
-        return list;
-      })) || [];
+      }
+    };
+
+    // Pass 1: Scroll down the main Messenger chat list 8 times to load all recent threads & groups
+    for (let s = 0; s < 8; s++) {
+      const batch = await extractVisibleSidebarThreads(page);
+      mergePass(batch, false);
+      await scrollMessengerSidebar(page, 620);
+      await sleep(900);
+    }
+
+    // Pass 2 & Pass 3: Click "Groups" ("গ্রুপ") and "Communities" filter pills at the top of Messenger sidebar!
+    for (const targetTab of ["groups", "গ্রুপ", "communities"]) {
+      const clickedTab = await safeEvaluate(page, (tabLabel) => {
+        const els = Array.from(document.querySelectorAll('div[role="tab"], div[role="button"], span, a'));
+        for (const el of els) {
+          const r = el.getBoundingClientRect();
+          if (r.x < 10 || r.x > 420 || r.y < 60 || r.y > 270) continue;
+          const txt = (el.innerText || "").trim().toLowerCase();
+          if (txt === tabLabel) {
+            el.click();
+            return true;
+          }
+        }
+        return false;
+      }, targetTab);
+
+      if (clickedTab) {
+        await sleep(2200);
+        for (let s = 0; s < 8; s++) {
+          const batch = await extractVisibleSidebarThreads(page);
+          mergePass(batch, true);
+          await scrollMessengerSidebar(page, 620);
+          await sleep(900);
+        }
+      }
+    }
+
+    const scannedThreads = Array.from(collectedByName.values());
 
     if (scannedThreads.length > 0) {
       let existingLiveGroups = [];
@@ -279,22 +380,32 @@ async function runMessengerGroupBot(configPath) {
       }
       const byKey = new Map();
       for (const g of existingLiveGroups) {
-        if (g && g.name) byKey.set(`${g.assignedAccountName}:::${g.name.toLowerCase()}`, g);
+        if (g && g.name) byKey.set(g.name.toLowerCase(), g);
       }
+      const acctLabel =
+        sourceType === "Personal ID"
+          ? `${targetName} — Personal ID (${targetId})`
+          : `${targetName} (${sourceType})`;
+
       for (const th of scannedThreads) {
-        const acctLabel = `${targetName} (${sourceType})`;
-        const key = `${acctLabel}:::${th.name.toLowerCase()}`;
+        const key = th.name.toLowerCase();
         const prev = byKey.get(key);
         const looksLikeGroup =
-          /,|\b(group|hub|club|vip|team|community|batch|chat|গ্রুপ|টিম)\b/i.test(th.name) ||
+          Boolean(th.isFromGroupsTab) ||
+          /,|\b(group|hub|club|vip|team|community|batch|chat|foundation|পরিষদ|গল্প|গ্রুপ|টিম|ফাউন্ডেশন|কমিউনিটি)\b/i.test(
+            th.name
+          ) ||
           /:/.test(th.previewLine);
         byKey.set(key, {
-          id: prev?.id || `live-msg-${th.threadId || th.name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`,
+          id: prev?.id || `live-msg-${th.threadId || th.name.toLowerCase().replace(/[^a-z0-9\u0980-\u09FF]+/g, "-")}`,
           name: th.name,
-          threadId: th.threadId || prev?.threadId || `live_thread_${th.name.toLowerCase().replace(/[^a-z0-9]+/g, "_")}`,
+          threadId:
+            th.threadId ||
+            prev?.threadId ||
+            `live_thread_${th.name.toLowerCase().replace(/[^a-z0-9]+/g, "_")}`,
           assignedAccountId: String(targetId),
           assignedAccountName: acctLabel,
-          memberCount: prev?.memberCount || (looksLikeGroup ? 45 : 2),
+          memberCount: prev?.memberCount || (looksLikeGroup ? 65 : 2),
           maxCapacity: 250,
           category: prev?.category || (looksLikeGroup ? "General VIP" : "E-Commerce Buyers"),
           lastMessageSent: th.timeLine || "Active now",
@@ -306,7 +417,7 @@ async function runMessengerGroupBot(configPath) {
         });
       }
       fs.writeFileSync(liveGroupsFile, JSON.stringify(Array.from(byKey.values()), null, 2), "utf8");
-      console.log(`✅ Synced ${scannedThreads.length} live Messenger group(s)/thread(s) to messenger-groups-live.json`);
+      console.log(`✅ Deep-synced ${scannedThreads.length} live Messenger group(s)/thread(s) to messenger-groups-live.json`);
     }
 
     // 2. If action === "DISPATCH_CAMPAIGN", send messages to each target group/thread

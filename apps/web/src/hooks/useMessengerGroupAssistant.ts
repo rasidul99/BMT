@@ -76,19 +76,19 @@ export interface MessengerGroupCampaign {
 
 const DEFAULT_CONNECTED_ACCOUNTS: ConnectedMessengerAccount[] = [
   {
-    id: "61595136714776",
-    name: "Test Next (Page)",
-    rawName: "Test Next",
-    sourceType: "Page",
-    uid: "61595136714776",
-    status: "Active",
-  },
-  {
     id: "61560588090925",
     name: "Rasidul Islam Sajib — Personal ID (61560588090925)",
     rawName: "Rasidul Islam Sajib",
     sourceType: "Personal ID",
     uid: "61560588090925",
+    status: "Active",
+  },
+  {
+    id: "61595136714776",
+    name: "Test Next (Page)",
+    rawName: "Test Next",
+    sourceType: "Page",
+    uid: "61595136714776",
     status: "Active",
   },
   {

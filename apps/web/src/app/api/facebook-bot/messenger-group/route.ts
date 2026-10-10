@@ -73,7 +73,18 @@ function loadLiveGroups(paths: ReturnType<typeof getBotPaths>) {
     }
   }
 
-  return groups
+  // Deduplicate by normalized name so no thread/group appears twice
+  const seen = new Set<string>()
+  const uniqueGroups: any[] = []
+  for (const g of groups) {
+    if (!g || !g.name) continue
+    const key = String(g.name).trim().toLowerCase()
+    if (seen.has(key)) continue
+    seen.add(key)
+    uniqueGroups.push(g)
+  }
+
+  return uniqueGroups
 }
 
 export async function GET() {
@@ -91,19 +102,19 @@ export async function GET() {
 
     const connectedAccounts = [
       {
-        id: "61595136714776",
-        name: "Test Next (Page)",
-        rawName: "Test Next",
-        sourceType: "Page",
-        uid: "61595136714776",
-        status: "Active",
-      },
-      {
         id: cUserId,
         name: `Rasidul Islam Sajib — Personal ID (${cUserId})`,
         rawName: "Rasidul Islam Sajib",
         sourceType: "Personal ID",
         uid: cUserId,
+        status: "Active",
+      },
+      {
+        id: "61595136714776",
+        name: "Test Next (Page)",
+        rawName: "Test Next",
+        sourceType: "Page",
+        uid: "61595136714776",
         status: "Active",
       },
       {
@@ -177,49 +188,42 @@ export async function POST(req: NextRequest) {
     const paths = getBotPaths()
     const { action } = body
 
-    // 1. Sync Live Messenger Groups & Threads from Real Facebook Account / Page
+    // 1. Sync Live Messenger Groups & Threads from Real Facebook Account / Page (Deep Sidebar + Groups/Communities Tabs Scan)
     if (action === "SYNC_LIVE_GROUPS") {
-      const targetId = String(body.targetId || "61595136714776").trim()
-      const targetName = String(body.targetName || "Test Next").trim()
-      const sourceType = String(body.sourceType || "Page").trim()
+      const targetId = String(body.targetId || "61560588090925").trim()
+      const targetName = String(body.targetName || "Rasidul Islam Sajib").trim()
+      const sourceType = String(body.sourceType || "Personal ID").trim()
 
-      const { isWatching, lock } = getActiveBotStatus(paths)
-      const alreadyWatching = isWatching && lock && String(lock.targetId) === targetId
-
-      if (!alreadyWatching) {
-        const syncJobId = `msg-grp-sync-${Date.now()}`
-        const configPath = path.join(paths.tempDir, `${syncJobId}-config.json`)
-        fs.writeFileSync(
-          configPath,
-          JSON.stringify(
-            {
-              action: "SYNC_GROUPS",
-              sourceType,
-              targetId,
-              targetName,
-              headless: false,
-            },
-            null,
-            2
-          ),
-          "utf8"
-        )
-        const scriptPath = path.join(paths.botDir, "facebook-messenger-group-bot.js")
-        const child = spawn("node", [scriptPath, configPath], {
-          cwd: paths.botDir,
-          detached: true,
-          stdio: "ignore",
-        })
-        child.unref()
-      }
+      const syncJobId = `msg-grp-sync-${Date.now()}`
+      const configPath = path.join(paths.tempDir, `${syncJobId}-config.json`)
+      fs.writeFileSync(
+        configPath,
+        JSON.stringify(
+          {
+            action: "SYNC_GROUPS",
+            sourceType,
+            targetId,
+            targetName,
+            headless: false,
+          },
+          null,
+          2
+        ),
+        "utf8"
+      )
+      const scriptPath = path.join(paths.botDir, "facebook-messenger-group-bot.js")
+      const child = spawn("node", [scriptPath, configPath], {
+        cwd: paths.botDir,
+        detached: true,
+        stdio: "ignore",
+      })
+      child.unref()
 
       const liveGroups = loadLiveGroups(paths)
       return NextResponse.json({
         success: true,
-        alreadyWatching,
-        message: alreadyWatching
-          ? `✅ Synced ${liveGroups.length} live Messenger thread(s)/group(s) from active 24/7 session (${targetName})!`
-          : `✅ Synced ${liveGroups.length} connected Messenger group(s)/thread(s) for "${targetName}"!`,
+        alreadyWatching: false,
+        message: `✅ Deep-scanning all Messenger Groups & Communities for "${targetName}" (${sourceType})... (${liveGroups.length} currently loaded, new groups will appear automatically as the sidebar scrolls!)`,
         liveGroups,
       })
     }
