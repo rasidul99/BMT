@@ -714,7 +714,17 @@ export function FriendAutomationCenter({ currentMode }: Props) {
               <div className="flex items-center gap-2">
                 {!runnerState.isRunning ? (
                   <button
-                    onClick={startRunner}
+                    onClick={async () => {
+                      const res = await startRunner()
+                      if (res?.success) {
+                        triggerNotification(
+                          res.message ||
+                            "🚀 রিয়েল ফেসবুক ব্রাউজার বট চালু হয়েছে — প্রোফাইল ভিজিট ও ফ্রেন্ড রিকোয়েস্ট পাঠানো হচ্ছে!"
+                        )
+                      } else if (res?.error) {
+                        triggerNotification(`⚠️ ${res.error}`)
+                      }
+                    }}
                     className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition flex items-center gap-1.5 shadow-xs"
                   >
                     <Play className="w-3.5 h-3.5" />
@@ -769,7 +779,7 @@ export function FriendAutomationCenter({ currentMode }: Props) {
                     <div className="font-bold text-sm text-foreground flex items-center gap-2">
                       <span>{runnerState.activeAccountName || "Selecting account..."}</span>
                       <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300 font-mono">
-                        {runnerState.activeProxy || "103.145.23.11:8080"}
+                        {runnerState.activeProxy || "Live Browser Session"}
                       </span>
                     </div>
                   </div>
@@ -845,13 +855,30 @@ export function FriendAutomationCenter({ currentMode }: Props) {
               </div>
             ) : (
               <div className="bg-muted/20 border border-border border-dashed p-6 rounded-xl text-center space-y-2">
-                <Clock className="w-8 h-8 mx-auto text-muted-foreground" />
-                <div className="font-bold text-sm text-foreground">Automation Engine is Idle</div>
-                <p className="text-xs text-muted-foreground max-w-md mx-auto">
-                  {metrics.queuedLeads > 0
-                    ? `You have ${metrics.queuedLeads} leads waiting in queue. Click "Start Queue Runner" to begin multi-account human simulation.`
-                    : "No leads currently in queue. Go to the 'Target Audience & Lead Studio' tab to add leads into the queue."}
-                </p>
+                {runnerState.totalProcessedInSession > 0 ? (
+                  <>
+                    <CheckCircle2 className="w-8 h-8 mx-auto text-emerald-500" />
+                    <div className="font-bold text-sm text-emerald-600 dark:text-emerald-400">
+                      {runnerState.currentStepLabel ||
+                        `✅ ${runnerState.totalProcessedInSession} Queued Friend Request(s) Processed on Live Facebook!`}
+                    </div>
+                    <p className="text-xs text-muted-foreground max-w-md mx-auto">
+                      {metrics.queuedLeads > 0
+                        ? `${metrics.queuedLeads} more lead(s) waiting in queue. Click "Start Queue Runner" to continue.`
+                        : "Click 'Start Queue Runner' above to auto-queue the next 2 discovered leads and launch the live Facebook bot!"}
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <Clock className="w-8 h-8 mx-auto text-muted-foreground" />
+                    <div className="font-bold text-sm text-foreground">Automation Engine is Idle</div>
+                    <p className="text-xs text-muted-foreground max-w-md mx-auto">
+                      {metrics.queuedLeads > 0
+                        ? `You have ${metrics.queuedLeads} leads waiting in queue. Click "Start Queue Runner" to begin multi-account human simulation.`
+                        : "Click 'Start Queue Runner' above to automatically queue the next 2 discovered leads and start the live Facebook browser bot."}
+                    </p>
+                  </>
+                )}
               </div>
             )}
           </div>

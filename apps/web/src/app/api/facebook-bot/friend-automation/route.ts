@@ -238,11 +238,16 @@ export async function POST(req: NextRequest) {
       const settings = body.settings || {}
 
       let currentLeads = Array.isArray(state.leads) ? state.leads : []
-      let queued = currentLeads.filter((l: any) => l.status === "Queued")
+      let queued = currentLeads.filter((l: any) => l.status === "Queued" || l.status === "Simulating")
       if (queued.length === 0) {
-        currentLeads = currentLeads.map((l: any, idx: number) =>
-          l.status === "Discovered" && idx < 2 ? { ...l, status: "Queued" } : l
-        )
+        let autoQueued = 0
+        currentLeads = currentLeads.map((l: any) => {
+          if (l.status === "Discovered" && autoQueued < 2) {
+            autoQueued++
+            return { ...l, status: "Queued" }
+          }
+          return l
+        })
         queued = currentLeads.filter((l: any) => l.status === "Queued")
         state.leads = currentLeads
       }
@@ -250,7 +255,7 @@ export async function POST(req: NextRequest) {
       if (queued.length === 0) {
         return NextResponse.json({
           success: false,
-          error: "কোনো Queued প্রোফাইল নেই! আগে প্রোফাইল Queue করুন অথবা নতুন প্রোফাইল যুক্ত করুন।",
+          error: "সবগুলো প্রোফাইলেই ইতিমধ্যে ফ্রেন্ড রিকোয়েস্ট পাঠানো হয়েছে! নতুন প্রোফাইল Sync বা Add করুন।",
         })
       }
 

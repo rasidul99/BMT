@@ -352,6 +352,7 @@ export function useFriendAutomation() {
       if (Array.isArray(data.leads)) setLeads(data.leads)
       if (data.runnerState) setRunnerState(data.runnerState)
     }
+    return data
   }, [settings])
 
   const pauseRunner = useCallback(async () => {
