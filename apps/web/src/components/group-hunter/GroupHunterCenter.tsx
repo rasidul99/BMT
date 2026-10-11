@@ -52,8 +52,13 @@ export function GroupHunterCenter({ currentMode }: GroupHunterCenterProps) {
     fbGroups,
     msgrGroups,
     isScanning,
+    sessionInfo,
+    scanState,
     metrics,
     triggerScan,
+    huntGroupsByKeyword,
+    joinLiveGroup,
+    updateCookieAndConnect,
     saveGroupToPostGroup,
     addCustomFbGroup,
     addCustomMsgrGroup,
@@ -64,6 +69,13 @@ export function GroupHunterCenter({ currentMode }: GroupHunterCenterProps) {
   const [activeTab, setActiveTab] = useState<"FB" | "MESSENGER" | "SAVED">("FB")
   const [copiedId, setCopiedId] = useState<string | null>(null)
   const [toastMessage, setToastMessage] = useState<string | null>(null)
+
+  // Live Facebook Keyword Hunter State
+  const [liveKeyword, setLiveKeyword] = useState("")
+  const [showCookieBox, setShowCookieBox] = useState(false)
+  const [cookieInput, setCookieInput] = useState("")
+  const [isSavingCookie, setIsSavingCookie] = useState(false)
+  const [joiningGroupId, setJoiningGroupId] = useState<string | null>(null)
 
   // FB Filters
   const [fbSearch, setFbSearch] = useState("")
@@ -91,6 +103,43 @@ export function GroupHunterCenter({ currentMode }: GroupHunterCenterProps) {
   const showToast = (msg: string) => {
     setToastMessage(msg)
     setTimeout(() => setToastMessage(null), 3500)
+  }
+
+  const handleLiveKeywordHunt = async (customKeyword?: string) => {
+    const query = (customKeyword !== undefined ? customKeyword : liveKeyword || fbSearch).trim()
+    setActiveTab("FB")
+    showToast(
+      query
+        ? `🔍 Real Facebook-এ "${query}" লিখে লাইভ গ্রুপ খোঁজা শুরু হয়েছে...`
+        : `🔍 Real Facebook থেকে আপনার গ্রুপ ও পেজ স্ক্যান শুরু হয়েছে...`
+    )
+    await huntGroupsByKeyword(query, fbCountry, fbCategory)
+  }
+
+  const handleJoinOnLiveFb = async (grp: FacebookActiveGroup) => {
+    setJoiningGroupId(grp.id)
+    showToast(`🚀 Real Facebook-এ "${grp.name.slice(0, 28)}..." গ্রুপে Join রিকোয়েস্ট পাঠানো হচ্ছে...`)
+    const res = await joinLiveGroup(grp.id)
+    if (res?.success) {
+      showToast(`✅ Bot launched to join "${grp.name.slice(0, 28)}..." on live Facebook!`)
+    } else {
+      showToast(`⚠️ ${res?.error || "Could not launch join bot"}`)
+    }
+    setTimeout(() => setJoiningGroupId(null), 3000)
+  }
+
+  const handleConnectCookie = async () => {
+    if (!cookieInput.trim()) return
+    setIsSavingCookie(true)
+    const res = await updateCookieAndConnect(cookieInput.trim())
+    setIsSavingCookie(false)
+    if (res?.success) {
+      setCookieInput("")
+      setShowCookieBox(false)
+      showToast(`✅ Connected to Real FB ID (${res.cUser}) & started live group hunt!`)
+    } else {
+      showToast(`❌ ${res?.error || "Invalid Facebook Cookie"}`)
+    }
   }
 
   // Copy helper
@@ -472,6 +521,162 @@ export function GroupHunterCenter({ currentMode }: GroupHunterCenterProps) {
         </div>
       </div>
 
+      {/* ======================================================== */}
+      {/* REAL FACEBOOK PERSONAL ID + LIVE KEYWORD GROUP HUNTER     */}
+      {/* ======================================================== */}
+      <div className="border-2 border-blue-500/30 bg-gradient-to-r from-blue-950/20 via-card to-indigo-950/20 p-4 sm:p-5 rounded-2xl shadow-sm space-y-4">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 border-b border-border/70 pb-3.5">
+          <div className="flex items-center flex-wrap gap-2.5">
+            <span className="inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-full text-[11px] font-extrabold bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+              <span>{sessionInfo.hasCookie ? "REAL FB CONNECTED" : "COOKIE REQUIRED"}</span>
+            </span>
+            <span className="text-xs sm:text-sm font-black text-foreground">
+              {sessionInfo.accountName || "Rasidul Islam Sajib — Personal ID (61560588090925)"}
+            </span>
+            <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-muted text-muted-foreground border border-border">
+              ID: {sessionInfo.cUserId || "61560588090925"}
+            </span>
+            {scanState.keyword && (
+              <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-blue-500/15 text-blue-600 dark:text-blue-400 border border-blue-500/30">
+                Last Live Search: &ldquo;{scanState.keyword}&rdquo; ({scanState.lastDiscoveredCount || fbGroups.length} groups)
+              </span>
+            )}
+          </div>
+
+          <div className="flex items-center flex-wrap gap-2">
+            <button
+              onClick={() => handleLiveKeywordHunt("My Joined Groups")}
+              disabled={isScanning}
+              className="flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white transition shadow-xs disabled:opacity-50"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${isScanning ? "animate-spin" : ""}`} />
+              <span>Sync My Joined FB Groups</span>
+            </button>
+            <button
+              onClick={() => setShowCookieBox(!showCookieBox)}
+              className="flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-card hover:bg-muted border border-border text-foreground transition"
+            >
+              <ShieldCheck className="w-3.5 h-3.5 text-blue-500" />
+              <span>{showCookieBox ? "Hide Cookie Box" : "Reconnect FB Cookie"}</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Inline Cookie Reconnect Bar */}
+        {showCookieBox && (
+          <div className="p-3.5 rounded-xl bg-muted/60 border border-border space-y-2 text-xs">
+            <p className="font-bold text-foreground">
+              Update Real Facebook Session Cookie (`c_user` & `xs`) for Live Group Hunting:
+            </p>
+            <div className="flex flex-col sm:flex-row gap-2">
+              <input
+                type="text"
+                placeholder="Paste full Facebook cookie string (c_user=...; xs=...) or JSON array..."
+                value={cookieInput}
+                onChange={(e) => setCookieInput(e.target.value)}
+                className="flex-1 px-3 py-2 rounded-lg border bg-background text-xs font-mono"
+              />
+              <button
+                onClick={handleConnectCookie}
+                disabled={isSavingCookie || !cookieInput.trim()}
+                className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs transition disabled:opacity-50 shrink-0"
+              >
+                {isSavingCookie ? "Connecting..." : "Save & Connect Real FB"}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Prominent Live Keyword Search Box */}
+        <div className="space-y-2.5">
+          <label className="text-xs font-extrabold text-foreground flex items-center gap-1.5">
+            <Sparkles className="w-4 h-4 text-blue-500" />
+            <span>
+              লাইভ ফেসবুক গ্রুপ হান্টার (যেকোনো কি-ওয়ার্ড লিখে সার্চ দিন — বট সরাসরি Real Facebook থেকে লাইভ গ্রুপ খুঁজে আনবে):
+            </span>
+          </label>
+
+          <form
+            onSubmit={(e) => {
+              e.preventDefault()
+              handleLiveKeywordHunt(liveKeyword)
+            }}
+            className="flex flex-col sm:flex-row gap-2.5"
+          >
+            <div className="relative flex-1">
+              <Search className="w-4 h-4 absolute left-3.5 top-3 text-blue-500" />
+              <input
+                type="text"
+                placeholder="যেকোনো কি-ওয়ার্ড লিখুন (যেমন: Buy Sell Bangladesh, Ecommerce BD, Fashion Group, Real Estate Dhaka)..."
+                value={liveKeyword}
+                onChange={(e) => setLiveKeyword(e.target.value)}
+                className="w-full pl-10 pr-4 py-2.5 rounded-xl border-2 border-blue-500/40 focus:border-blue-600 bg-background text-xs sm:text-sm font-semibold text-foreground outline-none transition"
+              />
+            </div>
+            <button
+              type="submit"
+              disabled={isScanning}
+              className="flex items-center justify-center space-x-2 px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-black text-xs sm:text-sm shadow-md transition disabled:opacity-50 shrink-0 min-h-[42px]"
+            >
+              <RefreshCw className={`w-4 h-4 ${isScanning ? "animate-spin" : ""}`} />
+              <span>
+                {isScanning ? "Hunting Live on Facebook..." : "🔍 Hunt Live FB Groups"}
+              </span>
+            </button>
+          </form>
+
+          {/* Quick 1-Click Keyword Pills */}
+          <div className="flex items-center flex-wrap gap-1.5 pt-0.5">
+            <span className="text-[11px] font-bold text-muted-foreground mr-1">
+              Quick Live Hunt:
+            </span>
+            {[
+              "Buy Sell Bangladesh",
+              "Ecommerce Bangladesh",
+              "Wholesale Market BD",
+              "Online Shopping Dhaka",
+              "Fashion & Boutique BD",
+              "Gadgets & Electronics BD",
+            ].map((kw) => (
+              <button
+                key={kw}
+                type="button"
+                disabled={isScanning}
+                onClick={() => {
+                  setLiveKeyword(kw)
+                  handleLiveKeywordHunt(kw)
+                }}
+                className="px-2.5 py-1 rounded-full text-[11px] font-semibold bg-card hover:bg-blue-600 hover:text-white border border-border transition disabled:opacity-50"
+              >
+                🔍 {kw}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Live Scan Progress & Status Bar */}
+        {(isScanning || scanState.currentStepLabel) && (
+          <div className="p-3 rounded-xl bg-background/90 border border-blue-500/30 space-y-2">
+            <div className="flex items-center justify-between text-xs">
+              <div className="flex items-center space-x-2 font-bold text-foreground">
+                <Zap className={`w-4 h-4 text-blue-500 ${isScanning ? "animate-bounce" : ""}`} />
+                <span>{scanState.currentStepLabel || "Ready to hunt live Facebook groups."}</span>
+              </div>
+              <span className="text-[11px] font-black text-blue-600 dark:text-blue-400">
+                {scanState.progress || 0}%
+              </span>
+            </div>
+            <div className="w-full h-2 rounded-full bg-muted overflow-hidden">
+              <div
+                className="h-full bg-gradient-to-r from-blue-600 to-emerald-500 transition-all duration-500"
+                style={{ width: `${Math.max(5, scanState.progress || 0)}%` }}
+              />
+            </div>
+          </div>
+        )}
+      </div>
+
       {/* Executive Metric Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <div className="border border-border bg-card p-4 rounded-xl shadow-xs flex flex-col justify-between">
@@ -588,29 +793,34 @@ export function GroupHunterCenter({ currentMode }: GroupHunterCenterProps) {
             <div className="flex items-center justify-between border-b border-border pb-2.5">
               <div className="flex items-center space-x-2">
                 <Sliders className="w-4 h-4 text-blue-500" />
-                <h3 className="font-extrabold text-foreground">Scraper Filters & Score Thresholds</h3>
+                <h3 className="font-extrabold text-foreground">Table Filter & Score Thresholds</h3>
               </div>
               <button
-                onClick={() => triggerScan("FB")}
+                onClick={() => handleLiveKeywordHunt(fbSearch || liveKeyword)}
                 disabled={isScanning}
                 className="flex items-center space-x-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg transition disabled:opacity-50"
               >
                 <RefreshCw className={`w-3.5 h-3.5 ${isScanning ? "animate-spin" : ""}`} />
-                <span>{isScanning ? "Scanning Active Groups..." : "Scan Active FB Groups"}</span>
+                <span>{isScanning ? "Scanning Live FB Groups..." : "Scan Active FB Groups"}</span>
               </button>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
               {/* Search */}
               <div className="space-y-1">
-                <label className="text-[11px] font-bold text-muted-foreground">Keyword / Niche</label>
+                <label className="text-[11px] font-bold text-muted-foreground">Filter Loaded Groups / Keyword</label>
                 <div className="relative">
                   <Search className="w-3.5 h-3.5 absolute left-2.5 top-2.5 text-muted-foreground" />
                   <input
                     type="text"
-                    placeholder="e.g. Fashion, Gadgets, Deals..."
+                    placeholder="Filter list or press Enter to hunt..."
                     value={fbSearch}
                     onChange={(e) => setFbSearch(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && fbSearch.trim()) {
+                        handleLiveKeywordHunt(fbSearch.trim())
+                      }
+                    }}
                     className="w-full pl-8 pr-3 py-1.5 border rounded-lg bg-background text-xs"
                   />
                 </div>
@@ -695,12 +905,27 @@ export function GroupHunterCenter({ currentMode }: GroupHunterCenterProps) {
             </div>
 
             {filteredFbGroups.length === 0 ? (
-              <div className="p-8 text-center space-y-2">
+              <div className="p-8 text-center space-y-3">
                 <Compass className="w-8 h-8 text-muted-foreground mx-auto opacity-50" />
-                <p className="font-bold text-foreground">No groups match your current filter</p>
+                <p className="font-bold text-foreground">No local groups match &ldquo;{fbSearch}&rdquo;</p>
                 <p className="text-muted-foreground text-xs">
-                  Try adjusting the country, category, or min score filter.
+                  Click below to hunt live Facebook groups for this keyword directly from your connected Facebook ID!
                 </p>
+                {fbSearch.trim() && (
+                  <button
+                    onClick={() => {
+                      const q = fbSearch.trim()
+                      setFbSearch("")
+                      setLiveKeyword(q)
+                      handleLiveKeywordHunt(q)
+                    }}
+                    disabled={isScanning}
+                    className="inline-flex items-center space-x-2 px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-sm transition"
+                  >
+                    <Search className="w-3.5 h-3.5" />
+                    <span>🔍 Hunt &ldquo;{fbSearch}&rdquo; on Live Facebook</span>
+                  </button>
+                )}
               </div>
             ) : (
               <div className="divide-y divide-border">
@@ -721,6 +946,12 @@ export function GroupHunterCenter({ currentMode }: GroupHunterCenterProps) {
                           <span>{grp.name}</span>
                           <ExternalLink className="w-3.5 h-3.5" />
                         </a>
+                        {(grp.isLiveHunted || grp.isLiveExtracted) && (
+                          <span className="inline-flex items-center space-x-1 px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                            <span>LIVE FB</span>
+                          </span>
+                        )}
                         {grp.autoApproval && (
                           <span className="inline-flex items-center space-x-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-50 text-blue-700 dark:bg-blue-950/50 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
                             <ShieldCheck className="w-3 h-3" />
@@ -785,7 +1016,7 @@ export function GroupHunterCenter({ currentMode }: GroupHunterCenterProps) {
                     </div>
 
                     {/* Right: Actions */}
-                    <div className="flex items-center space-x-2 shrink-0">
+                    <div className="flex items-center flex-wrap gap-2 shrink-0">
                       <button
                         onClick={() => handleCopy(grp.url, grp.id)}
                         title="Copy Facebook Group URL"
@@ -797,6 +1028,27 @@ export function GroupHunterCenter({ currentMode }: GroupHunterCenterProps) {
                           <Copy className="w-4 h-4" />
                         )}
                       </button>
+
+                      {grp.joinStatus === "JOINED" ? (
+                        <span className="inline-flex items-center space-x-1 px-2.5 py-2 rounded-lg text-xs font-bold bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 min-h-[36px]">
+                          <CheckCircle2 className="w-3.5 h-3.5" />
+                          <span>Joined</span>
+                        </span>
+                      ) : grp.joinStatus === "REQUESTED" ? (
+                        <span className="inline-flex items-center space-x-1 px-2.5 py-2 rounded-lg text-xs font-bold bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30 min-h-[36px]">
+                          <Clock className="w-3.5 h-3.5" />
+                          <span>Requested</span>
+                        </span>
+                      ) : (
+                        <button
+                          onClick={() => handleJoinOnLiveFb(grp)}
+                          disabled={joiningGroupId === grp.id}
+                          className="flex items-center space-x-1.5 px-3 py-2 rounded-lg text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white transition shadow-xs min-h-[36px] disabled:opacity-50"
+                        >
+                          <Users className="w-3.5 h-3.5" />
+                          <span>{joiningGroupId === grp.id ? "Joining..." : "Join on Live FB"}</span>
+                        </button>
+                      )}
 
                       {grp.isSavedToPostGroup ? (
                         <button
