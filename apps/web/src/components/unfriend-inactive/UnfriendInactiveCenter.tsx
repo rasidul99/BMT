@@ -46,6 +46,7 @@ interface Props {
 export function UnfriendInactiveCenter({ currentMode }: Props) {
   const {
     isLoaded,
+    sessionInfo,
     friends,
     settings,
     logs,
@@ -55,6 +56,8 @@ export function UnfriendInactiveCenter({ currentMode }: Props) {
     setSelectedAccountId,
     isScanning,
     runInactivityScan,
+    updateCookieAndConnect,
+    addCustomFriend,
     toggleWhitelist,
     toggleQueueFriend,
     queueAllInactive,
@@ -70,6 +73,11 @@ export function UnfriendInactiveCenter({ currentMode }: Props) {
   const [inactivityFilter, setInactivityFilter] = useState<string>("All")
   const [searchQuery, setSearchQuery] = useState("")
   const [logSearch, setLogSearch] = useState("")
+  const [quickCookieInput, setQuickCookieInput] = useState("")
+  const [isSavingCookie, setIsSavingCookie] = useState(false)
+  const [showAddFriendModal, setShowAddFriendModal] = useState(false)
+  const [customFriendName, setCustomFriendName] = useState("")
+  const [customFriendUrl, setCustomFriendUrl] = useState("")
 
   // Notification toast
   const [notification, setNotification] = useState<string | null>(null)
@@ -186,7 +194,20 @@ export function UnfriendInactiveCenter({ currentMode }: Props) {
         </div>
 
         {/* Header Action Buttons */}
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            onClick={async () => {
+              triggerNotification("🔍 রিয়েল ব্রাউজারে আপনার ফেসবুক ফ্রেন্ডলিস্ট (/friends/list) স্ক্যান শুরু হয়েছে...")
+              const res = await runInactivityScan()
+              if (res?.message) triggerNotification(res.message)
+            }}
+            disabled={isScanning}
+            className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white rounded-lg text-xs font-bold transition flex items-center gap-1.5 shadow-xs"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${isScanning ? "animate-spin" : ""}`} />
+            <span>{isScanning ? "Scanning Live FB..." : "Scan Live FB Friends"}</span>
+          </button>
+
           <button
             onClick={exportInactiveToCSV}
             className="px-3 py-2 bg-muted hover:bg-muted/80 text-foreground border border-border rounded-lg text-xs font-semibold transition flex items-center gap-1.5 shadow-xs"
@@ -225,17 +246,127 @@ export function UnfriendInactiveCenter({ currentMode }: Props) {
             </>
           ) : (
             <button
-              onClick={() => {
-                startCleanupRunner()
-                triggerNotification("Launched Inactive Friends Cleanup Runner!")
+              onClick={async () => {
+                const res = await startCleanupRunner()
+                if (res?.success) {
+                  triggerNotification(res.message || "🚀 রিয়েল ফেসবুক ব্রাউজারে আনফ্রেন্ড বট চালু হয়েছে!")
+                } else if (res?.error) {
+                  triggerNotification(`⚠️ ${res.error}`)
+                }
               }}
               className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-xs font-bold transition flex items-center gap-2 shadow-xs shadow-red-500/20"
             >
               <Trash2 className="w-3.5 h-3.5" />
-              Start Cleanup ({metrics.queuedForUnfriend} Queued)
+              Start Live Cleanup ({metrics.queuedForUnfriend} Queued)
             </button>
           )}
         </div>
+      </div>
+
+      {/* Real Facebook Personal ID Connection & Quick Cookie Reconnect Bar */}
+      <div className="border border-red-500/30 bg-red-500/5 rounded-2xl p-4 flex flex-col gap-3 text-xs">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-red-600/15 border border-red-500/30 flex items-center justify-center text-red-600 dark:text-red-400 shrink-0">
+              <ShieldCheck className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="font-extrabold text-foreground text-sm flex items-center flex-wrap gap-2">
+                <span>Connected Real Facebook Personal ID: Rasidul Islam Sajib ({sessionInfo.cUserId})</span>
+                {sessionInfo.botStatus === "AUTH_ERROR" ? (
+                  <span className="px-2 py-0.5 text-[10px] rounded bg-amber-500/20 text-amber-600 dark:text-amber-400 font-black">
+                    ⚠️ Needs Facebook Cookie / Browser Login
+                  </span>
+                ) : (
+                  <span className="px-2 py-0.5 text-[10px] rounded bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 font-black">
+                    ✅ Live Puppeteer Unfriend Engine Ready
+                  </span>
+                )}
+              </div>
+              <p className="text-[11px] text-muted-foreground mt-0.5">
+                <strong>Scan Live FB Friends</strong>-এ ক্লিক করলে আপনার আসল ফেসবুকের <code>/friends/list</code> স্ক্যান হবে এবং <strong>Unfriend</strong> বা <strong>Start Live Cleanup</strong>-এ ক্লিক করলে রিয়েল ব্রাউজারে প্রোফাইলে গিয়ে <strong>Friends ➔ Unfriend ➔ Confirm</strong> ক্লিক হবে।
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => setShowAddFriendModal((v) => !v)}
+            className="px-3.5 py-2 rounded-xl bg-card border border-border hover:bg-muted text-foreground font-bold text-xs transition shrink-0"
+          >
+            + Add Specific Friend to Unfriend
+          </button>
+        </div>
+
+        {showAddFriendModal && (
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 pt-2 border-t border-border">
+            <input
+              type="text"
+              value={customFriendName}
+              onChange={(e) => setCustomFriendName(e.target.value)}
+              placeholder="ফ্রেন্ডের নাম লিখুন (যেমন: Md Soykot Ahmed)"
+              className="flex-1 px-3 py-2 rounded-xl border border-border bg-background text-xs text-foreground"
+            />
+            <input
+              type="text"
+              value={customFriendUrl}
+              onChange={(e) => setCustomFriendUrl(e.target.value)}
+              placeholder="ফেসবুক প্রোফাইল লিংক (ঐচ্ছিক: https://www.facebook.com/...)"
+              className="flex-1 px-3 py-2 rounded-xl border border-border bg-background text-xs text-foreground"
+            />
+            <button
+              type="button"
+              disabled={!customFriendName.trim()}
+              onClick={async () => {
+                await addCustomFriend({
+                  name: customFriendName.trim(),
+                  profileUrl: customFriendUrl.trim(),
+                  daysInactive: 185,
+                  inactivityReason: "Never Interacted (180+ Days)",
+                })
+                triggerNotification(`✅ "${customFriendName.trim()}"-কে Unfriend Queue-তে যুক্ত করা হয়েছে!`)
+                setCustomFriendName("")
+                setCustomFriendUrl("")
+                setShowAddFriendModal(false)
+              }}
+              className="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white font-black text-xs transition shrink-0"
+            >
+              Add to Queue
+            </button>
+          </div>
+        )}
+
+        {sessionInfo.botStatus === "AUTH_ERROR" && (
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 pt-2 border-t border-amber-500/30">
+            <input
+              type="text"
+              value={quickCookieInput}
+              onChange={(e) => setQuickCookieInput(e.target.value)}
+              placeholder="নতুন Facebook Cookie পেস্ট করুন (c_user=...; xs=...)"
+              className="flex-1 px-3 py-2 rounded-xl border border-amber-500/40 bg-background text-xs font-mono text-foreground"
+            />
+            <button
+              type="button"
+              disabled={isSavingCookie || !quickCookieInput.trim()}
+              onClick={async () => {
+                setIsSavingCookie(true)
+                try {
+                  const res = await updateCookieAndConnect(quickCookieInput.trim())
+                  if (res?.success) {
+                    setQuickCookieInput("")
+                    triggerNotification(res.message || "✅ Facebook Cookie saved & connected!")
+                  } else {
+                    triggerNotification(res?.error || "⚠️ Cookie save failed")
+                  }
+                } finally {
+                  setIsSavingCookie(false)
+                }
+              }}
+              className="px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 disabled:opacity-50 text-white font-black text-xs transition shrink-0"
+            >
+              {isSavingCookie ? "Saving..." : "🔑 Save Cookie & Reconnect"}
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Metrics Row */}
@@ -568,13 +699,20 @@ export function UnfriendInactiveCenter({ currentMode }: Props) {
                           </button>
 
                           <button
-                            onClick={() => {
-                              unfriendSingle(friend.id)
-                              triggerNotification(`Unfriended ${friend.name} successfully!`)
+                            disabled={friend.isWhitelisted}
+                            onClick={async () => {
+                              const res = await unfriendSingle(friend.id)
+                              if (res?.success) {
+                                triggerNotification(
+                                  res.message || `🚀 রিয়েল ব্রাউজারে ${friend.name}-কে আনফ্রেন্ড করার বট চালু হয়েছে!`
+                                )
+                              } else if (res?.error) {
+                                triggerNotification(`⚠️ ${res.error}`)
+                              }
                             }}
-                            className="px-2.5 py-1 text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40 rounded font-semibold text-xs transition"
+                            className="px-2.5 py-1 text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40 disabled:opacity-40 rounded font-semibold text-xs transition"
                           >
-                            Unfriend
+                            {friend.status === "Unfriending" ? "Unfriending..." : "Unfriend"}
                           </button>
                         </div>
                       </td>
