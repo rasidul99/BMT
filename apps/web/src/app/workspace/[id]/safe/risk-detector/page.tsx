@@ -150,6 +150,9 @@ export default function SafeRiskDetectorPage() {
       }
     } catch {
       setIsScanning(false)
+    } finally {
+      // Safety auto-reset so button never hangs
+      setTimeout(() => setIsScanning(false), 20000)
     }
   }
 
@@ -170,6 +173,11 @@ export default function SafeRiskDetectorPage() {
     } catch {
       setScanningId(null)
       setIsScanning(false)
+    } finally {
+      setTimeout(() => {
+        setScanningId(null)
+        setIsScanning(false)
+      }, 15000)
     }
   }
 
