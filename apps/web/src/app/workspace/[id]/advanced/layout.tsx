@@ -16,6 +16,9 @@ import {
   ShieldCheck,
   Zap,
   GitFork,
+  Globe,
+  DollarSign,
+  Crown,
 } from "lucide-react"
 import { useWorkspace } from "../../../../hooks/useWorkspace"
 import { TopPlatformHeader } from "../../../../components/layout/TopPlatformHeader"
@@ -44,8 +47,10 @@ export default function AdvancedLayout({ children }: { children: React.ReactNode
   const advancedNav = [
     { label: "Topological Workflow Designer", icon: Workflow, path: `/workspace/${workspaceId}/advanced/designer` },
     { label: "Connect Accounts (100 FB/Pages)", icon: KeyRound, path: `/workspace/${workspaceId}/advanced/connect-accounts` },
+    { label: "Connected Website (Blog Auto)", icon: Globe, path: `/workspace/${workspaceId}/advanced/connected-website` },
     { label: "Post Scheduler & AI Variations", icon: CalendarClock, path: `/workspace/${workspaceId}/advanced/post-scheduler` },
     { label: "Post A Group Engine", icon: Users, path: `/workspace/${workspaceId}/advanced/group-poster` },
+    { label: "Admin Group Assistant", icon: ShieldCheck, path: `/workspace/${workspaceId}/advanced/admin-group` },
     { label: "Smart Link Rotator", icon: GitFork, path: `/workspace/${workspaceId}/advanced/smart-link-rotator` },
     { label: "Invite Page Flow Engine", icon: UserPlus, path: `/workspace/${workspaceId}/advanced/invite-page` },
     { label: "Smart Comment Assistant", icon: MessageSquare, path: `/workspace/${workspaceId}/advanced/comment-assistant` },
@@ -54,6 +59,8 @@ export default function AdvancedLayout({ children }: { children: React.ReactNode
     { label: "Unfriend Inactive Users", icon: UserMinus, path: `/workspace/${workspaceId}/advanced/unfriend-inactive` },
     { label: "Link Comment Auto-Deleter", icon: Ban, path: `/workspace/${workspaceId}/advanced/link-comment-block` },
     { label: "Active Group & Link Hunter", icon: Target, path: `/workspace/${workspaceId}/advanced/group-hunter` },
+    { label: "Company Finance Report", icon: DollarSign, path: `/workspace/${workspaceId}/advanced/finance` },
+    { label: "Super Admin Platform", icon: Crown, path: `/admin/super` },
   ]
 
   const renderNavContent = (collapsed: boolean, isMobileDrawer = false) => (

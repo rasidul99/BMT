@@ -71,3 +71,8 @@ scripts/facebook-bot/temp/
 # Local User Uploads Cache (keep folder structure)
 apps/web/public/uploads/*
 !apps/web/public/uploads/.gitkeep
+
+# Local Binaries and Profiles
+scripts/cloudflared.exe
+scripts/facebook-bot/chrome-*-profile/
+scripts/facebook-bot/chrome-risk-detector-profile/

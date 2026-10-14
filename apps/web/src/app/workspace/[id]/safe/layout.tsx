@@ -24,6 +24,12 @@ import {
   UserMinus,
   MessageCircle,
   GitFork,
+  Globe,
+  Crown,
+  TrendingUp,
+  Share2,
+  DollarSign,
+  ShieldCheck,
 } from "lucide-react"
 import { useWorkspace } from "../../../../hooks/useWorkspace"
 import { TopPlatformHeader } from "../../../../components/layout/TopPlatformHeader"
@@ -50,6 +56,7 @@ export default function SafeLayout({ children }: { children: React.ReactNode }) 
         { label: "Overview Dashboard", icon: LayoutDashboard, path: `/workspace/${workspaceId}/safe/dashboard` },
         { label: "Facebook Market (100 Accounts)", icon: Users, path: `/workspace/${workspaceId}/safe/facebook-market` },
         { label: "Connect FB Pages (OAuth)", icon: LinkIcon, path: `/workspace/${workspaceId}/safe/connect-accounts` },
+        { label: "Connected Website (Blog)", icon: Globe, path: `/workspace/${workspaceId}/safe/connected-website` },
         { label: "Asset Library", icon: Folder, path: `/workspace/${workspaceId}/safe/library` },
       ],
     },
@@ -68,6 +75,7 @@ export default function SafeLayout({ children }: { children: React.ReactNode }) 
       category: "Engagement & Moderation",
       items: [
         { label: "Post A Group", icon: Users, path: `/workspace/${workspaceId}/safe/group-poster` },
+        { label: "Admin Group Assistant", icon: ShieldCheck, path: `/workspace/${workspaceId}/safe/admin-group` },
         { label: "CTA Pin Comment", icon: Pin, path: `/workspace/${workspaceId}/safe/cta-pin-comment` },
         { label: "AI Comment Assistant", icon: MessageSquareText, path: `/workspace/${workspaceId}/safe/comment-assistant` },
         { label: "Link Comment Block", icon: ShieldAlert, path: `/workspace/${workspaceId}/safe/link-comment-block` },
@@ -89,6 +97,16 @@ export default function SafeLayout({ children }: { children: React.ReactNode }) 
         { label: "Viral Content Finder", icon: Flame, path: `/workspace/${workspaceId}/safe/viral-content` },
         { label: "FB Group Hunter", icon: Search, path: `/workspace/${workspaceId}/safe/group-hunter` },
         { label: "Risk Score Detector", icon: Activity, path: `/workspace/${workspaceId}/safe/risk-detector` },
+      ],
+    },
+    {
+      category: "Platform Administration (PDF P7)",
+      items: [
+        { label: "Super Admin Panel", icon: Crown, path: `/admin/super` },
+        { label: "Employee Admin", icon: Users, path: `/admin/employee` },
+        { label: "Investor Performance", icon: TrendingUp, path: `/admin/investor` },
+        { label: "Affiliate Partner", icon: Share2, path: `/admin/affiliate` },
+        { label: "Company Finance Report", icon: DollarSign, path: `/workspace/${workspaceId}/safe/finance` },
       ],
     },
   ]
