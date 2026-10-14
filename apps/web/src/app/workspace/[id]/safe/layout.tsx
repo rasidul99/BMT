@@ -23,6 +23,7 @@ import {
   UserPlus,
   UserMinus,
   MessageCircle,
+  GitFork,
 } from "lucide-react"
 import { useWorkspace } from "../../../../hooks/useWorkspace"
 import { TopPlatformHeader } from "../../../../components/layout/TopPlatformHeader"
@@ -58,6 +59,7 @@ export default function SafeLayout({ children }: { children: React.ReactNode }) 
         { label: "AI Post Scheduler", icon: CalendarClock, path: `/workspace/${workspaceId}/safe/post-scheduler` },
         { label: "AI Post Variations", icon: Sparkles, path: `/workspace/${workspaceId}/safe/ai-variations` },
         { label: "Clickable Image Generator", icon: ImageIcon, path: `/workspace/${workspaceId}/safe/clickable-image` },
+        { label: "Smart Link Rotator", icon: GitFork, path: `/workspace/${workspaceId}/safe/smart-link-rotator` },
         { label: "Landing Page Builder", icon: PanelTop, path: `/workspace/${workspaceId}/safe/landing-page` },
         { label: "Media Downloader", icon: Download, path: `/workspace/${workspaceId}/safe/downloader` },
       ],
@@ -76,6 +78,7 @@ export default function SafeLayout({ children }: { children: React.ReactNode }) 
     {
       category: "Audience & Growth",
       items: [
+        { label: "Invite Page Flow", icon: UserPlus, path: `/workspace/${workspaceId}/safe/invite-page` },
         { label: "Friend Automation", icon: UserPlus, path: `/workspace/${workspaceId}/safe/friend-automation` },
         { label: "Unfriend Inactive", icon: UserMinus, path: `/workspace/${workspaceId}/safe/unfriend-inactive` },
       ],
@@ -103,7 +106,7 @@ export default function SafeLayout({ children }: { children: React.ReactNode }) 
               <span className="font-extrabold text-xs tracking-tight block truncate text-foreground">FACEBOOK MARKETING</span>
               <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold flex items-center gap-1.5 mt-0.5">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
-                <span>SAFE Mode (Official API)</span>
+                <span>Business Automation (Safe)</span>
               </span>
             </div>
           )}
@@ -157,13 +160,13 @@ export default function SafeLayout({ children }: { children: React.ReactNode }) 
             router.push(`/workspace/${workspaceId}/advanced/connect-accounts`)
             closeMobileSidebar()
           }}
-          title="Switch to ADVANCED High-Power Mode"
+          title="Switch to Traffic Automation System"
           className={`w-full rounded-lg bg-orange-500/10 hover:bg-orange-500/20 text-orange-600 dark:text-orange-400 border border-orange-500/30 py-2 text-xs font-semibold transition flex items-center justify-center gap-1.5 ${
             collapsed && !isMobileDrawer ? "p-2" : "px-2"
           }`}
         >
           <Zap className="w-3.5 h-3.5 text-orange-500 shrink-0" />
-          {(!collapsed || isMobileDrawer) && <span>Switch to ADVANCED</span>}
+          {(!collapsed || isMobileDrawer) && <span>Switch to Traffic Automation</span>}
         </button>
       </div>
     </>

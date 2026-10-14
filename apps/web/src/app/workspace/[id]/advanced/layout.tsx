@@ -15,6 +15,7 @@ import {
   Target,
   ShieldCheck,
   Zap,
+  GitFork,
 } from "lucide-react"
 import { useWorkspace } from "../../../../hooks/useWorkspace"
 import { TopPlatformHeader } from "../../../../components/layout/TopPlatformHeader"
@@ -45,6 +46,8 @@ export default function AdvancedLayout({ children }: { children: React.ReactNode
     { label: "Connect Accounts (100 FB/Pages)", icon: KeyRound, path: `/workspace/${workspaceId}/advanced/connect-accounts` },
     { label: "Post Scheduler & AI Variations", icon: CalendarClock, path: `/workspace/${workspaceId}/advanced/post-scheduler` },
     { label: "Post A Group Engine", icon: Users, path: `/workspace/${workspaceId}/advanced/group-poster` },
+    { label: "Smart Link Rotator", icon: GitFork, path: `/workspace/${workspaceId}/advanced/smart-link-rotator` },
+    { label: "Invite Page Flow Engine", icon: UserPlus, path: `/workspace/${workspaceId}/advanced/invite-page` },
     { label: "Smart Comment Assistant", icon: MessageSquare, path: `/workspace/${workspaceId}/advanced/comment-assistant` },
     { label: "Messenger Controller Bot", icon: Bot, path: `/workspace/${workspaceId}/advanced/messenger-controller` },
     { label: "Friend Request & Accept Engine", icon: UserPlus, path: `/workspace/${workspaceId}/advanced/friend-automation` },
@@ -66,7 +69,7 @@ export default function AdvancedLayout({ children }: { children: React.ReactNode
               <span className="font-extrabold text-xs tracking-tight block truncate text-foreground">FACEBOOK MARKETING</span>
               <span className="text-[10px] text-orange-600 dark:text-orange-400 font-semibold flex items-center gap-1.5 mt-0.5">
                 <Zap className="w-3 h-3 text-orange-500 shrink-0" />
-                <span>ADVANCED (High Power)</span>
+                <span>Traffic Automation (Pro)</span>
               </span>
             </div>
           )}
@@ -112,13 +115,13 @@ export default function AdvancedLayout({ children }: { children: React.ReactNode
         )}
         <button
           onClick={handleModeSwitch}
-          title="Switch to SAFE Mode"
+          title="Switch to Business Automation (Safe)"
           className={`w-full rounded-lg bg-blue-500/10 hover:bg-blue-500/20 text-blue-600 dark:text-blue-400 border border-blue-500/30 py-2 text-xs font-semibold transition flex items-center justify-center gap-1.5 ${
             collapsed && !isMobileDrawer ? "p-2" : "px-2"
           }`}
         >
           <ShieldCheck className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 shrink-0" />
-          {(!collapsed || isMobileDrawer) && <span>Switch to SAFE Mode</span>}
+          {(!collapsed || isMobileDrawer) && <span>Switch to Business Automation</span>}
         </button>
       </div>
     </>
