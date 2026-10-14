@@ -60,6 +60,7 @@ export default function SafeCtaPinCommentPage() {
         accessToken: env.NEXT_PUBLIC_FB_PAGE_TOKEN_CARE_HUB_BD || "",
         tokenExpiry: Date.now() + 60 * 24 * 60 * 60 * 1000,
         category: "Health & Care",
+        isActive: true,
       })
     }
     let pages = initializeDefaultPages(defaults)

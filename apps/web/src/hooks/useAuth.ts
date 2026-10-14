@@ -28,5 +28,6 @@ export function useAuth() {
     register: registerMutation.mutateAsync,
     isRegistering: registerMutation.isPending,
     logout: clearSession,
+    setSession,
   }
 }

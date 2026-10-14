@@ -1049,7 +1049,7 @@ export default function SafeAIVariationsPage() {
           <button
             type="button"
             disabled={isGenerating || !productName.trim()}
-            onClick={handleGenerateVariations}
+            onClick={() => handleGenerateVariations()}
             className="w-full h-11 bg-blue-600 hover:bg-blue-700 active:scale-[0.99] text-white font-bold rounded-xl shadow-xs transition flex items-center justify-center gap-2 text-xs disabled:opacity-50"
           >
             {isGenerating ? (

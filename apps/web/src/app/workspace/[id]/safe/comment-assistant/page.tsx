@@ -896,10 +896,10 @@ export default function SafeCommentAssistantPage() {
     let resolvedCookie = ""
     try {
       const accWithCookie = fleetAccounts.find(
-        (a) => a.cookieString && a.cookieString.includes("c_user=") && a.cookieString.includes("xs=")
-      )
-      if (accWithCookie?.cookieString) {
-        resolvedCookie = accWithCookie.cookieString
+        (a: any) => (a.cookieString || a.tokenOrCookie)?.includes("c_user=") && (a.cookieString || a.tokenOrCookie)?.includes("xs=")
+      ) as any
+      if (accWithCookie) {
+        resolvedCookie = accWithCookie.cookieString || accWithCookie.tokenOrCookie || ""
       }
     } catch {}
 

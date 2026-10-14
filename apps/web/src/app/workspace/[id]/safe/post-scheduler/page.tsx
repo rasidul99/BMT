@@ -867,7 +867,7 @@ export default function SafePostSchedulerPage() {
   }, [libraryAssetId, searchParams])
 
   // Dynamic Multi-Engine Publisher: Puppeteer Headless Browser Bot or Meta Graph API
-  const publishToFacebookPage = async (job: QueueJob): Promise<{ success: boolean; postId?: string; error?: string }> => {
+  const publishToFacebookPage = async (job: QueueJob): Promise<{ success: boolean; postId?: string; error?: string; engine?: "bot" | "graph_api" }> => {
     try {
       // Lookup target page credentials dynamically
       let pageId = job.accountName === "CARE HUB BD" ? (env.NEXT_PUBLIC_FB_PAGE_ID_CARE_HUB_BD || "892168940637389") : ""

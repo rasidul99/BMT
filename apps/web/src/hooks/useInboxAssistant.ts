@@ -300,7 +300,7 @@ function toBanglaDigits(num: number): string {
   return String(num).replace(/\d/g, (d) => map[Number(d)] || d)
 }
 
-function buildStoreProductListStatement(products: TrainedProduct[], honorific: string): string {
+function buildStoreProductListStatement(products: TrainedProduct[], honorific: string = "স্যার/ম্যাম"): string {
   const inStockList = products.filter((p) => p.stockStatus !== "OUT_OF_STOCK")
   const list = inStockList.length > 0 ? inStockList : products
 
@@ -852,7 +852,7 @@ export function generatePreviewTrainedAnswer(
     lower.includes("হেল্প করতে পার")
 
   if (asksHowCanYouHelp) {
-    return `জি ${honorific}, আমি আপনাকে আমাদের প্রোডাক্টগুলোর ফিচার, অফার প্রাইজ, স্টক ও ওয়ারেন্টি সম্পর্কে বিস্তারিত জানিয়ে এবং ক্যাশ অন হোম ডেলিভারিতে অর্ডার কনফার্ম করে সাহায্য করতে পারি! 😊 বর্তমানে ${buildStoreProductListStatement(catalog)}। আপনি কোনটা সম্পর্কে জানতে চান ${honorific}?`
+    return `জি ${honorific}, আমি আপনাকে আমাদের প্রোডাক্টগুলোর ফিচার, অফার প্রাইজ, স্টক ও ওয়ারেন্টি সম্পর্কে বিস্তারিত জানিয়ে এবং ক্যাশ অন হোম ডেলিভারিতে অর্ডার কনফার্ম করে সাহায্য করতে পারি! 😊 বর্তমানে ${buildStoreProductListStatement(products, honorific)}। আপনি কোনটা সম্পর্কে জানতে চান ${honorific}?`
   }
 
   const asksTrustOrReturn =
@@ -1074,7 +1074,7 @@ export function generatePreviewTrainedAnswer(
   if (replySegments.length === 0) {
     if (!hasAlreadyGreeted) {
       replySegments.push(
-        `${buildStoreProductListStatement(catalog)}। আমাদের প্রোডাক্ট বা ডেলিভারি সম্পর্কে কিছু জানতে চাইলে নির্দ্বিধায় বলুন ${honorific}! 😊`
+        `${buildStoreProductListStatement(products, honorific)}। আমাদের প্রোডাক্ট বা ডেলিভারি সম্পর্কে কিছু জানতে চাইলে নির্দ্বিধায় বলুন ${honorific}! 😊`
       )
     } else {
       return `জি ${honorific}, বলুন কীভাবে আপনাকে সাহায্য করতে পারি? কোনো প্রোডাক্টের ব্যাপারে জানতে চাইলে বা অর্ডার করতে চাইলে নির্দ্বিধায় বলতে পারেন। 😊`

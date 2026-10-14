@@ -8,6 +8,7 @@ export interface CTAPinTemplate {
   commentText: string
   linkUrl: string
   assignedPage: string
+  targetPage?: string
   autoPin: boolean
   delaySeconds: number // 0, 15, 30, 60
   createdAt: string

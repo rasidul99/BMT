@@ -117,16 +117,17 @@ export function LinkCommentBlockCenter({ currentMode }: LinkCommentBlockCenterPr
       }
     })
 
-    fleetAccounts.forEach((acc) => {
+    fleetAccounts.forEach((accItem) => {
+      const acc = accItem as any
       if (!personalIds.some((p) => p.name.toLowerCase() === acc.name.toLowerCase())) {
         personalIds.push({
           id: acc.id,
           name: acc.name,
-          sub: `UID: ${acc.cUser || acc.id} (${acc.status})`,
+          sub: `UID: ${acc.uid || acc.cUser || acc.id} (${acc.status})`,
         })
       }
       if (acc.connectedPages) {
-        acc.connectedPages.forEach((pg) => {
+        acc.connectedPages.forEach((pg: any) => {
           if (!pages.some((p) => p.id === pg.pageId || p.name.toLowerCase() === pg.pageName.toLowerCase())) {
             pages.push({
               id: pg.pageId,
@@ -136,8 +137,9 @@ export function LinkCommentBlockCenter({ currentMode }: LinkCommentBlockCenterPr
           }
         })
       }
-      if (acc.joinedGroups) {
-        acc.joinedGroups.forEach((grp) => {
+      const groupsList = acc.joinedGroups || acc.assignedGroups
+      if (groupsList) {
+        groupsList.forEach((grp: any) => {
           if (!groups.some((g) => g.id === grp.groupId || g.name.toLowerCase() === grp.groupName.toLowerCase())) {
             groups.push({
               id: grp.groupId,
@@ -214,10 +216,10 @@ export function LinkCommentBlockCenter({ currentMode }: LinkCommentBlockCenterPr
     let resolvedCookie = ""
     try {
       const accWithCookie = fleetAccounts.find(
-        (a) => a.cookieString && a.cookieString.includes("c_user=") && a.cookieString.includes("xs=")
-      )
-      if (accWithCookie?.cookieString) {
-        resolvedCookie = accWithCookie.cookieString
+        (a: any) => (a.cookieString || a.tokenOrCookie)?.includes("c_user=") && (a.cookieString || a.tokenOrCookie)?.includes("xs=")
+      ) as any
+      if (accWithCookie) {
+        resolvedCookie = accWithCookie.cookieString || accWithCookie.tokenOrCookie || ""
       }
     } catch {}
 
